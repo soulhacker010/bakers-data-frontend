@@ -1,8 +1,46 @@
 import { DashboardLayout } from '../components/layout'
-import { Button, Card } from '../components/ui'
-import { Download, FileText, BarChart3 } from 'lucide-react'
+import { Button } from '../components/ui'
+import { Download, FileText, BarChart3, Calendar, Users, ArrowRight } from 'lucide-react'
 
 export default function ReportsPage() {
+    const reportTypes = [
+        {
+            icon: FileText,
+            title: 'Session Summary',
+            description: 'Generate a summary report of all sessions for a date range.',
+            buttonText: 'Generate Report',
+            variant: 'primary'
+        },
+        {
+            icon: BarChart3,
+            title: 'Progress Report',
+            description: 'Client progress report with graphs and statistics.',
+            buttonText: 'Generate Report',
+            variant: 'primary'
+        },
+        {
+            icon: Users,
+            title: 'Client Report',
+            description: 'Comprehensive report for a specific client.',
+            buttonText: 'Select Client',
+            variant: 'primary'
+        },
+        {
+            icon: Calendar,
+            title: 'Monthly Summary',
+            description: 'Overview of all activities for a specific month.',
+            buttonText: 'Select Month',
+            variant: 'primary'
+        },
+        {
+            icon: Download,
+            title: 'Export All Data',
+            description: 'Export all data to CSV for external analysis.',
+            buttonText: 'Export CSV',
+            variant: 'outline'
+        }
+    ]
+
     return (
         <DashboardLayout>
             {/* Hero Section */}
@@ -18,47 +56,29 @@ export default function ReportsPage() {
                 </div>
             </div>
 
-            {/* Reports Options */}
+            {/* Reports Grid */}
             <div className="px-6 py-8 max-w-screen-xl mx-auto">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <Card className="p-6">
-                        <div className="w-12 h-12 rounded-xl bg-primary-light flex items-center justify-center mb-4">
-                            <FileText size={24} className="text-primary" />
+                    {reportTypes.map((report, index) => (
+                        <div
+                            key={index}
+                            className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg hover:border-[#1A8B73]/20 transition-all group"
+                        >
+                            <div className="w-14 h-14 rounded-xl bg-[#E8F5F2] text-[#1A8B73] flex items-center justify-center mb-4 group-hover:bg-[#1A8B73] group-hover:text-white transition-colors">
+                                <report.icon size={28} />
+                            </div>
+                            <h3 className="font-heading text-xl font-bold text-gray-900 mb-2 group-hover:text-[#1A8B73] transition-colors">
+                                {report.title}
+                            </h3>
+                            <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+                                {report.description}
+                            </p>
+                            <Button variant={report.variant} size="sm" className="group/btn">
+                                {report.buttonText}
+                                <ArrowRight size={16} className="ml-2 group-hover/btn:translate-x-1 transition-transform" />
+                            </Button>
                         </div>
-                        <h3 className="font-heading text-xl font-bold text-gray-900 mb-2">
-                            Session Summary
-                        </h3>
-                        <p className="text-gray-500 text-sm mb-4">
-                            Generate a summary report of all sessions for a date range.
-                        </p>
-                        <Button size="sm">Generate Report</Button>
-                    </Card>
-
-                    <Card className="p-6">
-                        <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-4">
-                            <BarChart3 size={24} className="text-blue-600" />
-                        </div>
-                        <h3 className="font-heading text-xl font-bold text-gray-900 mb-2">
-                            Progress Report
-                        </h3>
-                        <p className="text-gray-500 text-sm mb-4">
-                            Client progress report with graphs and statistics.
-                        </p>
-                        <Button size="sm">Generate Report</Button>
-                    </Card>
-
-                    <Card className="p-6">
-                        <div className="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center mb-4">
-                            <Download size={24} className="text-green-600" />
-                        </div>
-                        <h3 className="font-heading text-xl font-bold text-gray-900 mb-2">
-                            Export Data
-                        </h3>
-                        <p className="text-gray-500 text-sm mb-4">
-                            Export all data to CSV for external analysis.
-                        </p>
-                        <Button variant="outline" size="sm">Export CSV</Button>
-                    </Card>
+                    ))}
                 </div>
             </div>
         </DashboardLayout>

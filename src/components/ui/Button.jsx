@@ -1,11 +1,11 @@
 import { forwardRef } from 'react'
 
 const variants = {
-    primary: 'btn-primary-premium',
-    outline: 'btn-outline-premium',
-    ghost: 'text-gray-600 hover:text-gray-900 hover:bg-gray-100',
+    primary: 'bg-[#1A8B73] text-white hover:bg-[#156B59] rounded-xl font-semibold shadow-md hover:shadow-lg',
+    outline: 'border-2 border-gray-200 text-gray-700 hover:border-[#1A8B73] hover:text-[#1A8B73] rounded-xl font-semibold bg-white',
+    ghost: 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl',
     danger: 'bg-red-500 text-white hover:bg-red-600 rounded-xl font-semibold',
-    link: 'text-primary font-medium hover:underline',
+    link: 'text-[#1A8B73] font-medium hover:underline',
 }
 
 const sizes = {

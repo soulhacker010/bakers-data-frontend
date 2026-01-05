@@ -35,13 +35,13 @@ function ProgramCard({ program, onStartSession, onViewProgress, onEdit }) {
                 <div className="flex items-center gap-2">
                     <button
                         onClick={onEdit}
-                        className="btn-outline-premium text-sm"
+                        className="px-4 py-2 border-2 border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:border-[#1A8B73] hover:text-[#1A8B73] transition-colors"
                     >
                         Edit
                     </button>
                     <button
                         onClick={onStartSession}
-                        className="btn-primary-premium flex items-center gap-2 text-sm"
+                        className="flex items-center gap-2 px-4 py-2 bg-[#1A8B73] text-white rounded-xl text-sm font-semibold hover:bg-[#156B59] transition-colors"
                     >
                         <Play size={16} />
                         Start Session
@@ -121,7 +121,7 @@ function SessionCard({ session, onClick }) {
                     </p>
                 </div>
 
-                <button className="btn-outline-premium text-sm group-hover:border-primary group-hover:text-primary">
+                <button className="px-4 py-2 border-2 border-gray-200 text-gray-700 rounded-xl text-sm font-medium group-hover:border-[#1A8B73] group-hover:text-[#1A8B73] transition-colors">
                     View
                 </button>
             </div>
@@ -216,9 +216,9 @@ export default function ClientDetailPage() {
                                 <p className="text-gray-500 mb-4">No programs yet. Create one to start tracking.</p>
                                 <button
                                     onClick={() => navigate(`/clients/${client.id}/programs/new`)}
-                                    className="btn-primary-premium"
+                                    className="flex items-center gap-2 px-6 py-3 bg-[#1A8B73] text-white rounded-xl font-semibold hover:bg-[#156B59] transition-colors"
                                 >
-                                    <Plus size={18} className="inline mr-2" />
+                                    <Plus size={18} />
                                     Add Program
                                 </button>
                             </div>

@@ -80,8 +80,8 @@ function TrialDataCollector({ onRecord, stats }) {
                             key={prompt.key}
                             onClick={() => setSelectedPrompt(selectedPrompt === prompt.key ? null : prompt.key)}
                             className={`py-4 px-3 rounded-xl text-sm font-semibold transition-all duration-150 border-2 ${selectedPrompt === prompt.key
-                                    ? 'bg-primary-light border-primary text-primary'
-                                    : 'bg-gray-50 border-transparent text-gray-500 hover:border-gray-300'
+                                ? 'bg-[#E8F5F2] border-[#1A8B73] text-[#1A8B73]'
+                                : 'bg-gray-50 border-transparent text-gray-500 hover:border-gray-300'
                                 }`}
                         >
                             {prompt.label}
@@ -109,7 +109,7 @@ function TrialDataCollector({ onRecord, stats }) {
                 </div>
                 <div className="pt-4 border-t border-gray-200 text-center">
                     <p className="text-sm text-gray-500 mb-1">Accuracy</p>
-                    <p className="font-heading text-3xl font-bold text-primary">{accuracy}%</p>
+                    <p className="font-heading text-3xl font-bold text-[#1A8B73]">{accuracy}%</p>
                 </div>
             </div>
         </div>
@@ -127,14 +127,14 @@ function FrequencyDataCollector({ onRecord, count }) {
 
             {/* Count Display */}
             <div className="text-center mb-8 py-8">
-                <p className="font-heading text-8xl font-bold text-primary">{count}</p>
+                <p className="font-heading text-8xl font-bold text-[#1A8B73]">{count}</p>
                 <p className="text-gray-500 mt-2 uppercase tracking-wider text-sm">Occurrences</p>
             </div>
 
             {/* Add Occurrence Button */}
             <button
                 onClick={() => onRecord({ count: 1 })}
-                className="w-full bg-primary hover:bg-primary-dark active:scale-95 text-white py-10 rounded-2xl text-2xl font-heading font-bold transition-all duration-150 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl"
+                className="w-full bg-[#1A8B73] hover:bg-[#156B59] active:scale-95 text-white py-10 rounded-2xl text-2xl font-heading font-bold transition-all duration-150 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl"
             >
                 <Plus size={32} />
                 Add Occurrence
@@ -183,7 +183,7 @@ function DurationDataCollector({ onRecord }) {
 
             {/* Timer Display */}
             <div className="text-center mb-8 py-8">
-                <p className="font-heading text-8xl font-bold text-primary font-mono tracking-tight">
+                <p className="font-heading text-8xl font-bold text-[#1A8B73] font-mono tracking-tight">
                     {formatDuration(durationSeconds)}
                 </p>
             </div>
@@ -257,7 +257,8 @@ export default function SessionCollectPage() {
 
     const handleEndSession = () => {
         console.log('Session data:', { notes, data: sessionData })
-        navigate(`/clients/${client.id}`)
+        // Navigate to session summary or back to sessions list
+        navigate('/sessions')
     }
 
     return (

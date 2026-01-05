@@ -69,6 +69,16 @@ function App() {
               <ProgramsPage />
             </ProtectedRoute>
           } />
+          <Route path="/programs/new" element={
+            <ProtectedRoute>
+              <AddProgramPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/programs/:id" element={
+            <ProtectedRoute>
+              <ProgressPage />
+            </ProtectedRoute>
+          } />
           <Route path="/programs/:id/progress" element={
             <ProtectedRoute>
               <ProgressPage />

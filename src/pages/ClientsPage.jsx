@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
 import { Button, Card, Modal, Badge } from '../components/ui'
 import { mockClients } from '../data/mockData'
-import { Plus, Search, Users, Calendar } from 'lucide-react'
+import { Plus, Search, Users, Calendar, ArrowRight } from 'lucide-react'
 import { format } from 'date-fns'
 
-// Client Selection Modal - using our Modal component
+// Client Selection Modal
 function ClientSelectModal({ isOpen, onClose, clients, onSelect }) {
     const [searchTerm, setSearchTerm] = useState('')
     const navigate = useNavigate()
@@ -22,7 +22,7 @@ function ClientSelectModal({ isOpen, onClose, clients, onSelect }) {
             title="Select client"
             footer={
                 <div className="flex items-center justify-between">
-                    <p className="label-uppercase text-primary">NEED SOMEONE NEW?</p>
+                    <p className="text-sm text-gray-500">Need someone new?</p>
                     <Button
                         icon={<Plus size={18} />}
                         onClick={() => {
@@ -37,14 +37,14 @@ function ClientSelectModal({ isOpen, onClose, clients, onSelect }) {
         >
             {/* Search */}
             <div className="mb-4">
-                <div className="search-input-container">
+                <div className="relative">
                     <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                         type="text"
-                        placeholder="Search"
+                        placeholder="Search clients..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="search-input w-full bg-white border border-gray-200"
+                        className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A8B73]/20 focus:border-[#1A8B73]"
                         autoFocus
                     />
                 </div>
@@ -63,15 +63,18 @@ function ClientSelectModal({ isOpen, onClose, clients, onSelect }) {
                             <button
                                 key={client.id}
                                 onClick={() => onSelect(client)}
-                                className="w-full text-left p-4 rounded-xl hover:bg-primary-light transition-colors flex items-center justify-between group"
+                                className="w-full text-left p-4 rounded-xl hover:bg-[#E8F5F2] transition-colors flex items-center justify-between group border border-transparent hover:border-[#1A8B73]/20"
                             >
-                                <div>
-                                    <p className="font-semibold text-gray-900">{client.first_name} {client.last_name}</p>
-                                    <p className="text-sm text-gray-500">Age {client.age} • {client.programs_count} programs</p>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-[#E8F5F2] text-[#1A8B73] flex items-center justify-center font-bold text-sm">
+                                        {client.first_name[0]}{client.last_name[0]}
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-gray-900">{client.first_name} {client.last_name}</p>
+                                        <p className="text-sm text-gray-500">Age {client.age} • {client.programs_count} programs</p>
+                                    </div>
                                 </div>
-                                <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity text-sm font-medium">
-                                    Select
-                                </span>
+                                <ArrowRight size={16} className="text-[#1A8B73] opacity-0 group-hover:opacity-100 transition-opacity" />
                             </button>
                         ))}
                     </div>
@@ -81,34 +84,34 @@ function ClientSelectModal({ isOpen, onClose, clients, onSelect }) {
     )
 }
 
-// Client Card - using our Card component
+// Client Card
 function ClientCard({ client, onClick }) {
     return (
-        <Card hover onClick={onClick} className="p-6">
+        <Card hover onClick={onClick} className="p-6 group">
             <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 rounded-full bg-primary-light text-primary flex items-center justify-center font-heading font-bold text-lg">
+                <div className="w-14 h-14 rounded-full bg-[#E8F5F2] text-[#1A8B73] flex items-center justify-center font-heading font-bold text-lg border-2 border-[#1A8B73]/20">
                     {client.first_name[0]}{client.last_name[0]}
                 </div>
-                <Badge variant="skill">
-                    {client.programs_count} programs
-                </Badge>
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#E8F5F2] text-[#1A8B73]">
+                    {client.programs_count} PROGRAMS
+                </span>
             </div>
 
-            <h3 className="font-heading text-xl font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors">
+            <h3 className="font-heading text-xl font-bold text-gray-900 mb-1 group-hover:text-[#1A8B73] transition-colors">
                 {client.first_name} {client.last_name}
             </h3>
 
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-gray-500 mb-4 line-clamp-1">
                 {client.diagnosis || 'No diagnosis specified'}
             </p>
 
-            <div className="flex items-center gap-4 text-xs text-gray-400">
-                <span className="flex items-center gap-1">
-                    <Users size={12} />
+            <div className="flex items-center gap-4 text-xs text-gray-400 pt-4 border-t border-gray-100">
+                <span className="flex items-center gap-1.5">
+                    <Users size={14} />
                     Age {client.age}
                 </span>
-                <span className="flex items-center gap-1">
-                    <Calendar size={12} />
+                <span className="flex items-center gap-1.5">
+                    <Calendar size={14} />
                     {client.last_session ? format(new Date(client.last_session), 'MMM d, yyyy') : 'No sessions'}
                 </span>
             </div>
@@ -121,7 +124,6 @@ export default function ClientsPage() {
     const [searchTerm, setSearchTerm] = useState('')
     const [showModal, setShowModal] = useState(false)
 
-    // Filter clients based on search
     const filteredClients = mockClients.filter(client =>
         `${client.first_name} ${client.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
     )
@@ -142,13 +144,13 @@ export default function ClientsPage() {
                             </p>
                         </div>
 
-                        <Button
-                            icon={<Plus size={20} />}
+                        <button
                             onClick={() => navigate('/clients/new')}
-                            className="bg-white text-primary hover:bg-gray-100"
+                            className="flex items-center gap-2 px-6 py-3 bg-white text-[#1A8B73] font-semibold rounded-xl hover:bg-gray-50 transition-colors shadow-lg"
                         >
+                            <Plus size={20} />
                             Add Client
-                        </Button>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -156,15 +158,15 @@ export default function ClientsPage() {
             {/* Main Content */}
             <div className="px-6 py-8 max-w-screen-xl mx-auto">
                 {/* Search & Filters */}
-                <div className="flex items-center gap-4 mb-8">
-                    <div className="search-input-container flex-1 max-w-md">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 mb-8">
+                    <div className="relative flex-1 max-w-md">
                         <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
                             type="text"
                             placeholder="Search clients by name..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="search-input w-full bg-white border border-gray-200"
+                            className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#1A8B73]/20 focus:border-[#1A8B73]"
                         />
                     </div>
 
