@@ -15,6 +15,7 @@ import EditProgramPage from './pages/EditProgramPage'
 import SessionCollectPage from './pages/SessionCollectPage'
 import SessionsPage from './pages/SessionsPage'
 import SessionDetailPage from './pages/SessionDetailPage'
+import NewSessionPage from './pages/NewSessionPage'
 import ProgramsPage from './pages/ProgramsPage'
 import ProgressPage from './pages/ProgressPage'
 import ReportsPage from './pages/ReportsPage'
@@ -94,6 +95,16 @@ function App() {
           <Route path="/sessions" element={
             <ProtectedRoute>
               <SessionsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/sessions/new" element={
+            <ProtectedRoute>
+              <NewSessionPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/sessions/new/collect" element={
+            <ProtectedRoute>
+              <SessionCollectPage />
             </ProtectedRoute>
           } />
           <Route path="/sessions/:id" element={
