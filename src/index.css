@@ -1,0 +1,286 @@
+/* Google Fonts are loaded via index.html <link> tags */
+@import "tailwindcss";
+@plugin "daisyui";
+
+/* DaisyUI Theme Customization */
+@plugin "daisyui" {
+  themes: light --default, dark;
+}
+
+/* Custom Theme Variables */
+@theme {
+  /* Primary Colors - Teal from reference */
+  --color-primary: #1A8B73;
+  --color-primary-light: #E8F5F2;
+  --color-primary-dark: #156B59;
+  --color-primary-hover: #D0EBE5;
+
+  /* Teal gradient colors for hero sections */
+  --color-teal-start: #1A8B73;
+  --color-teal-mid: #2A9D8F;
+  --color-teal-end: #3AB4A5;
+
+  /* Semantic Colors */
+  --color-success: #10B981;
+  --color-success-light: #D1FAE5;
+  --color-error: #EF4444;
+  --color-error-light: #FEE2E2;
+  --color-warning: #F59E0B;
+  --color-warning-light: #FEF3C7;
+
+  /* Font families */
+  --font-heading: 'Syne', sans-serif;
+  --font-body: 'Manrope', sans-serif;
+}
+
+/* Base Styles */
+* {
+  font-family: var(--font-body);
+}
+
+body {
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #F8FAFB;
+  color: #1A1A1A;
+}
+
+/* Heading Font Override */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.font-heading {
+  font-family: var(--font-heading);
+}
+
+/* Letter-spaced uppercase style for labels */
+.label-uppercase {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #6B7280;
+}
+
+.label-uppercase-light {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Hero Section Gradient */
+.hero-gradient {
+  background: linear-gradient(135deg, #1A8B73 0%, #2A9D8F 50%, #3AB4A5 100%);
+}
+
+/* Premium Card Styles */
+.card-premium {
+  background-color: #FFFFFF;
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  border: 1px solid #F3F4F6;
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+.card-premium:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Glass Card for Hero Section */
+.card-glass {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+}
+
+/* Action Card */
+.action-card {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 24px;
+  transition: all 0.3s ease;
+}
+
+.action-card:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-4px);
+}
+
+/* Premium Buttons */
+.btn-primary-premium {
+  background-color: var(--color-primary);
+  color: #FFFFFF;
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-primary-premium:hover {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(26, 139, 115, 0.3);
+}
+
+.btn-outline-premium {
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  border: 2px solid #E5E7EB;
+  color: #374151;
+  background-color: #FFFFFF;
+  font-family: var(--font-body);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-outline-premium:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background-color: var(--color-primary-light);
+}
+
+/* Input Styles */
+.input-premium {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background-color: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  font-family: var(--font-body);
+  transition: all 0.2s ease;
+}
+
+.input-premium:focus {
+  outline: none;
+  background-color: #FFFFFF;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(26, 139, 115, 0.1);
+}
+
+.input-premium::placeholder {
+  color: #9CA3AF;
+}
+
+/* Nav Link Style */
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  color: #4B5563;
+  font-weight: 500;
+  font-family: var(--font-body);
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.nav-link:hover {
+  color: var(--color-primary);
+  background-color: var(--color-primary-light);
+}
+
+.nav-link.active {
+  color: var(--color-primary);
+}
+
+/* Search Input with icon */
+.search-input-container {
+  position: relative;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.625rem 1rem 0.625rem 2.5rem;
+  background-color: #F3F4F6;
+  border: 0;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-family: var(--font-body);
+  transition: all 0.2s ease;
+}
+
+.search-input:focus {
+  background-color: #FFFFFF;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(26, 139, 115, 0.2);
+}
+
+/* Stat Box in Hero */
+.stat-box {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+
+/* Modal Styling */
+.modal-premium {
+  background-color: #FFFFFF;
+  border-radius: 1.5rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-width: 32rem;
+  width: 100%;
+  margin: 0 1rem;
+  overflow: hidden;
+}
+
+/* Toggle Switch */
+.toggle-premium {
+  position: relative;
+  display: inline-flex;
+  height: 1.5rem;
+  width: 2.75rem;
+  align-items: center;
+  border-radius: 9999px;
+  background-color: #E5E7EB;
+  transition: background-color 0.2s ease;
+}
+
+.toggle-premium.active {
+  background-color: var(--color-primary);
+}
+
+/* Pill Badge */
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.375rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge-skill {
+  background-color: #EFF6FF;
+  color: #1D4ED8;
+}
+
+.badge-behavior {
+  background-color: #FFF1F2;
+  color: #BE123C;
+}
