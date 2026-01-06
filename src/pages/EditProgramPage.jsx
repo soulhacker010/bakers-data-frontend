@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
-import { Button, Input, Select, Card } from '../components/ui'
+import { Button, Input, Select, Card, ConfirmModal } from '../components/ui'
 import { mockPrograms, mockClients } from '../data/mockData'
 import { ArrowLeft, Check, Trash2 } from 'lucide-react'
+import { useToast } from '../context/ToastContext'
 
 const programTypeOptions = [
     { value: 'skill', label: 'Skill Acquisition' },
@@ -19,6 +20,7 @@ const dataTypeOptions = [
 export default function EditProgramPage() {
     const { id } = useParams()
     const navigate = useNavigate()
+    const { toast } = useToast()
 
     // Get program from mock data
     const program = mockPrograms.find(p => p.id === parseInt(id))
@@ -34,6 +36,7 @@ export default function EditProgramPage() {
     })
     const [saving, setSaving] = useState(false)
     const [saved, setSaved] = useState(false)
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target
@@ -54,15 +57,15 @@ export default function EditProgramPage() {
         setTimeout(() => {
             setSaving(false)
             setSaved(true)
+            toast.success('Program saved successfully!')
             setTimeout(() => navigate(`/clients/${program?.client_id}`), 1000)
         }, 500)
     }
 
     const handleDelete = () => {
-        if (window.confirm('Are you sure you want to delete this program? All associated data will be lost.')) {
-            console.log('Deleting program:', id)
-            navigate(`/clients/${program?.client_id}`)
-        }
+        console.log('Deleting program:', id)
+        toast.success(`Program "${program?.name}" deleted successfully`)
+        navigate(`/clients/${program?.client_id}`)
     }
 
     if (!program) {
@@ -164,7 +167,7 @@ export default function EditProgramPage() {
                             <Button
                                 type="button"
                                 variant="ghost"
-                                onClick={handleDelete}
+                                onClick={() => setShowDeleteModal(true)}
                                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                 icon={<Trash2 size={18} />}
                             >
@@ -191,6 +194,17 @@ export default function EditProgramPage() {
                     </Card>
                 </form>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmModal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                onConfirm={handleDelete}
+                title="Delete Program?"
+                message={`Are you sure you want to delete "${program.name}"? All associated session data will be lost. This action cannot be undone.`}
+                confirmText="Delete Program"
+                type="danger"
+            />
         </DashboardLayout>
     )
 }

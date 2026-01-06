@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import { Button, Input, Select } from '../components/ui'
 import { Eye, EyeOff, Check, ArrowRight } from 'lucide-react'
 
@@ -23,6 +24,7 @@ export default function RegisterPage() {
     const [loading, setLoading] = useState(false)
 
     const { register } = useAuth()
+    const { toast } = useToast()
     const navigate = useNavigate()
 
     // Password strength checks
@@ -37,11 +39,13 @@ export default function RegisterPage() {
 
         if (password !== confirmPassword) {
             setError('Passwords do not match')
+            toast.error('Passwords do not match')
             return
         }
 
         if (!hasLength || !hasUpper || !hasLower || !hasNumber) {
             setError('Password does not meet requirements')
+            toast.error('Password does not meet requirements')
             return
         }
 
@@ -49,9 +53,11 @@ export default function RegisterPage() {
 
         try {
             await register(fullName, email, password)
+            toast.success('Account created successfully! Welcome to Data Sirena.')
             navigate('/dashboard')
         } catch (err) {
             setError('Registration failed. Please try again.')
+            toast.error('Registration failed. Please try again.')
         } finally {
             setLoading(false)
         }
@@ -77,8 +83,8 @@ export default function RegisterPage() {
                     className="absolute inset-0 w-full h-full object-cover"
                 />
 
-                {/* Gradient Overlay - matches our teal primary, with transparency for image */}
-                <div className="absolute inset-0 bg-gradient-to-br from-[#156B59]/90 via-[#1A8B73]/80 to-[#2A9D8F]/85"></div>
+                {/* Gradient Overlay - matches our teal/blue brand colors, with transparency for image */}
+                <div className="absolute inset-0 bg-gradient-to-br from-[#0E8499]/90 via-[#159DB3]/80 to-[#214B9D]/85"></div>
 
                 {/* Animated Background Shapes */}
                 <div className="absolute inset-0 overflow-hidden">
@@ -90,8 +96,8 @@ export default function RegisterPage() {
                 <div className="relative z-10 flex flex-col justify-between p-12 text-white">
                     {/* Logo */}
                     <div>
-                        <h1 className="font-heading text-3xl font-bold">ABA Collect</h1>
-                        <p className="text-white/70 mt-1">Therapy Data Platform</p>
+                        <img src="/images/logo.png" alt="Data Sirena" className="h-20 w-auto mb-4" />
+                        <p className="text-white/70 text-lg">Therapy Data Platform</p>
                     </div>
 
                     {/* Features */}
@@ -129,7 +135,7 @@ export default function RegisterPage() {
                         </div>
                         <div>
                             <p className="font-medium">Join 500+ therapists</p>
-                            <p className="text-white/60 text-sm">Already using ABA Collect</p>
+                            <p className="text-white/60 text-sm">Already using Data Sirena</p>
                         </div>
                     </div>
                 </div>
@@ -140,7 +146,7 @@ export default function RegisterPage() {
                 <div className="w-full max-w-md animate-fade-in">
                     {/* Mobile Logo */}
                     <div className="lg:hidden text-center mb-8">
-                        <h1 className="font-heading text-3xl font-bold text-primary">ABA Collect</h1>
+                        <img src="/images/logo.png" alt="Data Sirena" className="h-12 w-auto mx-auto mb-2" />
                         <p className="text-gray-500 mt-1">Therapy Data Platform</p>
                     </div>
 

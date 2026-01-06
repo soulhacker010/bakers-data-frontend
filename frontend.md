@@ -60,10 +60,29 @@ A web-based ABA (Applied Behavior Analysis) therapy data collection platform tha
 
 ### 3. UI Design System
 Color Palette
-css/* Primary Colors */
---primary: #1fac93;          /* Main brand color - buttons, links, accents */
---primary-light: #E0F7F4;    /* Backgrounds, hover states */
---primary-dark: #189f84;     /* Hover states for buttons */
+
+> ⚠️ **BRAND COLORS - DO NOT CHANGE WITHOUT CLIENT APPROVAL**
+
+```css
+/* ========================================
+   OFFICIAL CLIENT BRAND COLORS
+   Updated: January 2026
+   ======================================== */
+
+/* Primary Color - Teal */
+--primary: #159DB3;          /* Main brand color - buttons, links, accents */
+--primary-light: #E0F4F7;    /* Light backgrounds, hover states */
+--primary-dark: #0E8499;     /* Hover states for buttons */
+--primary-rgb: 21, 157, 179; /* For rgba() usage */
+
+/* Secondary Color - Deep Blue */
+--secondary: #214B9D;        /* Secondary buttons, gradients, accents */
+--secondary-light: #E8EEF7;  /* Light backgrounds */
+--secondary-dark: #1A3C7E;   /* Hover states */
+--secondary-rgb: 33, 75, 157;/* For rgba() usage */
+
+/* Hero Gradient (use this for headers) */
+/* background: linear-gradient(135deg, #159DB3 0%, #1A7A9D 50%, #214B9D 100%); */
 
 /* Neutral Colors */
 --white: #FFFFFF;            /* Main backgrounds, cards */
@@ -87,6 +106,7 @@ css/* Primary Colors */
 --warning-light: #FEF3C7;    /* Warning backgrounds */
 --info: #3B82F6;             /* Info messages */
 --info-light: #DBEAFE;       /* Info backgrounds */
+```
 Typography
 css/* Font Family */
 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',

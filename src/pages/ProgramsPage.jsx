@@ -42,7 +42,7 @@ export default function ProgramsPage() {
 
                         <button
                             onClick={() => navigate('/programs/new')}
-                            className="flex items-center gap-2 px-6 py-3 bg-white text-[#1A8B73] font-semibold rounded-xl hover:bg-gray-50 transition-colors shadow-lg"
+                            className="flex items-center gap-2 px-6 py-3 bg-white text-[#159DB3] font-semibold rounded-xl hover:bg-gray-50 transition-colors shadow-lg"
                         >
                             <Plus size={20} />
                             New Program
@@ -62,7 +62,7 @@ export default function ProgramsPage() {
                             placeholder="Search programs or clients..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#1A8B73]/20 focus:border-[#1A8B73]"
+                            className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3]"
                         />
                     </div>
 
@@ -77,8 +77,8 @@ export default function ProgramsPage() {
                                 key={tab.key}
                                 onClick={() => setFilterType(tab.key)}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filterType === tab.key
-                                        ? 'bg-white text-[#1A8B73] shadow-sm'
-                                        : 'text-gray-600 hover:text-gray-900'
+                                    ? 'bg-white text-[#159DB3] shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-900'
                                     }`}
                             >
                                 {tab.label}
@@ -107,34 +107,35 @@ export default function ProgramsPage() {
                             return (
                                 <div
                                     key={program.id}
-                                    className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg hover:border-[#1A8B73]/20 transition-all group cursor-pointer"
+                                    className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 hover:shadow-lg hover:border-[#159DB3]/20 transition-all group cursor-pointer"
                                     onClick={() => navigate(`/programs/${program.id}`)}
                                 >
-                                    <div className="flex items-start justify-between gap-4">
+                                    {/* Mobile: Stack layout, Desktop: Side by side */}
+                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                                         {/* Left side - Icon + Content */}
-                                        <div className="flex items-start gap-4">
+                                        <div className="flex items-start gap-3 sm:gap-4">
                                             {/* Program Type Icon */}
-                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isSkill
-                                                    ? 'bg-blue-50 text-blue-600'
-                                                    : 'bg-pink-50 text-pink-600'
+                                            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isSkill
+                                                ? 'bg-blue-50 text-blue-600'
+                                                : 'bg-pink-50 text-pink-600'
                                                 }`}>
-                                                {isSkill ? <Target size={24} /> : <Activity size={24} />}
+                                                {isSkill ? <Target size={20} /> : <Activity size={20} />}
                                             </div>
 
                                             {/* Content */}
-                                            <div>
-                                                <div className="flex items-center gap-3 mb-1">
-                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide ${isSkill
-                                                            ? 'bg-blue-100 text-blue-700'
-                                                            : 'bg-pink-100 text-pink-700'
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide ${isSkill
+                                                        ? 'bg-blue-100 text-blue-700'
+                                                        : 'bg-pink-100 text-pink-700'
                                                         }`}>
                                                         {isSkill ? 'Skill' : 'Behavior'}
                                                     </span>
-                                                    <span className="text-sm text-gray-500">
+                                                    <span className="text-sm text-gray-500 truncate">
                                                         {getClientName(program.client_id)}
                                                     </span>
                                                 </div>
-                                                <h3 className="font-heading text-xl font-bold text-gray-900 group-hover:text-[#1A8B73] transition-colors">
+                                                <h3 className="font-heading text-lg sm:text-xl font-bold text-gray-900 group-hover:text-[#159DB3] transition-colors">
                                                     {program.name}
                                                 </h3>
                                                 <p className="text-gray-500 text-sm mt-1 line-clamp-1">
@@ -144,33 +145,33 @@ export default function ProgramsPage() {
                                         </div>
 
                                         {/* Right side - Progress/Trend + Button */}
-                                        <div className="flex items-center gap-4 flex-shrink-0">
+                                        <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 flex-shrink-0 pl-13 sm:pl-0">
                                             {isTrial ? (
-                                                <div className="text-right">
+                                                <div className="text-left sm:text-right">
                                                     <p className="text-xs text-gray-400 uppercase tracking-wide">Progress</p>
                                                     <div className="flex items-center gap-2">
-                                                        <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                        <div className="w-16 sm:w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
                                                             <div
-                                                                className="h-full bg-[#1A8B73] rounded-full transition-all"
+                                                                className="h-full bg-[#159DB3] rounded-full transition-all"
                                                                 style={{ width: `${program.progress}%` }}
                                                             ></div>
                                                         </div>
-                                                        <span className="font-heading text-lg font-bold text-[#1A8B73]">
+                                                        <span className="font-heading text-base sm:text-lg font-bold text-[#159DB3]">
                                                             {program.progress}%
                                                         </span>
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-1 sm:gap-2">
                                                     {program.trend === 'decreasing' ? (
                                                         <>
-                                                            <TrendingDown size={20} className="text-green-600" />
-                                                            <span className="font-semibold text-green-600">Decreasing</span>
+                                                            <TrendingDown size={18} className="text-green-600" />
+                                                            <span className="font-semibold text-green-600 text-sm sm:text-base">Decreasing</span>
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <TrendingUp size={20} className="text-red-500" />
-                                                            <span className="font-semibold text-red-500">Increasing</span>
+                                                            <TrendingUp size={18} className="text-red-500" />
+                                                            <span className="font-semibold text-red-500 text-sm sm:text-base">Increasing</span>
                                                         </>
                                                     )}
                                                 </div>
@@ -181,10 +182,10 @@ export default function ProgramsPage() {
                                                     e.stopPropagation()
                                                     navigate(`/programs/${program.id}/progress`)
                                                 }}
-                                                className="flex items-center gap-2 px-4 py-2 border-2 border-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:border-[#1A8B73] hover:text-[#1A8B73] transition-colors"
+                                                className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 border-2 border-gray-200 text-gray-700 rounded-xl font-medium text-xs sm:text-sm hover:border-[#159DB3] hover:text-[#159DB3] transition-colors whitespace-nowrap"
                                             >
-                                                <BarChart2 size={16} />
-                                                View Graph
+                                                <BarChart2 size={14} />
+                                                <span className="hidden xs:inline">View</span> Graph
                                             </button>
                                         </div>
                                     </div>

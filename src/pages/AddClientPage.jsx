@@ -3,9 +3,11 @@ import { useNavigate, Link } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
 import { Button, Input, Card } from '../components/ui'
 import { ArrowLeft, Calendar } from 'lucide-react'
+import { useToast } from '../context/ToastContext'
 
 export default function AddClientPage() {
     const navigate = useNavigate()
+    const { toast } = useToast()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
 
@@ -30,6 +32,7 @@ export default function AddClientPage() {
         // Validate required fields
         if (!formData.first_name.trim() || !formData.last_name.trim()) {
             setError('First name and last name are required')
+            toast.error('Please fill in all required fields')
             setLoading(false)
             return
         }
@@ -41,10 +44,12 @@ export default function AddClientPage() {
             // Simulate API delay
             await new Promise(resolve => setTimeout(resolve, 500))
 
-            // Navigate back to clients list
+            // Success toast and navigate
+            toast.success(`Client "${formData.first_name} ${formData.last_name}" added successfully!`)
             navigate('/clients')
         } catch (err) {
             setError('Failed to save client. Please try again.')
+            toast.error('Failed to save client. Please try again.')
         } finally {
             setLoading(false)
         }

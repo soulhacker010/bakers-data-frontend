@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
-import { Button, Input, Card } from '../components/ui'
+import { Button, Input, Card, ConfirmModal } from '../components/ui'
 import { mockClients } from '../data/mockData'
 import { ArrowLeft, Check, Trash2 } from 'lucide-react'
+import { useToast } from '../context/ToastContext'
 
 export default function EditClientPage() {
     const { id } = useParams()
     const navigate = useNavigate()
+    const { toast } = useToast()
 
     // Get client from mock data
     const client = mockClients.find(c => c.id === parseInt(id))
@@ -21,6 +23,7 @@ export default function EditClientPage() {
     })
     const [saving, setSaving] = useState(false)
     const [saved, setSaved] = useState(false)
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
 
     const handleChange = (e) => {
         const { name, value } = e.target
@@ -38,15 +41,15 @@ export default function EditClientPage() {
         setTimeout(() => {
             setSaving(false)
             setSaved(true)
+            toast.success('Client saved successfully!')
             setTimeout(() => navigate(`/clients/${id}`), 1000)
         }, 500)
     }
 
     const handleDelete = () => {
-        if (window.confirm('Are you sure you want to delete this client? This cannot be undone.')) {
-            console.log('Deleting client:', id)
-            navigate('/clients')
-        }
+        console.log('Deleting client:', id)
+        toast.success(`Client "${client?.first_name} ${client?.last_name}" deleted successfully`)
+        navigate('/clients')
     }
 
     if (!client) {
@@ -132,7 +135,7 @@ export default function EditClientPage() {
                             <Button
                                 type="button"
                                 variant="ghost"
-                                onClick={handleDelete}
+                                onClick={() => setShowDeleteModal(true)}
                                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                 icon={<Trash2 size={18} />}
                             >
@@ -159,6 +162,17 @@ export default function EditClientPage() {
                     </Card>
                 </form>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmModal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                onConfirm={handleDelete}
+                title="Delete Client?"
+                message={`Are you sure you want to delete "${client.first_name} ${client.last_name}"? This will also delete all their programs and session data. This action cannot be undone.`}
+                confirmText="Delete Client"
+                type="danger"
+            />
         </DashboardLayout>
     )
 }

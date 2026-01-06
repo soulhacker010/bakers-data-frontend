@@ -62,12 +62,12 @@ export default function ReportsPage() {
                     {reportTypes.map((report, index) => (
                         <div
                             key={index}
-                            className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg hover:border-[#1A8B73]/20 transition-all group"
+                            className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg hover:border-[#159DB3]/20 transition-all group"
                         >
-                            <div className="w-14 h-14 rounded-xl bg-[#E8F5F2] text-[#1A8B73] flex items-center justify-center mb-4 group-hover:bg-[#1A8B73] group-hover:text-white transition-colors">
+                            <div className="w-14 h-14 rounded-xl bg-[#E0F4F7] text-[#159DB3] flex items-center justify-center mb-4 group-hover:bg-[#159DB3] group-hover:text-white transition-colors">
                                 <report.icon size={28} />
                             </div>
-                            <h3 className="font-heading text-xl font-bold text-gray-900 mb-2 group-hover:text-[#1A8B73] transition-colors">
+                            <h3 className="font-heading text-xl font-bold text-gray-900 mb-2 group-hover:text-[#159DB3] transition-colors">
                                 {report.title}
                             </h3>
                             <p className="text-gray-500 text-sm mb-6 leading-relaxed">

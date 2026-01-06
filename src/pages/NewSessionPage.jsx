@@ -80,8 +80,8 @@ export default function NewSessionPage() {
             {/* Step Indicator */}
             <div className="px-6 py-4 bg-white border-b border-gray-100">
                 <div className="max-w-screen-xl mx-auto flex items-center gap-4">
-                    <div className={`flex items-center gap-2 ${step >= 1 ? 'text-[#1A8B73]' : 'text-gray-400'}`}>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step >= 1 ? 'bg-[#1A8B73] text-white' : 'bg-gray-200 text-gray-500'
+                    <div className={`flex items-center gap-2 ${step >= 1 ? 'text-[#159DB3]' : 'text-gray-400'}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step >= 1 ? 'bg-[#159DB3] text-white' : 'bg-gray-200 text-gray-500'
                             }`}>
                             {step > 1 ? <Check size={16} /> : '1'}
                         </div>
@@ -90,8 +90,8 @@ export default function NewSessionPage() {
 
                     <ChevronRight size={20} className="text-gray-300" />
 
-                    <div className={`flex items-center gap-2 ${step >= 2 ? 'text-[#1A8B73]' : 'text-gray-400'}`}>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step >= 2 ? 'bg-[#1A8B73] text-white' : 'bg-gray-200 text-gray-500'
+                    <div className={`flex items-center gap-2 ${step >= 2 ? 'text-[#159DB3]' : 'text-gray-400'}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step >= 2 ? 'bg-[#159DB3] text-white' : 'bg-gray-200 text-gray-500'
                             }`}>
                             2
                         </div>
@@ -122,7 +122,7 @@ export default function NewSessionPage() {
                                 placeholder="Search clients by name..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-11 pr-4 py-4 border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#1A8B73]/20 focus:border-[#1A8B73] text-lg"
+                                className="w-full pl-11 pr-4 py-4 border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3] text-lg"
                                 autoFocus
                             />
                         </div>
@@ -139,14 +139,14 @@ export default function NewSessionPage() {
                                     <button
                                         key={client.id}
                                         onClick={() => handleSelectClient(client)}
-                                        className="w-full bg-white rounded-2xl border border-gray-100 p-5 hover:shadow-lg hover:border-[#1A8B73]/30 transition-all group text-left flex items-center justify-between"
+                                        className="w-full bg-white rounded-2xl border border-gray-100 p-5 hover:shadow-lg hover:border-[#159DB3]/30 transition-all group text-left flex items-center justify-between"
                                     >
                                         <div className="flex items-center gap-4">
-                                            <div className="w-14 h-14 rounded-full bg-[#E8F5F2] text-[#1A8B73] flex items-center justify-center font-heading font-bold text-lg">
+                                            <div className="w-14 h-14 rounded-full bg-[#E0F4F7] text-[#159DB3] flex items-center justify-center font-heading font-bold text-lg">
                                                 {client.first_name[0]}{client.last_name[0]}
                                             </div>
                                             <div>
-                                                <h3 className="font-heading text-xl font-bold text-gray-900 group-hover:text-[#1A8B73] transition-colors">
+                                                <h3 className="font-heading text-xl font-bold text-gray-900 group-hover:text-[#159DB3] transition-colors">
                                                     {client.first_name} {client.last_name}
                                                 </h3>
                                                 <p className="text-gray-500 text-sm">
@@ -154,7 +154,7 @@ export default function NewSessionPage() {
                                                 </p>
                                             </div>
                                         </div>
-                                        <ArrowRight size={24} className="text-gray-300 group-hover:text-[#1A8B73] transition-colors" />
+                                        <ArrowRight size={24} className="text-gray-300 group-hover:text-[#159DB3] transition-colors" />
                                     </button>
                                 ))
                             )}
@@ -164,9 +164,9 @@ export default function NewSessionPage() {
                     /* Step 2: Select Programs */
                     <div className="max-w-2xl mx-auto">
                         {/* Selected Client Header */}
-                        <div className="bg-[#E8F5F2] rounded-2xl p-4 mb-6 flex items-center justify-between">
+                        <div className="bg-[#E0F4F7] rounded-2xl p-4 mb-6 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-full bg-[#1A8B73] text-white flex items-center justify-center font-heading font-bold">
+                                <div className="w-12 h-12 rounded-full bg-[#159DB3] text-white flex items-center justify-center font-heading font-bold">
                                     {selectedClient.first_name[0]}{selectedClient.last_name[0]}
                                 </div>
                                 <div>
@@ -178,7 +178,7 @@ export default function NewSessionPage() {
                             </div>
                             <button
                                 onClick={() => { setStep(1); setSelectedClient(null) }}
-                                className="text-sm text-[#1A8B73] font-medium hover:underline"
+                                className="text-sm text-[#159DB3] font-medium hover:underline"
                             >
                                 Change
                             </button>
@@ -208,7 +208,7 @@ export default function NewSessionPage() {
                                             key={program.id}
                                             onClick={() => toggleProgram(program.id)}
                                             className={`w-full bg-white rounded-2xl border-2 p-5 transition-all text-left flex items-center justify-between ${isSelected
-                                                    ? 'border-[#1A8B73] shadow-md'
+                                                    ? 'border-[#159DB3] shadow-md'
                                                     : 'border-gray-100 hover:border-gray-200'
                                                 }`}
                                         >
@@ -238,7 +238,7 @@ export default function NewSessionPage() {
                                             </div>
 
                                             <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${isSelected
-                                                    ? 'bg-[#1A8B73] border-[#1A8B73]'
+                                                    ? 'bg-[#159DB3] border-[#159DB3]'
                                                     : 'border-gray-300'
                                                 }`}>
                                                 {isSelected && <Check size={14} className="text-white" />}
@@ -255,7 +255,7 @@ export default function NewSessionPage() {
                                 onClick={handleStartSession}
                                 disabled={selectedPrograms.length === 0}
                                 className={`w-full flex items-center justify-center gap-3 px-8 py-5 rounded-2xl text-xl font-heading font-bold transition-all ${selectedPrograms.length > 0
-                                        ? 'bg-[#1A8B73] text-white hover:bg-[#156B59] shadow-lg hover:shadow-xl'
+                                        ? 'bg-[#159DB3] text-white hover:bg-[#0E8499] shadow-lg hover:shadow-xl'
                                         : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                     }`}
                             >

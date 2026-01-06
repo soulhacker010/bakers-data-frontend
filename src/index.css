@@ -7,18 +7,42 @@
   themes: light --default, dark;
 }
 
+/* ========================================
+   DATA SIRENA - Custom Brand Fonts
+   ======================================== */
+@font-face {
+  font-family: 'Nexa';
+  src: url('/fonts/NexaBold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nexa';
+  src: url('/fonts/Nexa-ExtraLight.ttf') format('truetype');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Custom Theme Variables */
 @theme {
-  /* Primary Colors - Teal from reference */
-  --color-primary: #1A8B73;
-  --color-primary-light: #E8F5F2;
-  --color-primary-dark: #156B59;
-  --color-primary-hover: #D0EBE5;
+  /* Primary Colors - Teal from client brand */
+  --color-primary: #159DB3;
+  --color-primary-light: #E0F4F7;
+  --color-primary-dark: #0E8499;
+  --color-primary-hover: #D0EEF3;
+
+  /* Secondary Color - Deep Blue */
+  --color-secondary: #214B9D;
+  --color-secondary-light: #E8EEF7;
+  --color-secondary-dark: #1A3C7E;
 
   /* Teal gradient colors for hero sections */
-  --color-teal-start: #1A8B73;
-  --color-teal-mid: #2A9D8F;
-  --color-teal-end: #3AB4A5;
+  --color-teal-start: #159DB3;
+  --color-teal-mid: #1A7A9D;
+  --color-teal-end: #214B9D;
 
   /* Semantic Colors */
   --color-success: #10B981;
@@ -28,9 +52,9 @@
   --color-warning: #F59E0B;
   --color-warning-light: #FEF3C7;
 
-  /* Font families */
-  --font-heading: 'Syne', sans-serif;
-  --font-body: 'Manrope', sans-serif;
+  /* Font families - Using client's Nexa font */
+  --font-heading: 'Nexa', 'Syne', sans-serif;
+  --font-body: 'Nexa', 'Manrope', sans-serif;
 }
 
 /* Base Styles */
@@ -78,7 +102,7 @@ h6,
 
 /* Hero Section Gradient */
 .hero-gradient {
-  background: linear-gradient(135deg, #1A8B73 0%, #2A9D8F 50%, #3AB4A5 100%);
+  background: linear-gradient(135deg, #159DB3 0%, #1A7A9D 50%, #214B9D 100%);
 }
 
 /* Premium Card Styles */
@@ -135,7 +159,7 @@ h6,
 .btn-primary-premium:hover {
   background-color: var(--color-primary-dark);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(26, 139, 115, 0.3);
+  box-shadow: 0 4px 12px rgba(21, 157, 179, 0.3);
 }
 
 .btn-outline-premium {
@@ -343,4 +367,38 @@ h6,
 
 .animate-slide-in-left {
   animation: slideInLeft 0.6s ease-out forwards;
+}
+
+/* Toast slide-in animation */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out forwards;
+}
+
+/* Modal scale-in animation */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out forwards;
 }

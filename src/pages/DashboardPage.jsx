@@ -75,7 +75,7 @@ export default function DashboardPage() {
                         <div className="lg:max-w-lg">
                             <p className="label-uppercase-light mb-3">W E L C O M E</p>
                             <h1 className="font-heading text-4xl lg:text-5xl font-bold text-white mb-4">
-                                ABA Collect<br />
+                                Data Sirena<br />
                                 Dashboard — {userName}
                             </h1>
                             <p className="text-white/80 text-lg leading-relaxed mb-6">
@@ -128,98 +128,181 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            {/* Workspace Section */}
+            {/* Workspace Section - Premium Redesign */}
             <div className="px-6 py-10 max-w-screen-xl mx-auto">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <WorkspaceCard
-                        title="Workspace checklist"
-                        description="Work through these quick tasks to keep your ABA workspace ready for clinicians and clients."
-                    >
-                        <div className="space-y-3">
-                            {[
-                                { done: true, text: 'Set up your account profile' },
-                                { done: true, text: 'Configure therapy settings' },
-                                { done: false, text: 'Add your first client' },
-                                { done: false, text: 'Create a therapy program' },
-                                { done: false, text: 'Complete a data collection session' },
-                            ].map((item, i) => (
-                                <div key={i} className={`flex items-center gap-3 p-3 rounded-lg ${item.done ? 'bg-green-50' : 'bg-gray-50'}`}>
-                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center ${item.done ? 'bg-green-500 text-white' : 'border-2 border-gray-300'}`}>
-                                        {item.done && <ClipboardCheck size={12} />}
-                                    </div>
-                                    <span className={item.done ? 'text-gray-500 line-through' : 'text-gray-700'}>{item.text}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </WorkspaceCard>
 
-                    <WorkspaceCard
-                        title="Workspace summary"
-                        description="A snapshot of where things stand right now."
-                    >
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-primary-light flex items-center justify-center">
-                                        <Users size={20} className="text-primary" />
-                                    </div>
-                                    <span className="font-medium text-gray-700">Total Clients</span>
+                    {/* Workspace Checklist - Premium */}
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-white to-gray-50 border border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300">
+                        {/* Decorative gradient blob */}
+                        <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br from-[#159DB3]/20 to-[#214B9D]/20 rounded-full blur-3xl"></div>
+
+                        <div className="relative p-6">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#159DB3] to-[#214B9D] flex items-center justify-center shadow-lg">
+                                    <ClipboardCheck size={20} className="text-white" />
                                 </div>
-                                <span className="font-heading text-2xl font-bold text-gray-900">{mockStats.totalClients}</span>
+                                <h3 className="font-heading text-xl font-bold text-gray-900">Workspace Checklist</h3>
                             </div>
-                            <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                                        <Calendar size={20} className="text-blue-600" />
-                                    </div>
-                                    <span className="font-medium text-gray-700">Sessions This Month</span>
+                            <p className="text-gray-500 text-sm mb-6 ml-13">Complete these tasks to set up your ABA workspace</p>
+
+                            {/* Progress bar */}
+                            <div className="mb-6">
+                                <div className="flex justify-between text-sm mb-2">
+                                    <span className="text-gray-500">Progress</span>
+                                    <span className="font-semibold text-[#159DB3]">2 of 5 completed</span>
                                 </div>
-                                <span className="font-heading text-2xl font-bold text-gray-900">{mockStats.sessionsThisMonth}</span>
+                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                    <div className="h-full w-[40%] bg-gradient-to-r from-[#159DB3] to-[#214B9D] rounded-full transition-all duration-500"></div>
+                                </div>
                             </div>
-                            <div className="flex justify-between items-center py-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
-                                        <MessageCircle size={20} className="text-purple-600" />
+
+                            <div className="space-y-3">
+                                {[
+                                    { done: true, text: 'Set up your account profile', icon: '👤' },
+                                    { done: true, text: 'Configure therapy settings', icon: '⚙️' },
+                                    { done: false, text: 'Add your first client', icon: '👥' },
+                                    { done: false, text: 'Create a therapy program', icon: '📋' },
+                                    { done: false, text: 'Complete a data collection session', icon: '📊' },
+                                ].map((item, i) => (
+                                    <div
+                                        key={i}
+                                        className={`flex items-center gap-4 p-4 rounded-xl transition-all duration-200 cursor-pointer group
+                                            ${item.done
+                                                ? 'bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100'
+                                                : 'bg-white border border-gray-100 hover:border-[#159DB3]/30 hover:shadow-md hover:-translate-y-0.5'
+                                            }`}
+                                    >
+                                        <span className="text-xl">{item.icon}</span>
+                                        <div className={`flex-1 font-medium ${item.done ? 'text-gray-400 line-through' : 'text-gray-700 group-hover:text-gray-900'}`}>
+                                            {item.text}
+                                        </div>
+                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all
+                                            ${item.done
+                                                ? 'bg-gradient-to-br from-green-400 to-emerald-500 text-white shadow-lg shadow-green-200'
+                                                : 'border-2 border-gray-200 group-hover:border-[#159DB3]'
+                                            }`}
+                                        >
+                                            {item.done && <ClipboardCheck size={12} />}
+                                        </div>
                                     </div>
-                                    <span className="font-medium text-gray-700">Active Programs</span>
-                                </div>
-                                <span className="font-heading text-2xl font-bold text-gray-900">{mockStats.activePrograms}</span>
+                                ))}
                             </div>
                         </div>
-                    </WorkspaceCard>
+                    </div>
+
+                    {/* Workspace Summary - Premium */}
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-white to-gray-50 border border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300">
+                        {/* Decorative gradient blob */}
+                        <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-gradient-to-br from-purple-200/30 to-blue-200/30 rounded-full blur-3xl"></div>
+
+                        <div className="relative p-6">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                                    <Calendar size={20} className="text-white" />
+                                </div>
+                                <h3 className="font-heading text-xl font-bold text-gray-900">Workspace Summary</h3>
+                            </div>
+                            <p className="text-gray-500 text-sm mb-6 ml-13">A snapshot of where things stand right now</p>
+
+                            <div className="space-y-4">
+                                {/* Total Clients */}
+                                <div className="group p-4 rounded-xl bg-gradient-to-r from-[#159DB3]/5 to-[#214B9D]/5 border border-[#159DB3]/10 hover:border-[#159DB3]/30 transition-all cursor-pointer hover:shadow-md hover:-translate-y-0.5">
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#159DB3] to-[#214B9D] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                                                <Users size={24} className="text-white" />
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-gray-900">Total Clients</p>
+                                                <p className="text-xs text-gray-500">Active profiles</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="font-heading text-3xl font-bold bg-gradient-to-r from-[#159DB3] to-[#214B9D] bg-clip-text text-transparent">{mockStats.totalClients}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Sessions This Month */}
+                                <div className="group p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 hover:border-blue-300 transition-all cursor-pointer hover:shadow-md hover:-translate-y-0.5">
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                                                <Calendar size={24} className="text-white" />
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-gray-900">Sessions This Month</p>
+                                                <p className="text-xs text-gray-500">Data collection sessions</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="font-heading text-3xl font-bold text-blue-600">{mockStats.sessionsThisMonth}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Active Programs */}
+                                <div className="group p-4 rounded-xl bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100 hover:border-purple-300 transition-all cursor-pointer hover:shadow-md hover:-translate-y-0.5">
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                                                <MessageCircle size={24} className="text-white" />
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-gray-900">Active Programs</p>
+                                                <p className="text-xs text-gray-500">Ready for data collection</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="font-heading text-3xl font-bold text-purple-600">{mockStats.activePrograms}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Recent Clients Section - compact grid */}
-                <div className="mt-8">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="font-heading text-lg font-bold text-gray-900">Recent Clients</h2>
+                {/* Recent Clients Section - Premium */}
+                <div className="mt-10">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h2 className="font-heading text-xl font-bold text-gray-900">Recent Clients</h2>
+                            <p className="text-gray-500 text-sm">Quick access to your active client profiles</p>
+                        </div>
                         <Button
-                            variant="link"
-                            size="sm"
-                            icon={<Plus size={16} />}
                             onClick={() => navigate('/clients/new')}
+                            className="gap-2"
                         >
+                            <Plus size={18} />
                             Add Client
                         </Button>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {mockClients.slice(0, 3).map((client) => (
-                            <Card
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {mockClients.slice(0, 3).map((client, index) => (
+                            <div
                                 key={client.id}
-                                hover
                                 onClick={() => navigate(`/clients/${client.id}`)}
-                                className="p-4 flex items-center justify-between"
+                                className="group relative overflow-hidden p-5 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+                                style={{ animationDelay: `${index * 100}ms` }}
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-primary-light text-primary flex items-center justify-center font-bold text-sm">
+                                {/* Hover gradient */}
+                                <div className="absolute inset-0 bg-gradient-to-br from-[#159DB3]/5 to-[#214B9D]/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+
+                                <div className="relative flex items-center gap-4">
+                                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#159DB3] to-[#214B9D] text-white flex items-center justify-center font-bold text-lg shadow-lg group-hover:scale-110 transition-transform">
                                         {client.first_name[0]}{client.last_name[0]}
                                     </div>
-                                    <div>
-                                        <p className="font-semibold text-gray-900 text-sm">{client.first_name} {client.last_name}</p>
-                                        <p className="text-xs text-gray-500">{client.programs_count} programs</p>
+                                    <div className="flex-1">
+                                        <p className="font-heading font-bold text-gray-900 group-hover:text-[#159DB3] transition-colors">
+                                            {client.first_name} {client.last_name}
+                                        </p>
+                                        <p className="text-sm text-gray-500">{client.programs_count} programs</p>
                                     </div>
+                                    <ArrowRight size={18} className="text-gray-300 group-hover:text-[#159DB3] group-hover:translate-x-1 transition-all" />
                                 </div>
-                            </Card>
+                            </div>
                         ))}
                     </div>
                 </div>

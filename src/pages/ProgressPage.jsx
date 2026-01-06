@@ -102,8 +102,8 @@ export default function ProgressPage() {
                             <AreaChart data={mockProgressData}>
                                 <defs>
                                     <linearGradient id="colorAccuracy" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#1A8B73" stopOpacity={0.2} />
-                                        <stop offset="95%" stopColor="#1A8B73" stopOpacity={0} />
+                                        <stop offset="5%" stopColor="#159DB3" stopOpacity={0.2} />
+                                        <stop offset="95%" stopColor="#159DB3" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
@@ -136,11 +136,11 @@ export default function ProgressPage() {
                                 <Area
                                     type="monotone"
                                     dataKey="accuracy"
-                                    stroke="#1A8B73"
+                                    stroke="#159DB3"
                                     strokeWidth={3}
                                     fill="url(#colorAccuracy)"
-                                    dot={{ fill: '#1A8B73', strokeWidth: 0, r: 4 }}
-                                    activeDot={{ r: 6, fill: '#1A8B73', stroke: '#fff', strokeWidth: 2 }}
+                                    dot={{ fill: '#159DB3', strokeWidth: 0, r: 4 }}
+                                    activeDot={{ r: 6, fill: '#159DB3', stroke: '#fff', strokeWidth: 2 }}
                                 />
                             </AreaChart>
                         </ResponsiveContainer>

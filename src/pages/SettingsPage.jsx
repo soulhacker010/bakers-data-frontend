@@ -46,7 +46,7 @@ function AccountSettings({ user }) {
                 Personal information
             </h2>
             <p className="text-gray-500 mb-8">
-                Your profile details for the ABA Collect platform.
+                Your profile details for the Data Sirena platform.
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-6 max-w-xl">
@@ -227,7 +227,7 @@ export default function SettingsPage() {
                         <Card className="p-6">
                             <p className="label-uppercase mb-2">S E T T I N G S</p>
                             <h2 className="font-heading text-xl font-bold text-gray-900 mb-6">
-                                Manage your ABA Collect account
+                                Manage your Data Sirena account
                             </h2>
 
                             <nav className="space-y-1">

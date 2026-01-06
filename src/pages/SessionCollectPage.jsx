@@ -80,7 +80,7 @@ function TrialDataCollector({ onRecord, stats }) {
                             key={prompt.key}
                             onClick={() => setSelectedPrompt(selectedPrompt === prompt.key ? null : prompt.key)}
                             className={`py-4 px-3 rounded-xl text-sm font-semibold transition-all duration-150 border-2 ${selectedPrompt === prompt.key
-                                ? 'bg-[#E8F5F2] border-[#1A8B73] text-[#1A8B73]'
+                                ? 'bg-[#E0F4F7] border-[#159DB3] text-[#159DB3]'
                                 : 'bg-gray-50 border-transparent text-gray-500 hover:border-gray-300'
                                 }`}
                         >
@@ -109,7 +109,7 @@ function TrialDataCollector({ onRecord, stats }) {
                 </div>
                 <div className="pt-4 border-t border-gray-200 text-center">
                     <p className="text-sm text-gray-500 mb-1">Accuracy</p>
-                    <p className="font-heading text-3xl font-bold text-[#1A8B73]">{accuracy}%</p>
+                    <p className="font-heading text-3xl font-bold text-[#159DB3]">{accuracy}%</p>
                 </div>
             </div>
         </div>
@@ -127,14 +127,14 @@ function FrequencyDataCollector({ onRecord, count }) {
 
             {/* Count Display */}
             <div className="text-center mb-8 py-8">
-                <p className="font-heading text-8xl font-bold text-[#1A8B73]">{count}</p>
+                <p className="font-heading text-8xl font-bold text-[#159DB3]">{count}</p>
                 <p className="text-gray-500 mt-2 uppercase tracking-wider text-sm">Occurrences</p>
             </div>
 
             {/* Add Occurrence Button */}
             <button
                 onClick={() => onRecord({ count: 1 })}
-                className="w-full bg-[#1A8B73] hover:bg-[#156B59] active:scale-95 text-white py-10 rounded-2xl text-2xl font-heading font-bold transition-all duration-150 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl"
+                className="w-full bg-[#159DB3] hover:bg-[#0E8499] active:scale-95 text-white py-10 rounded-2xl text-2xl font-heading font-bold transition-all duration-150 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl"
             >
                 <Plus size={32} />
                 Add Occurrence
@@ -183,7 +183,7 @@ function DurationDataCollector({ onRecord }) {
 
             {/* Timer Display */}
             <div className="text-center mb-8 py-8">
-                <p className="font-heading text-8xl font-bold text-[#1A8B73] font-mono tracking-tight">
+                <p className="font-heading text-8xl font-bold text-[#159DB3] font-mono tracking-tight">
                     {formatDuration(durationSeconds)}
                 </p>
             </div>

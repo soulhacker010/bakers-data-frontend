@@ -35,13 +35,13 @@ function ProgramCard({ program, onStartSession, onViewProgress, onEdit }) {
                 <div className="flex items-center gap-2">
                     <button
                         onClick={onEdit}
-                        className="px-4 py-2 border-2 border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:border-[#1A8B73] hover:text-[#1A8B73] transition-colors"
+                        className="px-4 py-2 border-2 border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:border-[#159DB3] hover:text-[#159DB3] transition-colors"
                     >
                         Edit
                     </button>
                     <button
                         onClick={onStartSession}
-                        className="flex items-center gap-2 px-4 py-2 bg-[#1A8B73] text-white rounded-xl text-sm font-semibold hover:bg-[#156B59] transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 bg-[#159DB3] text-white rounded-xl text-sm font-semibold hover:bg-[#0E8499] transition-colors"
                     >
                         <Play size={16} />
                         Start Session
@@ -121,7 +121,7 @@ function SessionCard({ session, onClick }) {
                     </p>
                 </div>
 
-                <button className="px-4 py-2 border-2 border-gray-200 text-gray-700 rounded-xl text-sm font-medium group-hover:border-[#1A8B73] group-hover:text-[#1A8B73] transition-colors">
+                <button className="px-4 py-2 border-2 border-gray-200 text-gray-700 rounded-xl text-sm font-medium group-hover:border-[#159DB3] group-hover:text-[#159DB3] transition-colors">
                     View
                 </button>
             </div>
@@ -129,10 +129,15 @@ function SessionCard({ session, onClick }) {
     )
 }
 
+import { ConfirmModal } from '../components/ui'
+import { useToast } from '../context/ToastContext'
+
 export default function ClientDetailPage() {
     const { id } = useParams()
     const navigate = useNavigate()
+    const { toast } = useToast()
     const [activeTab, setActiveTab] = useState('programs')
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
 
     // Find client
     const client = mockClients.find(c => c.id === parseInt(id)) || mockClients[0]
@@ -143,6 +148,13 @@ export default function ClientDetailPage() {
 
     const handleStartSession = (programId) => {
         navigate(`/sessions/new/collect?client=${client.id}&program=${programId}`)
+    }
+
+    const handleDeleteClient = () => {
+        // Mock delete - will connect to backend later
+        console.log('Deleting client:', client.id)
+        toast.success(`Client "${client.first_name} ${client.last_name}" deleted successfully`)
+        navigate('/clients')
     }
 
     return (
@@ -170,13 +182,21 @@ export default function ClientDetailPage() {
                             </p>
                         </div>
 
-                        <button
-                            onClick={() => navigate(`/clients/${id}/edit`)}
-                            className="btn-outline-premium bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center gap-2"
-                        >
-                            <Edit3 size={18} />
-                            Edit Profile
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => navigate(`/clients/${id}/edit`)}
+                                className="btn-outline-premium bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center gap-2"
+                            >
+                                <Edit3 size={18} />
+                                Edit Profile
+                            </button>
+                            <button
+                                onClick={() => setShowDeleteModal(true)}
+                                className="px-4 py-2 border-2 border-red-400/50 text-red-200 rounded-xl font-medium hover:bg-red-500/20 hover:border-red-400 transition-colors"
+                            >
+                                Delete
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -216,7 +236,7 @@ export default function ClientDetailPage() {
                                 <p className="text-gray-500 mb-4">No programs yet. Create one to start tracking.</p>
                                 <button
                                     onClick={() => navigate(`/clients/${client.id}/programs/new`)}
-                                    className="flex items-center gap-2 px-6 py-3 bg-[#1A8B73] text-white rounded-xl font-semibold hover:bg-[#156B59] transition-colors"
+                                    className="flex items-center gap-2 px-6 py-3 bg-[#159DB3] text-white rounded-xl font-semibold hover:bg-[#0E8499] transition-colors"
                                 >
                                     <Plus size={18} />
                                     Add Program
@@ -263,6 +283,17 @@ export default function ClientDetailPage() {
                     </div>
                 )}
             </div>
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmModal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                onConfirm={handleDeleteClient}
+                title="Delete Client?"
+                message={`Are you sure you want to delete "${client.first_name} ${client.last_name}"? This will also delete all their programs and session data. This action cannot be undone.`}
+                confirmText="Delete Client"
+                type="danger"
+            />
         </DashboardLayout>
     )
 }

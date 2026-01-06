@@ -80,9 +80,9 @@ export default function SessionDetailPage() {
                         <div className="bg-white rounded-2xl border border-gray-100 p-6">
                             <h3 className="font-heading text-lg font-bold text-gray-900 mb-4">Session Summary</h3>
                             <div className="grid grid-cols-3 gap-4">
-                                <div className="text-center p-5 bg-[#E8F5F2] rounded-xl">
-                                    <div className="w-10 h-10 rounded-full bg-[#1A8B73]/20 flex items-center justify-center mx-auto mb-3">
-                                        <Calendar size={20} className="text-[#1A8B73]" />
+                                <div className="text-center p-5 bg-[#E0F4F7] rounded-xl">
+                                    <div className="w-10 h-10 rounded-full bg-[#159DB3]/20 flex items-center justify-center mx-auto mb-3">
+                                        <Calendar size={20} className="text-[#159DB3]" />
                                     </div>
                                     <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Date</p>
                                     <p className="font-heading font-bold text-gray-900 text-lg">
@@ -96,9 +96,9 @@ export default function SessionDetailPage() {
                                     <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Duration</p>
                                     <p className="font-heading font-bold text-gray-900 text-lg">{session.duration_minutes} min</p>
                                 </div>
-                                <div className="text-center p-5 bg-[#E8F5F2] rounded-xl">
-                                    <div className="w-10 h-10 rounded-full bg-[#1A8B73]/20 flex items-center justify-center mx-auto mb-3">
-                                        <FileText size={20} className="text-[#1A8B73]" />
+                                <div className="text-center p-5 bg-[#E0F4F7] rounded-xl">
+                                    <div className="w-10 h-10 rounded-full bg-[#159DB3]/20 flex items-center justify-center mx-auto mb-3">
+                                        <FileText size={20} className="text-[#159DB3]" />
                                     </div>
                                     <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Data Points</p>
                                     <p className="font-heading font-bold text-gray-900 text-lg">{session.data_points}</p>
@@ -113,20 +113,20 @@ export default function SessionDetailPage() {
                                 {session.programs.map((program, idx) => (
                                     <div
                                         key={idx}
-                                        className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-[#E8F5F2] transition-colors group cursor-pointer"
+                                        className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-[#E0F4F7] transition-colors group cursor-pointer"
                                     >
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
                                                 <Target size={20} />
                                             </div>
                                             <div>
-                                                <span className="font-semibold text-gray-900 group-hover:text-[#1A8B73] transition-colors">
+                                                <span className="font-semibold text-gray-900 group-hover:text-[#159DB3] transition-colors">
                                                     {program}
                                                 </span>
                                                 <p className="text-xs text-gray-500">Skill Acquisition</p>
                                             </div>
                                         </div>
-                                        <button className="flex items-center gap-2 text-sm text-[#1A8B73] font-medium hover:underline">
+                                        <button className="flex items-center gap-2 text-sm text-[#159DB3] font-medium hover:underline">
                                             <BarChart2 size={16} />
                                             View Progress
                                         </button>
@@ -154,12 +154,12 @@ export default function SessionDetailPage() {
                             <div className="space-y-3">
                                 <button
                                     onClick={() => navigate(`/sessions/${id}/collect`)}
-                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#1A8B73] text-white font-semibold rounded-xl hover:bg-[#156B59] transition-colors shadow-md"
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#159DB3] text-white font-semibold rounded-xl hover:bg-[#0E8499] transition-colors shadow-md"
                                 >
                                     <Play size={18} />
                                     Continue Session
                                 </button>
-                                <button className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-gray-200 text-gray-700 font-semibold rounded-xl hover:border-[#1A8B73] hover:text-[#1A8B73] transition-colors">
+                                <button className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-gray-200 text-gray-700 font-semibold rounded-xl hover:border-[#159DB3] hover:text-[#159DB3] transition-colors">
                                     <Download size={18} />
                                     Export Data
                                 </button>
@@ -180,7 +180,7 @@ export default function SessionDetailPage() {
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-gray-500">Status</span>
-                                    <span className={`font-medium ${session.status === 'completed' ? 'text-[#1A8B73]' : 'text-yellow-600'}`}>
+                                    <span className={`font-medium ${session.status === 'completed' ? 'text-[#159DB3]' : 'text-yellow-600'}`}>
                                         {session.status === 'completed' ? 'Completed' : 'In Progress'}
                                     </span>
                                 </div>

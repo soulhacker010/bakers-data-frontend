@@ -41,7 +41,7 @@ export default function SessionsPage() {
 
                         <button
                             onClick={() => navigate('/sessions/new')}
-                            className="flex items-center gap-2 px-6 py-3 bg-white text-[#1A8B73] font-semibold rounded-xl hover:bg-gray-50 transition-colors shadow-lg"
+                            className="flex items-center gap-2 px-6 py-3 bg-white text-[#159DB3] font-semibold rounded-xl hover:bg-gray-50 transition-colors shadow-lg"
                         >
                             <Plus size={20} />
                             New Session
@@ -59,7 +59,7 @@ export default function SessionsPage() {
                         placeholder="Search by client or program..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#1A8B73]/20 focus:border-[#1A8B73]"
+                        className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3]"
                     />
                 </div>
             </div>
@@ -83,12 +83,12 @@ export default function SessionsPage() {
                             <div
                                 key={session.id}
                                 onClick={() => navigate(`/sessions/${session.id}`)}
-                                className="bg-white rounded-2xl border border-gray-100 p-5 cursor-pointer hover:shadow-lg hover:border-[#1A8B73]/20 transition-all group"
+                                className="bg-white rounded-2xl border border-gray-100 p-5 cursor-pointer hover:shadow-lg hover:border-[#159DB3]/20 transition-all group"
                             >
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-start gap-4">
                                         {/* Avatar */}
-                                        <div className="w-12 h-12 rounded-full bg-[#E8F5F2] text-[#1A8B73] flex items-center justify-center flex-shrink-0">
+                                        <div className="w-12 h-12 rounded-full bg-[#E0F4F7] text-[#159DB3] flex items-center justify-center flex-shrink-0">
                                             <User size={24} />
                                         </div>
 
@@ -97,7 +97,7 @@ export default function SessionsPage() {
                                             <div className="flex items-center gap-3 text-gray-900 font-semibold mb-1">
                                                 <span>{session.client_name || getClientName(session.client_id)}</span>
                                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${session.status === 'completed'
-                                                        ? 'bg-[#E8F5F2] text-[#1A8B73]'
+                                                        ? 'bg-[#E0F4F7] text-[#159DB3]'
                                                         : 'bg-yellow-100 text-yellow-700'
                                                     }`}>
                                                     {session.status === 'completed' ? 'Completed' : 'In Progress'}
@@ -113,7 +113,7 @@ export default function SessionsPage() {
                                                     {session.duration_minutes} min
                                                 </span>
                                             </div>
-                                            <p className="text-sm text-[#1A8B73]">
+                                            <p className="text-sm text-[#159DB3]">
                                                 Programs: {session.programs.join(', ')}
                                             </p>
                                             <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
@@ -124,7 +124,7 @@ export default function SessionsPage() {
                                     </div>
 
                                     {/* Arrow */}
-                                    <ChevronRight size={24} className="text-gray-300 group-hover:text-[#1A8B73] transition-colors flex-shrink-0" />
+                                    <ChevronRight size={24} className="text-gray-300 group-hover:text-[#159DB3] transition-colors flex-shrink-0" />
                                 </div>
                             </div>
                         ))}

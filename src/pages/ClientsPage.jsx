@@ -44,7 +44,7 @@ function ClientSelectModal({ isOpen, onClose, clients, onSelect }) {
                         placeholder="Search clients..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A8B73]/20 focus:border-[#1A8B73]"
+                        className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3]"
                         autoFocus
                     />
                 </div>
@@ -63,10 +63,10 @@ function ClientSelectModal({ isOpen, onClose, clients, onSelect }) {
                             <button
                                 key={client.id}
                                 onClick={() => onSelect(client)}
-                                className="w-full text-left p-4 rounded-xl hover:bg-[#E8F5F2] transition-colors flex items-center justify-between group border border-transparent hover:border-[#1A8B73]/20"
+                                className="w-full text-left p-4 rounded-xl hover:bg-[#E0F4F7] transition-colors flex items-center justify-between group border border-transparent hover:border-[#159DB3]/20"
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-[#E8F5F2] text-[#1A8B73] flex items-center justify-center font-bold text-sm">
+                                    <div className="w-10 h-10 rounded-full bg-[#E0F4F7] text-[#159DB3] flex items-center justify-center font-bold text-sm">
                                         {client.first_name[0]}{client.last_name[0]}
                                     </div>
                                     <div>
@@ -74,7 +74,7 @@ function ClientSelectModal({ isOpen, onClose, clients, onSelect }) {
                                         <p className="text-sm text-gray-500">Age {client.age} • {client.programs_count} programs</p>
                                     </div>
                                 </div>
-                                <ArrowRight size={16} className="text-[#1A8B73] opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <ArrowRight size={16} className="text-[#159DB3] opacity-0 group-hover:opacity-100 transition-opacity" />
                             </button>
                         ))}
                     </div>
@@ -89,15 +89,15 @@ function ClientCard({ client, onClick }) {
     return (
         <Card hover onClick={onClick} className="p-6 group">
             <div className="flex items-start justify-between mb-4">
-                <div className="w-14 h-14 rounded-full bg-[#E8F5F2] text-[#1A8B73] flex items-center justify-center font-heading font-bold text-lg border-2 border-[#1A8B73]/20">
+                <div className="w-14 h-14 rounded-full bg-[#E0F4F7] text-[#159DB3] flex items-center justify-center font-heading font-bold text-lg border-2 border-[#159DB3]/20">
                     {client.first_name[0]}{client.last_name[0]}
                 </div>
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#E8F5F2] text-[#1A8B73]">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#E0F4F7] text-[#159DB3]">
                     {client.programs_count} PROGRAMS
                 </span>
             </div>
 
-            <h3 className="font-heading text-xl font-bold text-gray-900 mb-1 group-hover:text-[#1A8B73] transition-colors">
+            <h3 className="font-heading text-xl font-bold text-gray-900 mb-1 group-hover:text-[#159DB3] transition-colors">
                 {client.first_name} {client.last_name}
             </h3>
 
@@ -146,7 +146,7 @@ export default function ClientsPage() {
 
                         <button
                             onClick={() => navigate('/clients/new')}
-                            className="flex items-center gap-2 px-6 py-3 bg-white text-[#1A8B73] font-semibold rounded-xl hover:bg-gray-50 transition-colors shadow-lg"
+                            className="flex items-center gap-2 px-6 py-3 bg-white text-[#159DB3] font-semibold rounded-xl hover:bg-gray-50 transition-colors shadow-lg"
                         >
                             <Plus size={20} />
                             Add Client
@@ -166,7 +166,7 @@ export default function ClientsPage() {
                             placeholder="Search clients by name..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#1A8B73]/20 focus:border-[#1A8B73]"
+                            className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3]"
                         />
                     </div>
 

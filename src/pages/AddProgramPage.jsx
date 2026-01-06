@@ -4,10 +4,12 @@ import { DashboardLayout } from '../components/layout'
 import { Button, Input, Card } from '../components/ui'
 import { mockClients } from '../data/mockData'
 import { ArrowLeft } from 'lucide-react'
+import { useToast } from '../context/ToastContext'
 
 export default function AddProgramPage() {
     const { clientId } = useParams()
     const navigate = useNavigate()
+    const { toast } = useToast()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
 
@@ -34,6 +36,7 @@ export default function AddProgramPage() {
 
         if (!formData.name.trim()) {
             setError('Program name is required')
+            toast.error('Please enter a program name')
             setLoading(false)
             return
         }
@@ -41,9 +44,11 @@ export default function AddProgramPage() {
         try {
             console.log('Saving program:', { ...formData, client_id: clientId })
             await new Promise(resolve => setTimeout(resolve, 500))
+            toast.success(`Program "${formData.name}" created successfully!`)
             navigate(`/clients/${clientId}`)
         } catch (err) {
             setError('Failed to save program. Please try again.')
+            toast.error('Failed to save program. Please try again.')
         } finally {
             setLoading(false)
         }
