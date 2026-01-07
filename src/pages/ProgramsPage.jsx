@@ -1,31 +1,106 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
 import { Button } from '../components/ui'
-import { mockPrograms, mockClients } from '../data/mockData'
-import { TrendingUp, TrendingDown, BarChart2, Target, Activity, Plus, Search, Filter } from 'lucide-react'
+import { getPrograms } from '../services/programs'
+import { getClients } from '../services/clients'
+import { useToast } from '../context/ToastContext'
+import { TrendingUp, TrendingDown, BarChart2, Target, Activity, Plus, Search, Filter, X } from 'lucide-react'
 
 export default function ProgramsPage() {
     const navigate = useNavigate()
+    const { toast } = useToast()
     const [searchTerm, setSearchTerm] = useState('')
     const [filterType, setFilterType] = useState('all') // all, skill, behavior
+    const [showClientPicker, setShowClientPicker] = useState(false)
+
+    // State for API data
+    const [programs, setPrograms] = useState([])
+    const [clients, setClients] = useState([])
+    const [loading, setLoading] = useState(true)
+
+    // Fetch data on mount
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true)
+                const [programsData, clientsData] = await Promise.all([
+                    getPrograms(),
+                    getClients()
+                ])
+                setPrograms(programsData)
+                setClients(clientsData)
+            } catch (err) {
+                toast.error('Failed to load programs')
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchData()
+    }, [toast])
 
     // Get client name by ID
     const getClientName = (clientId) => {
-        const client = mockClients.find(c => c.id === clientId)
+        const client = clients.find(c => c.id === clientId)
         return client ? `${client.first_name} ${client.last_name}` : 'Unknown'
     }
 
     // Filter programs
-    const filteredPrograms = mockPrograms.filter(program => {
+    const filteredPrograms = programs.filter(program => {
         const matchesSearch = program.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             getClientName(program.client_id).toLowerCase().includes(searchTerm.toLowerCase())
         const matchesType = filterType === 'all' || program.program_type === filterType
         return matchesSearch && matchesType
     })
 
+    // Handle client selection for new program
+    const handleSelectClient = (clientId) => {
+        setShowClientPicker(false)
+        navigate(`/clients/${clientId}/programs/new`)
+    }
+
     return (
         <DashboardLayout>
+            {/* Client Picker Modal */}
+            {showClientPicker && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-hidden shadow-2xl">
+                        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                            <h2 className="font-heading text-xl font-bold text-gray-900">Select a Client</h2>
+                            <button onClick={() => setShowClientPicker(false)} className="text-gray-400 hover:text-gray-600">
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <div className="p-4 max-h-[60vh] overflow-y-auto">
+                            {clients.length === 0 ? (
+                                <div className="text-center py-8">
+                                    <p className="text-gray-500 mb-4">No clients yet</p>
+                                    <Button onClick={() => navigate('/clients/new')}>Add Client First</Button>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {clients.map(client => (
+                                        <button
+                                            key={client.id}
+                                            onClick={() => handleSelectClient(client.id)}
+                                            className="w-full p-4 rounded-xl border border-gray-200 hover:border-[#159DB3] hover:bg-[#E0F4F7] transition-all text-left flex items-center gap-3"
+                                        >
+                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#159DB3] to-[#214B9D] text-white flex items-center justify-center font-bold text-sm">
+                                                {client.first_name[0]}{client.last_name[0]}
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-gray-900">{client.first_name} {client.last_name}</p>
+                                                <p className="text-sm text-gray-500">{client.programs_count || 0} programs</p>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Hero Section */}
             <div className="hero-gradient px-6 py-10">
                 <div className="max-w-screen-xl mx-auto">
@@ -36,12 +111,12 @@ export default function ProgramsPage() {
                                 All Programs
                             </h1>
                             <p className="text-white/70">
-                                {mockPrograms.length} programs across all clients
+                                {loading ? '...' : `${programs.length} programs across all clients`}
                             </p>
                         </div>
 
                         <button
-                            onClick={() => navigate('/programs/new')}
+                            onClick={() => setShowClientPicker(true)}
                             className="flex items-center gap-2 px-6 py-3 bg-white text-[#159DB3] font-semibold rounded-xl hover:bg-gray-50 transition-colors shadow-lg"
                         >
                             <Plus size={20} />

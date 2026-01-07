@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
-import { mockClients, mockPrograms, mockSessions } from '../data/mockData'
+import { getClient, deleteClient } from '../services/clients'
+import { getPrograms } from '../services/programs'
+import { getSessions } from '../services/sessions'
 import {
     Edit3,
     Plus,
@@ -11,9 +13,11 @@ import {
     Calendar,
     Clock,
     ChevronRight,
-    ArrowLeft
+    ArrowLeft,
+    Users
 } from 'lucide-react'
 import { format } from 'date-fns'
+import StaffAssignmentModal from '../components/staff/StaffAssignmentModal'
 
 // Program Card with premium styling
 function ProgramCard({ program, onStartSession, onViewProgress, onEdit }) {
@@ -111,13 +115,15 @@ function SessionCard({ session, onClick }) {
                         {format(new Date(session.start_time), 'MMMM d, yyyy')}
                         <span className="text-gray-300">•</span>
                         <Clock size={16} className="text-gray-400" />
-                        {session.duration_minutes} min
+                        {session.duration_minutes || 0} min
                     </div>
                     <p className="text-sm text-gray-500">
-                        Programs: {session.programs.join(', ')}
+                        {session.programs && session.programs.length > 0
+                            ? `Programs: ${session.programs.map(p => typeof p === 'string' ? p : p.name).join(', ')}`
+                            : 'No programs'}
                     </p>
                     <p className="text-xs text-gray-400">
-                        {session.data_points} data points collected
+                        {session.data_points || 0} data points collected
                     </p>
                 </div>
 
@@ -138,23 +144,69 @@ export default function ClientDetailPage() {
     const { toast } = useToast()
     const [activeTab, setActiveTab] = useState('programs')
     const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const [showStaffModal, setShowStaffModal] = useState(false)
 
-    // Find client
-    const client = mockClients.find(c => c.id === parseInt(id)) || mockClients[0]
+    // State for data from API
+    const [client, setClient] = useState(null)
+    const [clientPrograms, setClientPrograms] = useState([])
+    const [clientSessions, setClientSessions] = useState([])
+    const [loading, setLoading] = useState(true)
 
-    // Get client's programs and sessions
-    const clientPrograms = mockPrograms.filter(p => p.client_id === client.id)
-    const clientSessions = mockSessions.filter(s => s.client_id === client.id)
+    // Fetch client data on mount
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true)
+                const [clientData, programsData, sessionsData] = await Promise.all([
+                    getClient(id),
+                    getPrograms({ client_id: id }),
+                    getSessions({ client_id: id })
+                ])
+                setClient(clientData)
+                setClientPrograms(programsData)
+                setClientSessions(sessionsData)
+            } catch (err) {
+                toast.error('Failed to load client data')
+                navigate('/clients')
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchData()
+    }, [id, navigate, toast])
 
     const handleStartSession = (programId) => {
         navigate(`/sessions/new/collect?client=${client.id}&program=${programId}`)
     }
 
-    const handleDeleteClient = () => {
-        // Mock delete - will connect to backend later
-        console.log('Deleting client:', client.id)
-        toast.success(`Client "${client.first_name} ${client.last_name}" deleted successfully`)
-        navigate('/clients')
+    const handleDeleteClient = async () => {
+        try {
+            await deleteClient(id)
+            toast.success(`Client "${client.first_name} ${client.last_name}" deleted successfully`)
+            navigate('/clients')
+        } catch (err) {
+            toast.error(err.message || 'Failed to delete client')
+        }
+    }
+
+    if (loading) {
+        return (
+            <DashboardLayout>
+                <div className="px-6 py-16 flex items-center justify-center">
+                    <div className="w-8 h-8 border-4 border-[#159DB3] border-t-transparent rounded-full animate-spin"></div>
+                </div>
+            </DashboardLayout>
+        )
+    }
+
+    if (!client) {
+        return (
+            <DashboardLayout>
+                <div className="px-6 py-16 text-center">
+                    <p className="text-gray-500">Client not found</p>
+                </div>
+            </DashboardLayout>
+        )
     }
 
     return (
@@ -183,6 +235,13 @@ export default function ClientDetailPage() {
                         </div>
 
                         <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setShowStaffModal(true)}
+                                className="btn-outline-premium bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center gap-2"
+                            >
+                                <Users size={18} />
+                                Staff Access
+                            </button>
                             <button
                                 onClick={() => navigate(`/clients/${id}/edit`)}
                                 className="btn-outline-premium bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center gap-2"
@@ -294,6 +353,15 @@ export default function ClientDetailPage() {
                 confirmText="Delete Client"
                 type="danger"
             />
+
+            {/* Staff Assignment Modal */}
+            {showStaffModal && (
+                <StaffAssignmentModal
+                    onClose={() => setShowStaffModal(false)}
+                    clientId={client.id}
+                    clientName={`${client.first_name} ${client.last_name}`}
+                />
+            )}
         </DashboardLayout>
     )
 }

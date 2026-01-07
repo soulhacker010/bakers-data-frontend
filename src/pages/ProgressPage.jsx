@@ -1,21 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
-import { mockPrograms } from '../data/mockData'
-import { Download, TrendingUp, TrendingDown, Minus, ArrowLeft } from 'lucide-react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts'
-
-// Mock progress data
-const mockProgressData = [
-    { date: 'Jan 1', accuracy: 45 },
-    { date: 'Jan 8', accuracy: 52 },
-    { date: 'Jan 15', accuracy: 60 },
-    { date: 'Jan 22', accuracy: 68 },
-    { date: 'Jan 29', accuracy: 75 },
-    { date: 'Feb 5', accuracy: 78 },
-    { date: 'Feb 12', accuracy: 82 },
-    { date: 'Feb 19', accuracy: 85 },
-]
+import { getProgram } from '../services/programs'
+import { getProgramProgress } from '../services/analytics'
+import { useToast } from '../context/ToastContext'
+import { Download, TrendingUp, TrendingDown, Minus, ArrowLeft, Target, Clock, Hash, ListChecks } from 'lucide-react'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, BarChart, Bar } from 'recharts'
+import { format, subDays } from 'date-fns'
+import { TargetsList } from '../components/targets'
 
 const dateRangeOptions = [
     { value: '7', label: 'Last 7 Days' },
@@ -27,19 +19,302 @@ const dateRangeOptions = [
 export default function ProgressPage() {
     const { id } = useParams()
     const navigate = useNavigate()
+    const { toast } = useToast()
     const [dateRange, setDateRange] = useState('30')
+    const [program, setProgram] = useState(null)
+    const [analytics, setAnalytics] = useState(null)
+    const [loading, setLoading] = useState(true)
 
-    // Get program data
-    const program = mockPrograms.find(p => p.id === parseInt(id)) || mockPrograms[0]
+    // Fetch program and analytics data
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true)
+                const programData = await getProgram(id)
+                setProgram(programData)
 
-    // Calculate stats
-    const latestAccuracy = mockProgressData[mockProgressData.length - 1]?.accuracy || 0
-    const totalSessions = mockProgressData.length
-    const firstAccuracy = mockProgressData[0]?.accuracy || 0
-    const trend = latestAccuracy > firstAccuracy + 5 ? 'improving' : latestAccuracy < firstAccuracy - 5 ? 'declining' : 'stable'
+                // Calculate date range
+                let dateFrom = null
+                if (dateRange !== 'all') {
+                    const days = parseInt(dateRange)
+                    dateFrom = format(subDays(new Date(), days), 'yyyy-MM-dd')
+                }
 
-    const handleExport = () => {
-        alert('Export feature will be connected to backend API')
+                const analyticsData = await getProgramProgress(id, { dateFrom })
+                setAnalytics(analyticsData)
+            } catch (err) {
+                console.error('Failed to load progress:', err)
+                toast.error('Failed to load program progress')
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchData()
+    }, [id, dateRange, toast])
+
+    // Format chart data from analytics
+    const chartData = analytics?.sessions?.map(session => ({
+        date: format(new Date(session.date), 'MMM d'),
+        accuracy: session.accuracy || 0,
+        frequency: session.frequency_count || 0,
+        duration: Math.round((session.total_duration_seconds || 0) / 60), // Convert to minutes
+    })) || []
+
+    // Calculate stats from real data
+    const totalSessions = analytics?.overall_stats?.total_sessions || 0
+    const latestAccuracy = chartData.length > 0 ? chartData[chartData.length - 1]?.accuracy : 0
+    const trend = analytics?.overall_stats?.trend || 'stable'
+
+    const handleExport = async () => {
+        try {
+            window.open(`/api/analytics/export?program_id=${id}`, '_blank')
+            toast.success('Export started!')
+        } catch (err) {
+            toast.error('Export failed')
+        }
+    }
+
+    // Get chart title and info based on data type
+    const getChartInfo = () => {
+        switch (program?.data_type) {
+            case 'frequency':
+                return { title: 'Frequency Over Time', yLabel: 'Count', unit: '' }
+            case 'duration':
+                return { title: 'Duration Over Time', yLabel: 'Minutes', unit: ' min' }
+            case 'task_analysis':
+                return { title: 'Task Completion Over Time', yLabel: 'Steps Completed', unit: '' }
+            default:
+                return { title: 'Progress Over Time', yLabel: 'Accuracy', unit: '%' }
+        }
+    }
+
+    const chartInfo = getChartInfo()
+
+    // Render chart based on program data type
+    const renderChart = () => {
+        if (chartData.length === 0) {
+            return (
+                <div className="flex flex-col items-center justify-center py-16">
+                    <div className="w-16 h-16 rounded-full bg-[#E0F4F7] flex items-center justify-center mb-4">
+                        <TrendingUp size={36} className="text-[#159DB3]" />
+                    </div>
+                    <h3 className="font-heading text-lg font-semibold text-gray-800 mb-2">No Session Data Yet</h3>
+                    <p className="text-gray-500 mb-4 max-w-md text-center">
+                        Start collecting data for this program to see your progress over time.
+                    </p>
+                    <button
+                        onClick={() => navigate('/sessions/new')}
+                        className="px-6 py-3 bg-gradient-to-r from-[#159DB3] to-[#214B9D] text-white font-semibold rounded-xl hover:shadow-lg transition-all"
+                    >
+                        Start a Session
+                    </button>
+                </div>
+            )
+        }
+
+        // Frequency: Bar chart
+        if (program?.data_type === 'frequency') {
+            return (
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                        <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
+                        <Tooltip
+                            contentStyle={{
+                                backgroundColor: '#FFFFFF',
+                                border: '1px solid #E5E7EB',
+                                borderRadius: '12px',
+                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                            }}
+                            formatter={(value) => [value, 'Count']}
+                        />
+                        <Bar dataKey="frequency" fill="#159DB3" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                </ResponsiveContainer>
+            )
+        }
+
+        // Duration: Line chart with minutes
+        if (program?.data_type === 'duration') {
+            return (
+                <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData}>
+                        <defs>
+                            <linearGradient id="colorDuration" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.2} />
+                                <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0} />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                        <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}m`} />
+                        <Tooltip
+                            contentStyle={{
+                                backgroundColor: '#FFFFFF',
+                                border: '1px solid #E5E7EB',
+                                borderRadius: '12px',
+                            }}
+                            formatter={(value) => [`${value} min`, 'Duration']}
+                        />
+                        <Area type="monotone" dataKey="duration" stroke="#8B5CF6" strokeWidth={3} fill="url(#colorDuration)" dot={{ fill: '#8B5CF6', r: 4 }} />
+                    </AreaChart>
+                </ResponsiveContainer>
+            )
+        }
+
+        // Task Analysis: Show info about steps (can be enhanced later)
+        if (program?.data_type === 'task_analysis') {
+            return (
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                        <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+                        <Tooltip
+                            contentStyle={{
+                                backgroundColor: '#FFFFFF',
+                                border: '1px solid #E5E7EB',
+                                borderRadius: '12px',
+                            }}
+                            formatter={(value) => [`${value}%`, 'Independent Steps']}
+                        />
+                        <Bar dataKey="accuracy" fill="#10B981" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                </ResponsiveContainer>
+            )
+        }
+
+        // Default: Trial-based accuracy chart
+        return (
+            <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData}>
+                    <defs>
+                        <linearGradient id="colorAccuracy" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#159DB3" stopOpacity={0.2} />
+                            <stop offset="95%" stopColor="#159DB3" stopOpacity={0} />
+                        </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                    <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis domain={[0, 100]} stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+                    <Tooltip
+                        contentStyle={{
+                            backgroundColor: '#FFFFFF',
+                            border: '1px solid #E5E7EB',
+                            borderRadius: '12px',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                        }}
+                        formatter={(value) => [`${value}%`, 'Accuracy']}
+                    />
+                    <Area type="monotone" dataKey="accuracy" stroke="#159DB3" strokeWidth={3} fill="url(#colorAccuracy)" dot={{ fill: '#159DB3', r: 4 }} activeDot={{ r: 6, fill: '#159DB3', stroke: '#fff', strokeWidth: 2 }} />
+                </AreaChart>
+            </ResponsiveContainer>
+        )
+    }
+
+    // Get appropriate stats based on data type
+    const renderStats = () => {
+        const totalFrequency = chartData.reduce((sum, d) => sum + (d.frequency || 0), 0)
+        const totalDuration = chartData.reduce((sum, d) => sum + (d.duration || 0), 0)
+        const avgDuration = chartData.length > 0 ? Math.round(totalDuration / chartData.length) : 0
+
+        switch (program?.data_type) {
+            case 'frequency':
+                return (
+                    <>
+                        <div className="text-center p-4 bg-gray-50 rounded-xl">
+                            <p className="font-heading text-3xl font-bold text-primary">{totalFrequency}</p>
+                            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Total Count</p>
+                        </div>
+                        <div className="text-center p-4 bg-gray-50 rounded-xl">
+                            <p className="font-heading text-3xl font-bold text-gray-900">{totalSessions}</p>
+                            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Total Sessions</p>
+                        </div>
+                        <div className="text-center p-4 bg-gray-50 rounded-xl">
+                            <p className="font-heading text-3xl font-bold text-orange-500">
+                                {chartData.length > 0 ? Math.round(totalFrequency / chartData.length) : 0}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Avg per Session</p>
+                        </div>
+                    </>
+                )
+            case 'duration':
+                return (
+                    <>
+                        <div className="text-center p-4 bg-gray-50 rounded-xl">
+                            <p className="font-heading text-3xl font-bold text-purple-600">{totalDuration} min</p>
+                            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Total Duration</p>
+                        </div>
+                        <div className="text-center p-4 bg-gray-50 rounded-xl">
+                            <p className="font-heading text-3xl font-bold text-gray-900">{totalSessions}</p>
+                            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Total Sessions</p>
+                        </div>
+                        <div className="text-center p-4 bg-gray-50 rounded-xl">
+                            <p className="font-heading text-3xl font-bold text-purple-500">{avgDuration} min</p>
+                            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Avg Duration</p>
+                        </div>
+                    </>
+                )
+            case 'task_analysis':
+                return (
+                    <>
+                        <div className="text-center p-4 bg-gray-50 rounded-xl">
+                            <p className="font-heading text-3xl font-bold text-green-600">{latestAccuracy}%</p>
+                            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Latest Independence</p>
+                        </div>
+                        <div className="text-center p-4 bg-gray-50 rounded-xl">
+                            <p className="font-heading text-3xl font-bold text-gray-900">{totalSessions}</p>
+                            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Total Sessions</p>
+                        </div>
+                        <div className={`text-center p-4 bg-gray-50 rounded-xl`}>
+                            <p className={`font-heading text-2xl font-bold flex items-center justify-center gap-2 ${trend === 'improving' ? 'text-green-600' : trend === 'declining' ? 'text-red-500' : 'text-gray-600'
+                                }`}>
+                                {trend === 'improving' && <><TrendingUp size={24} /> Improving</>}
+                                {trend === 'declining' && <><TrendingDown size={24} /> Declining</>}
+                                {trend === 'stable' && <><Minus size={24} /> Stable</>}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Trend</p>
+                        </div>
+                    </>
+                )
+            default:
+                return (
+                    <>
+                        <div className="text-center p-4 bg-gray-50 rounded-xl">
+                            <p className="font-heading text-3xl font-bold text-primary">{latestAccuracy}%</p>
+                            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Latest Accuracy</p>
+                        </div>
+                        <div className="text-center p-4 bg-gray-50 rounded-xl">
+                            <p className="font-heading text-3xl font-bold text-gray-900">{totalSessions}</p>
+                            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Total Sessions</p>
+                        </div>
+                        <div className={`text-center p-4 bg-gray-50 rounded-xl`}>
+                            <p className={`font-heading text-2xl font-bold flex items-center justify-center gap-2 ${trend === 'improving' ? 'text-green-600' : trend === 'declining' ? 'text-red-500' : 'text-gray-600'
+                                }`}>
+                                {trend === 'improving' && <><TrendingUp size={24} /> Improving</>}
+                                {trend === 'declining' && <><TrendingDown size={24} /> Declining</>}
+                                {trend === 'stable' && <><Minus size={24} /> Stable</>}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Trend</p>
+                        </div>
+                    </>
+                )
+        }
+    }
+
+    // Show loading state
+    if (loading || !program) {
+        return (
+            <DashboardLayout>
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-center">
+                        <div className="w-12 h-12 border-4 border-[#159DB3] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                        <p className="text-gray-500">Loading program...</p>
+                    </div>
+                </div>
+            </DashboardLayout>
+        )
     }
 
     return (
@@ -95,83 +370,37 @@ export default function ProgressPage() {
             {/* Chart */}
             <div className="px-6 pb-6 max-w-screen-xl mx-auto">
                 <div className="card-premium p-8">
-                    <h2 className="font-heading text-xl font-bold text-gray-900 mb-6">Progress Over Time</h2>
+                    <h2 className="font-heading text-xl font-bold text-gray-900 mb-6">{chartInfo.title}</h2>
 
                     <div className="h-80">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={mockProgressData}>
-                                <defs>
-                                    <linearGradient id="colorAccuracy" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#159DB3" stopOpacity={0.2} />
-                                        <stop offset="95%" stopColor="#159DB3" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                                <XAxis
-                                    dataKey="date"
-                                    stroke="#9CA3AF"
-                                    fontSize={12}
-                                    tickLine={false}
-                                    axisLine={false}
-                                />
-                                <YAxis
-                                    domain={[0, 100]}
-                                    stroke="#9CA3AF"
-                                    fontSize={12}
-                                    tickLine={false}
-                                    axisLine={false}
-                                    tickFormatter={(value) => `${value}%`}
-                                />
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: '#FFFFFF',
-                                        border: '1px solid #E5E7EB',
-                                        borderRadius: '12px',
-                                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                                        padding: '12px 16px'
-                                    }}
-                                    formatter={(value) => [`${value}%`, 'Accuracy']}
-                                    labelStyle={{ fontWeight: 600, marginBottom: 4 }}
-                                />
-                                <Area
-                                    type="monotone"
-                                    dataKey="accuracy"
-                                    stroke="#159DB3"
-                                    strokeWidth={3}
-                                    fill="url(#colorAccuracy)"
-                                    dot={{ fill: '#159DB3', strokeWidth: 0, r: 4 }}
-                                    activeDot={{ r: 6, fill: '#159DB3', stroke: '#fff', strokeWidth: 2 }}
-                                />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                        {renderChart()}
                     </div>
                 </div>
             </div>
 
             {/* Stats */}
-            <div className="px-6 pb-10 max-w-screen-xl mx-auto">
+            <div className="px-6 pb-6 max-w-screen-xl mx-auto">
                 <div className="card-premium p-6">
                     <h3 className="font-heading text-lg font-bold text-gray-900 mb-4">Overall Statistics</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="text-center p-4 bg-gray-50 rounded-xl">
-                            <p className="font-heading text-3xl font-bold text-primary">{latestAccuracy}%</p>
-                            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Latest Accuracy</p>
+                        {renderStats()}
+                    </div>
+                </div>
+            </div>
+
+            {/* Targets Section */}
+            <div className="px-6 pb-10 max-w-screen-xl mx-auto">
+                <div className="card-premium p-6">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 rounded-xl bg-[#E0F4F7] flex items-center justify-center">
+                            <Target size={20} className="text-[#159DB3]" />
                         </div>
-                        <div className="text-center p-4 bg-gray-50 rounded-xl">
-                            <p className="font-heading text-3xl font-bold text-gray-900">{totalSessions}</p>
-                            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Total Sessions</p>
-                        </div>
-                        <div className="text-center p-4 bg-gray-50 rounded-xl">
-                            <p className={`font-heading text-2xl font-bold flex items-center justify-center gap-2 ${trend === 'improving' ? 'text-green-600' :
-                                    trend === 'declining' ? 'text-red-500' : 'text-gray-600'
-                                }`}>
-                                {trend === 'improving' && <><TrendingUp size={24} /> Improving</>}
-                                {trend === 'declining' && <><TrendingDown size={24} /> Declining</>}
-                                {trend === 'stable' && <><Minus size={24} /> Stable</>}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Trend</p>
+                        <div>
+                            <h3 className="font-heading text-lg font-bold text-gray-900">Program Targets</h3>
+                            <p className="text-sm text-gray-500">Track progress for each target</p>
                         </div>
                     </div>
+                    <TargetsList programId={id} />
                 </div>
             </div>
         </DashboardLayout>

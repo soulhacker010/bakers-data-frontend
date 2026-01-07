@@ -1,16 +1,45 @@
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
-import { Button } from '../components/ui'
-import { mockSessions } from '../data/mockData'
+import { Button, Avatar } from '../components/ui'
+import { getSession } from '../services/sessions'
+import { useToast } from '../context/ToastContext'
 import { ArrowLeft, Calendar, Clock, FileText, Play, Download, Target, Activity, BarChart2, User } from 'lucide-react'
 import { format } from 'date-fns'
 
 export default function SessionDetailPage() {
     const { id } = useParams()
     const navigate = useNavigate()
+    const { toast } = useToast()
+    const [session, setSession] = useState(null)
+    const [loading, setLoading] = useState(true)
 
-    // Get session from mock data
-    const session = mockSessions.find(s => s.id === parseInt(id))
+    // Fetch session data
+    useEffect(() => {
+        const fetchSession = async () => {
+            try {
+                setLoading(true)
+                const data = await getSession(id)
+                setSession(data)
+            } catch (err) {
+                toast.error('Failed to load session')
+                navigate('/sessions')
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchSession()
+    }, [id, navigate, toast])
+
+    if (loading) {
+        return (
+            <DashboardLayout>
+                <div className="px-6 py-16 flex items-center justify-center">
+                    <div className="w-8 h-8 border-4 border-[#159DB3] border-t-transparent rounded-full animate-spin"></div>
+                </div>
+            </DashboardLayout>
+        )
+    }
 
     if (!session) {
         return (
@@ -46,9 +75,7 @@ export default function SessionDetailPage() {
                         <div>
                             <p className="label-uppercase-light mb-2">S E S S I O N &nbsp; D E T A I L S</p>
                             <div className="flex items-center gap-3 mb-2">
-                                <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-                                    <User size={24} className="text-white" />
-                                </div>
+                                <Avatar name={session.client_name} size={48} />
                                 <div>
                                     <h1 className="font-heading text-3xl font-bold text-white">
                                         {session.client_name}
@@ -110,28 +137,44 @@ export default function SessionDetailPage() {
                         <div className="bg-white rounded-2xl border border-gray-100 p-6">
                             <h3 className="font-heading text-lg font-bold text-gray-900 mb-4">Programs Worked On</h3>
                             <div className="space-y-3">
-                                {session.programs.map((program, idx) => (
-                                    <div
-                                        key={idx}
-                                        className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-[#E0F4F7] transition-colors group cursor-pointer"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
-                                                <Target size={20} />
+                                {session.programs && session.programs.length > 0 ? (
+                                    session.programs.map((program, idx) => {
+                                        const programName = typeof program === 'string' ? program : program?.name || 'Unknown Program'
+                                        const programType = typeof program === 'object' ? program?.program_type || 'skill' : 'skill'
+                                        return (
+                                            <div
+                                                key={idx}
+                                                className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-[#E0F4F7] transition-colors group cursor-pointer"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                                                        <Target size={20} />
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-semibold text-gray-900 group-hover:text-[#159DB3] transition-colors">
+                                                            {programName}
+                                                        </span>
+                                                        <p className="text-xs text-gray-500 capitalize">{programType}</p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        const programId = typeof program === 'object' ? program?.id : null
+                                                        if (programId) {
+                                                            navigate(`/programs/${programId}/progress`)
+                                                        }
+                                                    }}
+                                                    className="flex items-center gap-2 text-sm text-[#159DB3] font-medium hover:underline"
+                                                >
+                                                    <BarChart2 size={16} />
+                                                    View Progress
+                                                </button>
                                             </div>
-                                            <div>
-                                                <span className="font-semibold text-gray-900 group-hover:text-[#159DB3] transition-colors">
-                                                    {program}
-                                                </span>
-                                                <p className="text-xs text-gray-500">Skill Acquisition</p>
-                                            </div>
-                                        </div>
-                                        <button className="flex items-center gap-2 text-sm text-[#159DB3] font-medium hover:underline">
-                                            <BarChart2 size={16} />
-                                            View Progress
-                                        </button>
-                                    </div>
-                                ))}
+                                        )
+                                    })
+                                ) : (
+                                    <p className="text-gray-500 text-center py-4">No programs recorded for this session</p>
+                                )}
                             </div>
                         </div>
 
@@ -152,14 +195,54 @@ export default function SessionDetailPage() {
                         <div className="bg-white rounded-2xl border border-gray-100 p-6">
                             <h3 className="font-heading text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
                             <div className="space-y-3">
+                                {session.status !== 'completed' ? (
+                                    <button
+                                        onClick={() => navigate(`/sessions/${id}/collect`)}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#159DB3] text-white font-semibold rounded-xl hover:bg-[#0E8499] transition-colors shadow-md"
+                                    >
+                                        <Play size={18} />
+                                        Continue Session
+                                    </button>
+                                ) : (
+                                    <button
+                                        disabled
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 text-gray-400 font-semibold rounded-xl cursor-not-allowed"
+                                        title="Session is completed"
+                                    >
+                                        <Play size={18} />
+                                        Session Completed
+                                    </button>
+                                )}
                                 <button
-                                    onClick={() => navigate(`/sessions/${id}/collect`)}
-                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#159DB3] text-white font-semibold rounded-xl hover:bg-[#0E8499] transition-colors shadow-md"
+                                    onClick={() => {
+                                        // Export session data as CSV
+                                        if (!session.data || session.data.length === 0) {
+                                            toast.error('No data to export')
+                                            return
+                                        }
+                                        const headers = ['Date', 'Program', 'Type', 'Result', 'Prompt Level', 'Count', 'Duration', 'Notes']
+                                        const rows = session.data.map(d => [
+                                            format(new Date(d.timestamp || d.created_at), 'yyyy-MM-dd HH:mm'),
+                                            d.program_name || 'Unknown',
+                                            d.data_type,
+                                            d.result || '',
+                                            d.prompt_level || '',
+                                            d.count || '',
+                                            d.duration_seconds || '',
+                                            d.notes || ''
+                                        ])
+                                        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+                                        const blob = new Blob([csv], { type: 'text/csv' })
+                                        const url = URL.createObjectURL(blob)
+                                        const a = document.createElement('a')
+                                        a.href = url
+                                        a.download = `session-${session.id}-data.csv`
+                                        a.click()
+                                        URL.revokeObjectURL(url)
+                                        toast.success('Session data exported!')
+                                    }}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-gray-200 text-gray-700 font-semibold rounded-xl hover:border-[#159DB3] hover:text-[#159DB3] transition-colors"
                                 >
-                                    <Play size={18} />
-                                    Continue Session
-                                </button>
-                                <button className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-gray-200 text-gray-700 font-semibold rounded-xl hover:border-[#159DB3] hover:text-[#159DB3] transition-colors">
                                     <Download size={18} />
                                     Export Data
                                 </button>

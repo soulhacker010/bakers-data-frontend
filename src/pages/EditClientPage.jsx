@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
 import { Button, Input, Card, ConfirmModal } from '../components/ui'
-import { mockClients } from '../data/mockData'
+import { getClient, updateClient, deleteClient } from '../services/clients'
 import { ArrowLeft, Check, Trash2 } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 
@@ -11,19 +11,42 @@ export default function EditClientPage() {
     const navigate = useNavigate()
     const { toast } = useToast()
 
-    // Get client from mock data
-    const client = mockClients.find(c => c.id === parseInt(id))
-
+    const [client, setClient] = useState(null)
+    const [loading, setLoading] = useState(true)
     const [formData, setFormData] = useState({
-        first_name: client?.first_name || '',
-        last_name: client?.last_name || '',
-        date_of_birth: client?.date_of_birth || '',
-        diagnosis: client?.diagnosis || '',
-        notes: client?.notes || ''
+        first_name: '',
+        last_name: '',
+        date_of_birth: '',
+        diagnosis: '',
+        notes: ''
     })
     const [saving, setSaving] = useState(false)
     const [saved, setSaved] = useState(false)
     const [showDeleteModal, setShowDeleteModal] = useState(false)
+
+    // Fetch client on mount
+    useEffect(() => {
+        const fetchClient = async () => {
+            try {
+                setLoading(true)
+                const data = await getClient(id)
+                setClient(data)
+                setFormData({
+                    first_name: data.first_name || '',
+                    last_name: data.last_name || '',
+                    date_of_birth: data.date_of_birth || '',
+                    diagnosis: data.diagnosis || '',
+                    notes: data.notes || ''
+                })
+            } catch (err) {
+                toast.error('Failed to load client')
+                navigate('/clients')
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchClient()
+    }, [id, navigate, toast])
 
     const handleChange = (e) => {
         const { name, value } = e.target
@@ -35,21 +58,36 @@ export default function EditClientPage() {
         e.preventDefault()
         setSaving(true)
 
-        // Mock save - will connect to backend later
-        console.log('Updating client:', { id, ...formData })
-
-        setTimeout(() => {
-            setSaving(false)
+        try {
+            await updateClient(id, formData)
             setSaved(true)
             toast.success('Client saved successfully!')
             setTimeout(() => navigate(`/clients/${id}`), 1000)
-        }, 500)
+        } catch (err) {
+            toast.error(err.message || 'Failed to save client')
+        } finally {
+            setSaving(false)
+        }
     }
 
-    const handleDelete = () => {
-        console.log('Deleting client:', id)
-        toast.success(`Client "${client?.first_name} ${client?.last_name}" deleted successfully`)
-        navigate('/clients')
+    const handleDelete = async () => {
+        try {
+            await deleteClient(id)
+            toast.success(`Client "${client?.first_name} ${client?.last_name}" deleted successfully`)
+            navigate('/clients')
+        } catch (err) {
+            toast.error(err.message || 'Failed to delete client')
+        }
+    }
+
+    if (loading) {
+        return (
+            <DashboardLayout>
+                <div className="px-6 py-16 flex items-center justify-center">
+                    <div className="w-8 h-8 border-4 border-[#159DB3] border-t-transparent rounded-full animate-spin"></div>
+                </div>
+            </DashboardLayout>
+        )
     }
 
     if (!client) {

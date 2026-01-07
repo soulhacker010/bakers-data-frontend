@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
 import { Button, Input, Select, Card, ConfirmModal } from '../components/ui'
-import { mockPrograms, mockClients } from '../data/mockData'
+import { getProgram, updateProgram, deleteProgram } from '../services/programs'
+import { getClient } from '../services/clients'
 import { ArrowLeft, Check, Trash2 } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 
@@ -22,21 +23,50 @@ export default function EditProgramPage() {
     const navigate = useNavigate()
     const { toast } = useToast()
 
-    // Get program from mock data
-    const program = mockPrograms.find(p => p.id === parseInt(id))
-    const client = program ? mockClients.find(c => c.id === program.client_id) : null
-
+    const [program, setProgram] = useState(null)
+    const [client, setClient] = useState(null)
+    const [loading, setLoading] = useState(true)
     const [formData, setFormData] = useState({
-        name: program?.name || '',
-        program_type: program?.program_type || 'skill',
-        data_type: program?.data_type || 'trial',
-        description: program?.description || '',
-        mastery_criteria: program?.mastery_criteria || '',
-        is_active: program?.is_active ?? true
+        name: '',
+        program_type: 'skill',
+        data_type: 'trial',
+        description: '',
+        mastery_criteria: '',
+        is_active: true
     })
     const [saving, setSaving] = useState(false)
     const [saved, setSaved] = useState(false)
     const [showDeleteModal, setShowDeleteModal] = useState(false)
+
+    // Fetch program and client data
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true)
+                const programData = await getProgram(id)
+                setProgram(programData)
+                setFormData({
+                    name: programData.name || '',
+                    program_type: programData.program_type || 'skill',
+                    data_type: programData.data_type || 'trial',
+                    description: programData.description || '',
+                    mastery_criteria: programData.mastery_criteria || '',
+                    is_active: programData.is_active ?? true
+                })
+
+                if (programData.client_id) {
+                    const clientData = await getClient(programData.client_id)
+                    setClient(clientData)
+                }
+            } catch (err) {
+                toast.error('Failed to load program')
+                navigate('/programs')
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchData()
+    }, [id, navigate, toast])
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target
@@ -51,21 +81,36 @@ export default function EditProgramPage() {
         e.preventDefault()
         setSaving(true)
 
-        // Mock save - will connect to backend later
-        console.log('Updating program:', { id, ...formData })
-
-        setTimeout(() => {
-            setSaving(false)
+        try {
+            await updateProgram(id, formData)
             setSaved(true)
             toast.success('Program saved successfully!')
             setTimeout(() => navigate(`/clients/${program?.client_id}`), 1000)
-        }, 500)
+        } catch (err) {
+            toast.error(err.message || 'Failed to save program')
+        } finally {
+            setSaving(false)
+        }
     }
 
-    const handleDelete = () => {
-        console.log('Deleting program:', id)
-        toast.success(`Program "${program?.name}" deleted successfully`)
-        navigate(`/clients/${program?.client_id}`)
+    const handleDelete = async () => {
+        try {
+            await deleteProgram(id)
+            toast.success(`Program "${program?.name}" deleted successfully`)
+            navigate(`/clients/${program?.client_id}`)
+        } catch (err) {
+            toast.error(err.message || 'Failed to delete program')
+        }
+    }
+
+    if (loading) {
+        return (
+            <DashboardLayout>
+                <div className="px-6 py-16 flex items-center justify-center">
+                    <div className="w-8 h-8 border-4 border-[#159DB3] border-t-transparent rounded-full animate-spin"></div>
+                </div>
+            </DashboardLayout>
+        )
     }
 
     if (!program) {

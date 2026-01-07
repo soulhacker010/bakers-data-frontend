@@ -1,7 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { mockClients, mockPrograms } from '../data/mockData'
-import { Check, X, StopCircle, Plus, Play, Square, RotateCcw } from 'lucide-react'
+import { getClient } from '../services/clients'
+import { getProgram, getPrograms } from '../services/programs'
+import { getTargets } from '../services/targets'
+import { useToast } from '../context/ToastContext'
+import { Check, X, StopCircle, Plus, Play, Square, RotateCcw, ChevronLeft, ChevronRight, Target, FileText, ListChecks } from 'lucide-react'
+import { TaskAnalysisCollector } from '../components/data'
 
 // Timer hook
 function useTimer() {
@@ -224,16 +228,143 @@ export default function SessionCollectPage() {
     const { id } = useParams()
     const [searchParams] = useSearchParams()
     const navigate = useNavigate()
+    const { toast } = useToast()
     const { formatTime } = useTimer()
 
     const [notes, setNotes] = useState('')
     const [sessionData, setSessionData] = useState([])
+    const [client, setClient] = useState(null)
+    const [program, setProgram] = useState(null)
+    const [programs, setPrograms] = useState([])  // All client's programs
+    const [targets, setTargets] = useState([])    // Current program's targets
+    const [selectedTarget, setSelectedTarget] = useState(null)
+    const [loading, setLoading] = useState(true)
+    const [sessionId, setSessionId] = useState(null)
+    const [saving, setSaving] = useState(false)
+    const [sidebarOpen, setSidebarOpen] = useState(true)
 
     // Get client and program from params
     const clientId = searchParams.get('client') || 1
     const programId = searchParams.get('program') || 1
-    const client = mockClients.find(c => c.id === parseInt(clientId)) || mockClients[0]
-    const program = mockPrograms.find(p => p.id === parseInt(programId)) || mockPrograms[0]
+
+    // Ref to prevent multiple session starts
+    const hasInitialized = useRef(false)
+
+    // Fetch client and program data, then start or continue session
+    useEffect(() => {
+        // Prevent running multiple times
+        if (hasInitialized.current) return
+        hasInitialized.current = true
+
+        const initSession = async () => {
+            try {
+                setLoading(true)
+
+                // Check if we're continuing an existing session
+                if (id) {
+                    // Load existing session
+                    const { getSession } = await import('../services/sessions')
+                    const existingSession = await getSession(id)
+
+                    // Check if session is already ended
+                    if (existingSession.end_time) {
+                        toast.error('This session has already been ended')
+                        navigate(`/sessions/${id}`)  // Go to session detail instead
+                        return
+                    }
+
+                    setSessionId(existingSession.id)
+
+                    // Get client and program from the session
+                    // Note: backend returns client as nested object {id, first_name, last_name}
+                    const clientData = await getClient(existingSession.client.id)
+                    setClient(clientData)
+
+                    // Get program - use first from session or fallback to URL param
+                    if (existingSession.programs?.[0]?.id) {
+                        const programData = await getProgram(existingSession.programs[0].id)
+                        setProgram(programData)
+                    } else {
+                        const programData = await getProgram(programId)
+                        setProgram(programData)
+                    }
+                    toast.info('Continuing session')
+                } else {
+                    // Create a new session
+                    const [clientData, programData] = await Promise.all([
+                        getClient(clientId),
+                        getProgram(programId)
+                    ])
+
+                    // Validate program belongs to this client
+                    if (programData.client_id !== clientData.id) {
+                        toast.error('This program does not belong to this client')
+                        navigate(`/clients/${clientData.id}`)
+                        return
+                    }
+
+                    setClient(clientData)
+                    setProgram(programData)
+
+                    const { startSession } = await import('../services/sessions')
+                    const newSession = await startSession(parseInt(clientId))
+                    setSessionId(newSession.id)
+                    toast.success('Session started')
+                }
+            } catch (err) {
+                console.error('Failed to initialize session:', err)
+                toast.error('Failed to load session')
+                navigate('/sessions')
+            } finally {
+                setLoading(false)
+            }
+        }
+        initSession()
+    }, []) // Empty deps - only run once on mount
+
+    // Load all programs for client (for sidebar)
+    useEffect(() => {
+        const loadPrograms = async () => {
+            if (!client?.id) return
+            try {
+                const allPrograms = await getPrograms({ clientId: client.id })
+                setPrograms(allPrograms)
+            } catch (err) {
+                console.error('Failed to load programs:', err)
+            }
+        }
+        loadPrograms()
+    }, [client?.id])
+
+    // Load targets when program changes
+    useEffect(() => {
+        const loadTargets = async () => {
+            if (!program?.id) return
+            try {
+                const programTargets = await getTargets(program.id)
+                setTargets(programTargets)
+                // Select first active target by default
+                const firstActive = programTargets.find(t => t.status === 'active')
+                setSelectedTarget(firstActive || programTargets[0] || null)
+            } catch (err) {
+                console.error('Failed to load targets:', err)
+                setTargets([])
+            }
+        }
+        loadTargets()
+    }, [program?.id])
+
+    // Switch to different program
+    const handleProgramSwitch = async (newProgram) => {
+        if (newProgram.id === program?.id) return
+        try {
+            const programData = await getProgram(newProgram.id)
+            setProgram(programData)
+            toast.info(`Switched to ${newProgram.name}`)
+        } catch (err) {
+            toast.error('Failed to switch program')
+        }
+    }
 
     // Calculate stats
     const trialStats = {
@@ -244,28 +375,78 @@ export default function SessionCollectPage() {
 
     const frequencyCount = sessionData.reduce((sum, d) => sum + (d.count || 0), 0)
 
-    const handleRecord = useCallback((data) => {
-        const newEntry = {
-            id: Date.now(),
+    const handleRecord = useCallback(async (data) => {
+        if (!program || !sessionId) return
+
+        const dataPoint = {
             program_id: program.id,
             data_type: program.data_type,
-            timestamp: new Date().toISOString(),
             ...data
         }
-        setSessionData(prev => [...prev, newEntry])
-    }, [program])
 
-    const handleEndSession = () => {
-        console.log('Session data:', { notes, data: sessionData })
-        // Navigate to session summary or back to sessions list
-        navigate('/sessions')
+        // Add to local state immediately for responsive UI
+        const localEntry = {
+            id: Date.now(),
+            ...dataPoint,
+            timestamp: new Date().toISOString()
+        }
+        setSessionData(prev => [...prev, localEntry])
+
+        // Save to backend
+        try {
+            const { recordSessionData } = await import('../services/sessions')
+            await recordSessionData(sessionId, dataPoint)
+        } catch (err) {
+            console.error('Failed to record data:', err)
+            // Check if session was ended
+            if (err.response?.data?.detail?.includes('ended session') ||
+                err.message?.includes('ended session')) {
+                toast.error('Session has been ended - redirecting...')
+                navigate('/sessions')
+                return
+            }
+            toast.error('Failed to save data point')
+        }
+    }, [program, sessionId, toast, navigate])
+
+    const handleEndSession = async () => {
+        if (!sessionId) {
+            navigate('/sessions')
+            return
+        }
+
+        setSaving(true)
+        try {
+            const { endSession } = await import('../services/sessions')
+            await endSession(sessionId, notes)
+            toast.success('Session saved successfully!')
+            navigate('/sessions')
+        } catch (err) {
+            console.error('Failed to end session:', err)
+            toast.error('Failed to save session')
+        } finally {
+            setSaving(false)
+        }
     }
+
+    // Show loading state
+    if (loading || !client || !program) {
+        return (
+            <div className="min-h-screen bg-[#F8FAFB] flex items-center justify-center">
+                <div className="text-center">
+                    <div className="w-16 h-16 border-4 border-[#159DB3] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-500">Starting session...</p>
+                </div>
+            </div>
+        )
+    }
+
 
     return (
         <div className="min-h-screen bg-[#F8FAFB]">
             {/* Session Header */}
             <header className="fixed top-0 left-0 right-0 h-16 hero-gradient z-50 shadow-lg">
-                <div className="h-full px-6 flex items-center justify-between max-w-screen-xl mx-auto">
+                <div className="h-full px-6 flex items-center justify-between">
                     <button
                         onClick={handleEndSession}
                         className="bg-white/20 hover:bg-white/30 text-white px-5 py-2.5 rounded-full font-semibold text-sm transition-colors flex items-center gap-2"
@@ -278,6 +459,12 @@ export default function SessionCollectPage() {
                         <span>{client.first_name} {client.last_name}</span>
                         <span className="text-white/50">•</span>
                         <span>{program.name}</span>
+                        {selectedTarget && (
+                            <>
+                                <span className="text-white/50">→</span>
+                                <span className="text-white/70">{selectedTarget.name}</span>
+                            </>
+                        )}
                     </div>
 
                     <div className="text-white font-heading text-2xl font-bold font-mono">
@@ -286,32 +473,133 @@ export default function SessionCollectPage() {
                 </div>
             </header>
 
-            {/* Main Content */}
-            <main className="pt-24 pb-12 px-6">
-                <div className="max-w-xl mx-auto">
-                    {/* Data Collection */}
-                    {program.data_type === 'trial' && (
-                        <TrialDataCollector onRecord={handleRecord} stats={trialStats} />
-                    )}
-                    {program.data_type === 'frequency' && (
-                        <FrequencyDataCollector onRecord={handleRecord} count={frequencyCount} />
-                    )}
-                    {program.data_type === 'duration' && (
-                        <DurationDataCollector onRecord={handleRecord} />
-                    )}
+            {/* Main Layout with Sidebar */}
+            <div className="pt-16 flex">
+                {/* Sidebar */}
+                <aside className={`fixed left-0 top-16 bottom-0 bg-white border-r border-gray-200 transition-all duration-300 z-40 ${sidebarOpen ? 'w-72' : 'w-0'} overflow-hidden`}>
+                    <div className="w-72 h-full flex flex-col">
+                        {/* Sidebar Header */}
+                        <div className="p-4 border-b border-gray-100">
+                            <h3 className="font-heading font-bold text-gray-900 flex items-center gap-2">
+                                <FileText size={18} className="text-[#159DB3]" />
+                                Programs & Targets
+                            </h3>
+                        </div>
 
-                    {/* Quick Notes */}
-                    <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                        <label className="label-uppercase block mb-3">SESSION NOTES</label>
-                        <textarea
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            placeholder="Add any observations or notes from this session..."
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-base min-h-[120px] resize-y focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
-                        />
+                        {/* Programs List */}
+                        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                            {programs.map(prog => (
+                                <div key={prog.id}>
+                                    <button
+                                        onClick={() => handleProgramSwitch(prog)}
+                                        className={`w-full text-left p-3 rounded-xl transition-all ${program?.id === prog.id
+                                            ? 'bg-[#159DB3] text-white'
+                                            : 'hover:bg-gray-100'
+                                            }`}
+                                    >
+                                        <p className={`font-semibold truncate ${program?.id === prog.id ? 'text-white' : 'text-gray-900'}`}>
+                                            {prog.name}
+                                        </p>
+                                        <p className={`text-xs ${program?.id === prog.id ? 'text-white/70' : 'text-gray-500'}`}>
+                                            {prog.data_type} • {prog.program_type}
+                                        </p>
+                                    </button>
+
+                                    {/* Show targets for selected program */}
+                                    {program?.id === prog.id && targets.length > 0 && (
+                                        <div className="ml-3 mt-2 space-y-1">
+                                            {targets.map(target => (
+                                                <button
+                                                    key={target.id}
+                                                    onClick={() => setSelectedTarget(target)}
+                                                    className={`w-full flex items-center gap-2 p-2 rounded-lg text-left transition-all ${selectedTarget?.id === target.id
+                                                        ? 'bg-[#E0F4F7] text-[#159DB3]'
+                                                        : 'hover:bg-gray-50'
+                                                        }`}
+                                                >
+                                                    <Target size={14} className={selectedTarget?.id === target.id ? 'text-[#159DB3]' : 'text-gray-400'} />
+                                                    <span className="truncate text-sm">{target.name}</span>
+                                                    <span className={`ml-auto text-xs ${target.status === 'mastered' ? 'text-green-600' : 'text-gray-400'}`}>
+                                                        {target.current_accuracy.toFixed(0)}%
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+
+                            {programs.length === 0 && (
+                                <div className="text-center py-8 text-gray-500">
+                                    <FileText size={32} className="mx-auto mb-2 opacity-50" />
+                                    <p className="text-sm">No programs found</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
-            </main>
+                </aside>
+
+                {/* Sidebar Toggle */}
+                <button
+                    onClick={() => setSidebarOpen(!sidebarOpen)}
+                    className={`fixed top-24 z-50 bg-white shadow-lg border border-gray-200 p-2 rounded-r-xl transition-all ${sidebarOpen ? 'left-72' : 'left-0'}`}
+                >
+                    {sidebarOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+                </button>
+
+                {/* Main Content */}
+                <main className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-72' : 'ml-0'} py-8 px-6`}>
+                    <div className="max-w-xl mx-auto">
+                        {/* Selected Target Badge */}
+                        {selectedTarget && (
+                            <div className="mb-4 bg-[#E0F4F7] rounded-xl p-3 flex items-center gap-3">
+                                <Target size={18} className="text-[#159DB3]" />
+                                <span className="font-medium text-[#159DB3]">
+                                    Recording for: {selectedTarget.name}
+                                </span>
+                                <span className="ml-auto text-sm text-[#159DB3]/70">
+                                    {selectedTarget.current_accuracy.toFixed(0)}% accuracy
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Data Collection */}
+                        {program.data_type === 'trial' && (
+                            <TrialDataCollector onRecord={handleRecord} stats={trialStats} />
+                        )}
+                        {program.data_type === 'frequency' && (
+                            <FrequencyDataCollector onRecord={handleRecord} count={frequencyCount} />
+                        )}
+                        {program.data_type === 'duration' && (
+                            <DurationDataCollector onRecord={handleRecord} />
+                        )}
+                        {program.data_type === 'task_analysis' && (
+                            <TaskAnalysisCollector programId={program.id} onRecord={handleRecord} />
+                        )}
+
+                        {/* Quick Notes */}
+                        <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                            <label className="label-uppercase block mb-3">SESSION NOTES</label>
+                            <textarea
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                                placeholder="Add any observations or notes from this session..."
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-base min-h-[120px] resize-y focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+                            />
+                        </div>
+
+                        {/* End Session Button */}
+                        <button
+                            onClick={handleEndSession}
+                            disabled={saving}
+                            className="mt-6 w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold rounded-2xl hover:from-red-600 hover:to-red-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <StopCircle size={24} />
+                            {saving ? 'Saving Session...' : 'End Session & Save'}
+                        </button>
+                    </div>
+                </main>
+            </div>
         </div>
     )
 }

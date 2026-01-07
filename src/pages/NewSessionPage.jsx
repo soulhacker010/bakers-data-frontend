@@ -1,8 +1,10 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
 import { Button } from '../components/ui'
-import { mockClients, mockPrograms } from '../data/mockData'
+import { getClients } from '../services/clients'
+import { getPrograms } from '../services/programs'
+import { useToast } from '../context/ToastContext'
 import {
     Search,
     User,
@@ -16,23 +18,49 @@ import {
 
 export default function NewSessionPage() {
     const navigate = useNavigate()
+    const { toast } = useToast()
     const [step, setStep] = useState(1) // 1: Select Client, 2: Select Programs
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedClient, setSelectedClient] = useState(null)
     const [selectedPrograms, setSelectedPrograms] = useState([])
 
+    // State for API data
+    const [clients, setClients] = useState([])
+    const [allPrograms, setAllPrograms] = useState([])
+    const [loading, setLoading] = useState(true)
+
+    // Fetch clients and programs on mount
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true)
+                const [clientsData, programsData] = await Promise.all([
+                    getClients(),
+                    getPrograms()
+                ])
+                setClients(clientsData)
+                setAllPrograms(programsData)
+            } catch (err) {
+                toast.error('Failed to load data')
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchData()
+    }, [toast])
+
     // Filter clients based on search
     const filteredClients = useMemo(() => {
-        return mockClients.filter(client =>
+        return clients.filter(client =>
             `${client.first_name} ${client.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
         )
-    }, [searchTerm])
+    }, [searchTerm, clients])
 
     // Get programs for selected client
     const clientPrograms = useMemo(() => {
         if (!selectedClient) return []
-        return mockPrograms.filter(p => p.client_id === selectedClient.id)
-    }, [selectedClient])
+        return allPrograms.filter(p => p.client_id === selectedClient.id)
+    }, [selectedClient, allPrograms])
 
     // Handle client selection
     const handleSelectClient = (client) => {
@@ -150,7 +178,7 @@ export default function NewSessionPage() {
                                                     {client.first_name} {client.last_name}
                                                 </h3>
                                                 <p className="text-gray-500 text-sm">
-                                                    Age {client.age} • {client.programs_count || mockPrograms.filter(p => p.client_id === client.id).length} programs
+                                                    Age {client.age || 'N/A'} • {client.programs_count || allPrograms.filter(p => p.client_id === client.id).length} programs
                                                 </p>
                                             </div>
                                         </div>
@@ -208,22 +236,22 @@ export default function NewSessionPage() {
                                             key={program.id}
                                             onClick={() => toggleProgram(program.id)}
                                             className={`w-full bg-white rounded-2xl border-2 p-5 transition-all text-left flex items-center justify-between ${isSelected
-                                                    ? 'border-[#159DB3] shadow-md'
-                                                    : 'border-gray-100 hover:border-gray-200'
+                                                ? 'border-[#159DB3] shadow-md'
+                                                : 'border-gray-100 hover:border-gray-200'
                                                 }`}
                                         >
                                             <div className="flex items-center gap-4">
                                                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isSkill
-                                                        ? 'bg-blue-50 text-blue-600'
-                                                        : 'bg-pink-50 text-pink-600'
+                                                    ? 'bg-blue-50 text-blue-600'
+                                                    : 'bg-pink-50 text-pink-600'
                                                     }`}>
                                                     {isSkill ? <Target size={24} /> : <Activity size={24} />}
                                                 </div>
                                                 <div>
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold uppercase ${isSkill
-                                                                ? 'bg-blue-100 text-blue-700'
-                                                                : 'bg-pink-100 text-pink-700'
+                                                            ? 'bg-blue-100 text-blue-700'
+                                                            : 'bg-pink-100 text-pink-700'
                                                             }`}>
                                                             {isSkill ? 'Skill' : 'Behavior'}
                                                         </span>
@@ -238,8 +266,8 @@ export default function NewSessionPage() {
                                             </div>
 
                                             <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${isSelected
-                                                    ? 'bg-[#159DB3] border-[#159DB3]'
-                                                    : 'border-gray-300'
+                                                ? 'bg-[#159DB3] border-[#159DB3]'
+                                                : 'border-gray-300'
                                                 }`}>
                                                 {isSelected && <Check size={14} className="text-white" />}
                                             </div>
@@ -255,8 +283,8 @@ export default function NewSessionPage() {
                                 onClick={handleStartSession}
                                 disabled={selectedPrograms.length === 0}
                                 className={`w-full flex items-center justify-center gap-3 px-8 py-5 rounded-2xl text-xl font-heading font-bold transition-all ${selectedPrograms.length > 0
-                                        ? 'bg-[#159DB3] text-white hover:bg-[#0E8499] shadow-lg hover:shadow-xl'
-                                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                    ? 'bg-[#159DB3] text-white hover:bg-[#0E8499] shadow-lg hover:shadow-xl'
+                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                     }`}
                             >
                                 <Play size={24} />

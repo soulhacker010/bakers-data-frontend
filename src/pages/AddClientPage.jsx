@@ -4,6 +4,7 @@ import { DashboardLayout } from '../components/layout'
 import { Button, Input, Card } from '../components/ui'
 import { ArrowLeft, Calendar } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
+import { createClient } from '../services/clients'
 
 export default function AddClientPage() {
     const navigate = useNavigate()
@@ -38,18 +39,16 @@ export default function AddClientPage() {
         }
 
         try {
-            // Mock save - will connect to backend later
-            console.log('Saving client:', formData)
-
-            // Simulate API delay
-            await new Promise(resolve => setTimeout(resolve, 500))
+            // Create client via API
+            const newClient = await createClient(formData)
 
             // Success toast and navigate
             toast.success(`Client "${formData.first_name} ${formData.last_name}" added successfully!`)
-            navigate('/clients')
+            navigate(`/clients/${newClient.id}`)
         } catch (err) {
-            setError('Failed to save client. Please try again.')
-            toast.error('Failed to save client. Please try again.')
+            const errorMsg = err.message || 'Failed to save client. Please try again.'
+            setError(errorMsg)
+            toast.error(errorMsg)
         } finally {
             setLoading(false)
         }

@@ -1,49 +1,150 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import {
+    login as apiLogin,
+    logout as apiLogout,
+    register as apiRegister,
+    getCurrentUser,
+    getStoredUser,
+    isAuthenticated as checkAuth
+} from '../services/auth'
+import { useIdleTimeout } from '../hooks/useIdleTimeout'
 
 const AuthContext = createContext(null)
 
-// Mock user for development (no backend connection yet)
-const mockUser = {
-    id: 1,
-    email: 'therapist@example.com',
-    full_name: 'John Doe',
-    created_at: '2024-01-15T10:30:00Z'
-}
+// Session timeout duration (15 minutes for HIPAA compliance)
+const SESSION_TIMEOUT_MS = 15 * 60 * 1000
 
 export function AuthProvider({ children }) {
-    // DEV MODE: Auto-login with mock user (no auth required)
-    const [user, setUser] = useState(mockUser)
-    const [token, setToken] = useState('dev-mode-token')
+    const [user, setUser] = useState(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
+    const [sessionExpired, setSessionExpired] = useState(false)
 
-    const login = async (email, password) => {
-        // Mock login - will connect to backend later
-        const fakeToken = 'mock-jwt-token-' + Date.now()
-        localStorage.setItem('auth_token', fakeToken)
-        setToken(fakeToken)
-        setUser({ ...mockUser, email })
-        return true
-    }
-
-    const register = async (fullName, email, password) => {
-        // Mock register - will connect to backend later
-        const fakeToken = 'mock-jwt-token-' + Date.now()
-        localStorage.setItem('auth_token', fakeToken)
-        setToken(fakeToken)
-        setUser({ ...mockUser, email, full_name: fullName })
-        return true
-    }
-
-    const logout = () => {
-        localStorage.removeItem('auth_token')
-        setToken(null)
+    /**
+     * Logout the current user
+     */
+    const logout = useCallback((expired = false) => {
+        apiLogout()
         setUser(null)
+        if (expired) {
+            setSessionExpired(true)
+        }
+    }, [])
+
+    // HIPAA: Auto-logout after 15 minutes of inactivity
+    const handleIdleTimeout = useCallback(() => {
+        if (user) {
+            console.log('Session timeout: Logging out due to inactivity')
+            logout(true)
+        }
+    }, [user, logout])
+
+    // Only enable idle timeout when user is logged in
+    useIdleTimeout(handleIdleTimeout, user ? SESSION_TIMEOUT_MS : null)
+
+    // Check for existing auth on mount
+    useEffect(() => {
+        const initAuth = async () => {
+            try {
+                // Check if we have a stored user
+                const storedUser = getStoredUser()
+                if (storedUser && checkAuth()) {
+                    // Verify token is still valid by fetching current user
+                    try {
+                        const currentUser = await getCurrentUser()
+                        setUser(currentUser)
+                        // Update stored user with fresh data
+                        localStorage.setItem('user', JSON.stringify(currentUser))
+                    } catch (err) {
+                        // Token invalid, clear everything
+                        apiLogout()
+                        setUser(null)
+                    }
+                }
+            } catch (err) {
+                console.error('Auth initialization error:', err)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        initAuth()
+    }, [])
+
+    /**
+     * Login with email and password
+     */
+    const login = async (email, password) => {
+        setError(null)
+        setSessionExpired(false)
+        try {
+            const { user: loggedInUser } = await apiLogin(email, password)
+            setUser(loggedInUser)
+            return true
+        } catch (err) {
+            setError(err.message)
+            throw err
+        }
     }
 
-    // DEV MODE: Always authenticated
-    const isAuthenticated = true
+    /**
+     * Register a new account
+     */
+    const register = async (fullName, email, password, role = 'Therapist') => {
+        setError(null)
+        try {
+            // Register the user
+            await apiRegister({
+                full_name: fullName,
+                email: email,
+                password: password,
+                role: role // Use the selected role
+            })
+
+            // Auto-login after registration
+            const { user: loggedInUser } = await apiLogin(email, password)
+            setUser(loggedInUser)
+            return true
+        } catch (err) {
+            setError(err.message)
+            throw err
+        }
+    }
+
+    /**
+     * Clear session expired flag (for showing message once)
+     */
+    const clearSessionExpired = () => {
+        setSessionExpired(false)
+    }
+
+    // Computed auth state
+    const isAuthenticated = !!user
+
+    // Show loading state while checking auth
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-10 h-10 border-4 border-[#159DB3] border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-gray-500">Loading...</p>
+                </div>
+            </div>
+        )
+    }
 
     return (
-        <AuthContext.Provider value={{ user, token, login, register, logout, isAuthenticated }}>
+        <AuthContext.Provider value={{
+            user,
+            loading,
+            error,
+            login,
+            register,
+            logout: () => logout(false),
+            isAuthenticated,
+            sessionExpired,
+            clearSessionExpired,
+        }}>
             {children}
         </AuthContext.Provider>
     )

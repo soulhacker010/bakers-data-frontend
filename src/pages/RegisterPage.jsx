@@ -52,12 +52,13 @@ export default function RegisterPage() {
         setLoading(true)
 
         try {
-            await register(fullName, email, password)
+            await register(fullName, email, password, role || 'Therapist')
             toast.success('Account created successfully! Welcome to Data Sirena.')
             navigate('/dashboard')
         } catch (err) {
-            setError('Registration failed. Please try again.')
-            toast.error('Registration failed. Please try again.')
+            const errorMsg = err.message || 'Registration failed. Please try again.'
+            setError(errorMsg)
+            toast.error(errorMsg)
         } finally {
             setLoading(false)
         }

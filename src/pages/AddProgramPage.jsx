@@ -1,9 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
 import { Button, Input, Card } from '../components/ui'
-import { mockClients } from '../data/mockData'
-import { ArrowLeft } from 'lucide-react'
+import { getClient } from '../services/clients'
+import { createProgram } from '../services/programs'
+import { createTarget } from '../services/targets'
+import { createTaskStep } from '../services/taskSteps'
+import { ArrowLeft, Plus, Trash2, Target, ListChecks } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 
 export default function AddProgramPage() {
@@ -12,9 +15,24 @@ export default function AddProgramPage() {
     const { toast } = useToast()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+    const [client, setClient] = useState(null)
+    const [pageLoading, setPageLoading] = useState(true)
 
-    // Get client info
-    const client = mockClients.find(c => c.id === parseInt(clientId)) || mockClients[0]
+    // Fetch client info
+    useEffect(() => {
+        const fetchClient = async () => {
+            try {
+                const data = await getClient(clientId)
+                setClient(data)
+            } catch (err) {
+                toast.error('Failed to load client')
+                navigate('/clients')
+            } finally {
+                setPageLoading(false)
+            }
+        }
+        fetchClient()
+    }, [clientId, navigate, toast])
 
     const [formData, setFormData] = useState({
         name: '',
@@ -24,9 +42,50 @@ export default function AddProgramPage() {
         mastery_criteria: ''
     })
 
+    // Targets state
+    const [targets, setTargets] = useState([])
+    const [newTarget, setNewTarget] = useState({
+        name: '',
+        mastery_threshold: 80,
+        mastery_consecutive_sessions: 3
+    })
+
+    // Task Analysis steps state
+    const [steps, setSteps] = useState([])
+    const [newStep, setNewStep] = useState('')
+
     const handleChange = (e) => {
         const { name, value } = e.target
         setFormData(prev => ({ ...prev, [name]: value }))
+    }
+
+    const handleTargetChange = (e) => {
+        const { name, value } = e.target
+        setNewTarget(prev => ({ ...prev, [name]: name === 'name' ? value : parseInt(value) || 0 }))
+    }
+
+    const addTarget = () => {
+        if (!newTarget.name.trim()) {
+            toast.error('Target name is required')
+            return
+        }
+        setTargets(prev => [...prev, { ...newTarget, id: Date.now() }])
+        setNewTarget({ name: '', mastery_threshold: 80, mastery_consecutive_sessions: 3 })
+    }
+
+    const removeTarget = (id) => {
+        setTargets(prev => prev.filter(t => t.id !== id))
+    }
+
+    // Step handlers for Task Analysis
+    const addStep = () => {
+        if (!newStep.trim()) return
+        setSteps(prev => [...prev, { id: Date.now(), name: newStep.trim() }])
+        setNewStep('')
+    }
+
+    const removeStep = (id) => {
+        setSteps(prev => prev.filter(s => s.id !== id))
     }
 
     const handleSubmit = async (e) => {
@@ -42,16 +101,48 @@ export default function AddProgramPage() {
         }
 
         try {
-            console.log('Saving program:', { ...formData, client_id: clientId })
-            await new Promise(resolve => setTimeout(resolve, 500))
-            toast.success(`Program "${formData.name}" created successfully!`)
+            // Create the program first
+            const program = await createProgram(parseInt(clientId), formData)
+
+            // Then create all targets for this program
+            for (const target of targets) {
+                await createTarget(program.id, {
+                    name: target.name,
+                    mastery_threshold: target.mastery_threshold,
+                    mastery_consecutive_sessions: target.mastery_consecutive_sessions,
+                    mastery_criteria: `${target.mastery_threshold}% accuracy over ${target.mastery_consecutive_sessions} consecutive sessions`
+                })
+            }
+
+            // Create task analysis steps if program is task_analysis type
+            if (formData.data_type === 'task_analysis') {
+                for (let i = 0; i < steps.length; i++) {
+                    await createTaskStep(program.id, {
+                        name: steps[i].name,
+                        position: i
+                    })
+                }
+            }
+
+            const stepCount = formData.data_type === 'task_analysis' ? steps.length : 0
+            toast.success(`Program "${formData.name}" created with ${targets.length} targets and ${stepCount} steps!`)
             navigate(`/clients/${clientId}`)
         } catch (err) {
-            setError('Failed to save program. Please try again.')
-            toast.error('Failed to save program. Please try again.')
+            setError(err.message || 'Failed to save program. Please try again.')
+            toast.error(err.message || 'Failed to save program. Please try again.')
         } finally {
             setLoading(false)
         }
+    }
+
+    if (pageLoading) {
+        return (
+            <DashboardLayout>
+                <div className="px-6 py-16 flex items-center justify-center">
+                    <div className="w-8 h-8 border-4 border-[#159DB3] border-t-transparent rounded-full animate-spin"></div>
+                </div>
+            </DashboardLayout>
+        )
     }
 
     const programTypes = [
@@ -62,8 +153,23 @@ export default function AddProgramPage() {
     const dataTypes = [
         { value: 'trial', label: 'Trial-Based', description: 'Correct/incorrect responses with prompts' },
         { value: 'frequency', label: 'Frequency', description: 'Count occurrences of behavior' },
-        { value: 'duration', label: 'Duration', description: 'Time duration of behavior' }
+        { value: 'duration', label: 'Duration', description: 'Time duration of behavior' },
+        { value: 'task_analysis', label: 'Task Analysis', description: 'Multi-step skills with prompt levels per step' }
     ]
+
+    // If no client loaded, show error
+    if (!client) {
+        return (
+            <DashboardLayout>
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-center">
+                        <p className="text-red-500 mb-4">Client not found</p>
+                        <Button onClick={() => navigate('/clients')}>Go to Clients</Button>
+                    </div>
+                </div>
+            </DashboardLayout>
+        )
+    }
 
     return (
         <DashboardLayout>
@@ -105,7 +211,7 @@ export default function AddProgramPage() {
                             name="name"
                             value={formData.name}
                             onChange={handleChange}
-                            placeholder="e.g., Identify Colors"
+                            placeholder="e.g., Expressive ID Animals"
                             required
                         />
 
@@ -175,19 +281,162 @@ export default function AddProgramPage() {
                             />
                         </div>
 
-                        {/* Mastery Criteria */}
-                        <Input
-                            label="Mastery Criteria"
-                            name="mastery_criteria"
-                            value={formData.mastery_criteria}
-                            onChange={handleChange}
-                            placeholder="e.g., 80% accuracy across 3 consecutive sessions"
-                        />
+                        {/* Targets Section */}
+                        <div className="border-t border-gray-200 pt-6">
+                            <div className="flex items-center gap-2 mb-4">
+                                <Target size={20} className="text-[#159DB3]" />
+                                <label className="label-uppercase">Targets (Optional)</label>
+                            </div>
+                            <p className="text-sm text-gray-500 mb-4">
+                                Add specific targets within this program. For example, if the program is "Expressive ID Animals",
+                                targets could be "Cat", "Dog", "Bird", etc.
+                            </p>
+
+                            {/* Existing targets list */}
+                            {targets.length > 0 && (
+                                <div className="space-y-2 mb-4">
+                                    {targets.map((target, index) => (
+                                        <div
+                                            key={target.id}
+                                            className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl"
+                                        >
+                                            <span className="w-6 h-6 rounded-full bg-[#159DB3] text-white text-xs flex items-center justify-center font-bold">
+                                                {index + 1}
+                                            </span>
+                                            <div className="flex-1">
+                                                <p className="font-medium text-gray-900">{target.name}</p>
+                                                <p className="text-xs text-gray-500">
+                                                    {target.mastery_threshold}% over {target.mastery_consecutive_sessions} sessions
+                                                </p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeTarget(target.id)}
+                                                className="p-1 text-red-500 hover:bg-red-50 rounded-lg"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Add new target form */}
+                            <div className="p-4 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <div className="md:col-span-2">
+                                        <input
+                                            type="text"
+                                            name="name"
+                                            value={newTarget.name}
+                                            onChange={handleTargetChange}
+                                            placeholder="Target name (e.g., Cat)"
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3]"
+                                        />
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="number"
+                                            name="mastery_threshold"
+                                            value={newTarget.mastery_threshold}
+                                            onChange={handleTargetChange}
+                                            placeholder="80%"
+                                            min="1"
+                                            max="100"
+                                            className="w-20 px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3] text-center"
+                                        />
+                                        <input
+                                            type="number"
+                                            name="mastery_consecutive_sessions"
+                                            value={newTarget.mastery_consecutive_sessions}
+                                            onChange={handleTargetChange}
+                                            placeholder="3"
+                                            min="1"
+                                            max="10"
+                                            className="w-16 px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3] text-center"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between mt-3">
+                                    <p className="text-xs text-gray-500">
+                                        Set accuracy % and consecutive sessions for mastery
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={addTarget}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[#159DB3] hover:bg-[#E0F4F7] rounded-lg transition-colors"
+                                    >
+                                        <Plus size={16} />
+                                        Add Target
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Task Analysis Steps Section - Only show for task_analysis type */}
+                        {formData.data_type === 'task_analysis' && (
+                            <div className="border-t border-gray-200 pt-6">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <ListChecks size={20} className="text-[#159DB3]" />
+                                    <label className="label-uppercase">Task Analysis Steps</label>
+                                </div>
+                                <p className="text-sm text-gray-500 mb-4">
+                                    Add the steps for this task analysis. For example, "Washing Hands" might have steps like
+                                    "Turn on water", "Wet hands", "Apply soap", etc.
+                                </p>
+
+                                {/* Existing steps list */}
+                                {steps.length > 0 && (
+                                    <div className="space-y-2 mb-4">
+                                        {steps.map((step, index) => (
+                                            <div
+                                                key={step.id}
+                                                className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl"
+                                            >
+                                                <span className="w-6 h-6 rounded-full bg-[#159DB3] text-white text-xs flex items-center justify-center font-bold">
+                                                    {index + 1}
+                                                </span>
+                                                <p className="flex-1 font-medium text-gray-900">{step.name}</p>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeStep(step.id)}
+                                                    className="p-1 text-red-500 hover:bg-red-50 rounded-lg"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Add new step form */}
+                                <div className="p-4 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+                                    <div className="flex gap-3">
+                                        <input
+                                            type="text"
+                                            value={newStep}
+                                            onChange={(e) => setNewStep(e.target.value)}
+                                            onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addStep())}
+                                            placeholder="Step name (e.g., Turn on water)"
+                                            className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3]"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={addStep}
+                                            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white bg-[#159DB3] hover:bg-[#0D7C8C] rounded-xl transition-colors"
+                                        >
+                                            <Plus size={16} />
+                                            Add Step
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Actions */}
                         <div className="flex items-center gap-4 pt-4">
                             <Button type="submit" loading={loading}>
-                                {loading ? 'Saving...' : 'Save Program'}
+                                {loading ? 'Saving...' : `Save Program${targets.length > 0 ? ` with ${targets.length} Target${targets.length > 1 ? 's' : ''}` : ''}${formData.data_type === 'task_analysis' && steps.length > 0 ? ` & ${steps.length} Step${steps.length > 1 ? 's' : ''}` : ''}`}
                             </Button>
                             <Button
                                 type="button"

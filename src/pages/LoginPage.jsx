@@ -26,8 +26,9 @@ export default function LoginPage() {
             toast.success('Welcome back! Login successful.')
             navigate('/dashboard')
         } catch (err) {
-            setError('Invalid email or password')
-            toast.error('Invalid email or password. Please try again.')
+            const errorMsg = err.message || 'Invalid email or password'
+            setError(errorMsg)
+            toast.error(errorMsg)
         } finally {
             setLoading(false)
         }

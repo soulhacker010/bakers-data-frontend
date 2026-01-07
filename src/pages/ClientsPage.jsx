@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
-import { Button, Card, Modal, Badge } from '../components/ui'
-import { mockClients } from '../data/mockData'
+import { Button, Card, Modal, Badge, ListSkeleton, Avatar } from '../components/ui'
+import { getClients } from '../services/clients'
+import { useToast } from '../context/ToastContext'
 import { Plus, Search, Users, Calendar, ArrowRight } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -58,26 +59,20 @@ function ClientSelectModal({ isOpen, onClose, clients, onSelect }) {
                         <p className="text-sm text-gray-500">Try adjusting your search terms.</p>
                     </div>
                 ) : (
-                    <div className="space-y-2">
-                        {filteredClients.map((client) => (
-                            <button
-                                key={client.id}
-                                onClick={() => onSelect(client)}
-                                className="w-full text-left p-4 rounded-xl hover:bg-[#E0F4F7] transition-colors flex items-center justify-between group border border-transparent hover:border-[#159DB3]/20"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-[#E0F4F7] text-[#159DB3] flex items-center justify-center font-bold text-sm">
-                                        {client.first_name[0]}{client.last_name[0]}
-                                    </div>
-                                    <div>
-                                        <p className="font-semibold text-gray-900">{client.first_name} {client.last_name}</p>
-                                        <p className="text-sm text-gray-500">Age {client.age} • {client.programs_count} programs</p>
-                                    </div>
-                                </div>
-                                <ArrowRight size={16} className="text-[#159DB3] opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </button>
-                        ))}
-                    </div>
+                    filteredClients.map(client => (
+                        <div
+                            key={client.id}
+                            onClick={() => onSelect(client)}
+                            className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors"
+                        >
+                            <Avatar name={`${client.first_name} ${client.last_name}`} size={40} />
+                            <div className="flex-1">
+                                <p className="font-medium text-gray-900">{client.first_name} {client.last_name}</p>
+                                <p className="text-sm text-gray-500">{client.programs_count || 0} programs</p>
+                            </div>
+                            <ArrowRight size={16} className="text-gray-400" />
+                        </div>
+                    ))
                 )}
             </div>
         </Modal>
@@ -89,11 +84,9 @@ function ClientCard({ client, onClick }) {
     return (
         <Card hover onClick={onClick} className="p-6 group">
             <div className="flex items-start justify-between mb-4">
-                <div className="w-14 h-14 rounded-full bg-[#E0F4F7] text-[#159DB3] flex items-center justify-center font-heading font-bold text-lg border-2 border-[#159DB3]/20">
-                    {client.first_name[0]}{client.last_name[0]}
-                </div>
+                <Avatar name={`${client.first_name} ${client.last_name}`} size={56} />
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#E0F4F7] text-[#159DB3]">
-                    {client.programs_count} PROGRAMS
+                    {client.programs_count || 0} PROGRAMS
                 </span>
             </div>
 
@@ -108,7 +101,7 @@ function ClientCard({ client, onClick }) {
             <div className="flex items-center gap-4 text-xs text-gray-400 pt-4 border-t border-gray-100">
                 <span className="flex items-center gap-1.5">
                     <Users size={14} />
-                    Age {client.age}
+                    Age {client.age || 'N/A'}
                 </span>
                 <span className="flex items-center gap-1.5">
                     <Calendar size={14} />
@@ -121,10 +114,33 @@ function ClientCard({ client, onClick }) {
 
 export default function ClientsPage() {
     const navigate = useNavigate()
+    const { toast } = useToast()
+
+    const [clients, setClients] = useState([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
     const [searchTerm, setSearchTerm] = useState('')
     const [showModal, setShowModal] = useState(false)
 
-    const filteredClients = mockClients.filter(client =>
+    // Fetch clients on mount
+    useEffect(() => {
+        const fetchClients = async () => {
+            try {
+                setLoading(true)
+                const data = await getClients()
+                setClients(data)
+            } catch (err) {
+                setError(err.message)
+                toast.error('Failed to load clients')
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchClients()
+    }, [])
+
+    const filteredClients = clients.filter(client =>
         `${client.first_name} ${client.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
@@ -140,7 +156,7 @@ export default function ClientsPage() {
                                 Your Clients
                             </h1>
                             <p className="text-white/70">
-                                {mockClients.length} clients on your roster
+                                {clients.length} clients on your roster
                             </p>
                         </div>
 
@@ -204,7 +220,7 @@ export default function ClientsPage() {
             <ClientSelectModal
                 isOpen={showModal}
                 onClose={() => setShowModal(false)}
-                clients={mockClients}
+                clients={clients}
                 onSelect={(client) => {
                     setShowModal(false)
                     navigate(`/clients/${client.id}`)
