@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
 import { Button, Card, Modal, Badge, ListSkeleton, Avatar } from '../components/ui'
 import { getClients } from '../services/clients'
@@ -115,11 +115,12 @@ function ClientCard({ client, onClick }) {
 export default function ClientsPage() {
     const navigate = useNavigate()
     const { toast } = useToast()
+    const [searchParams] = useSearchParams()
 
     const [clients, setClients] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
-    const [searchTerm, setSearchTerm] = useState('')
+    const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '')
     const [showModal, setShowModal] = useState(false)
 
     // Fetch clients on mount

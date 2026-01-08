@@ -6,6 +6,7 @@ import { getClient } from '../services/clients'
 import { createProgram } from '../services/programs'
 import { createTarget } from '../services/targets'
 import { createTaskStep } from '../services/taskSteps'
+import { getUserSettings } from '../services/settings'
 import { ArrowLeft, Plus, Trash2, Target, ListChecks } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 
@@ -42,13 +43,34 @@ export default function AddProgramPage() {
         mastery_criteria: ''
     })
 
-    // Targets state
+    // Targets state - defaults will be updated when settings are loaded
     const [targets, setTargets] = useState([])
+    const [defaultMastery, setDefaultMastery] = useState({ threshold: 80, sessions: 3 })
     const [newTarget, setNewTarget] = useState({
         name: '',
         mastery_threshold: 80,
         mastery_consecutive_sessions: 3
     })
+
+    // Load user settings for default values
+    useEffect(() => {
+        const loadSettings = async () => {
+            try {
+                const settings = await getUserSettings()
+                const threshold = settings.default_mastery_criteria || 80
+                const sessions = settings.default_mastery_sessions || 3
+                setDefaultMastery({ threshold, sessions })
+                setNewTarget(prev => ({
+                    ...prev,
+                    mastery_threshold: threshold,
+                    mastery_consecutive_sessions: sessions
+                }))
+            } catch (err) {
+                console.error('Failed to load user settings:', err)
+            }
+        }
+        loadSettings()
+    }, [])
 
     // Task Analysis steps state
     const [steps, setSteps] = useState([])
@@ -70,7 +92,12 @@ export default function AddProgramPage() {
             return
         }
         setTargets(prev => [...prev, { ...newTarget, id: Date.now() }])
-        setNewTarget({ name: '', mastery_threshold: 80, mastery_consecutive_sessions: 3 })
+        // Reset with user's default values
+        setNewTarget({
+            name: '',
+            mastery_threshold: defaultMastery.threshold,
+            mastery_consecutive_sessions: defaultMastery.sessions
+        })
     }
 
     const removeTarget = (id) => {

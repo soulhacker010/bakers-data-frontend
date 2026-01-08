@@ -4,8 +4,9 @@ import { DashboardLayout } from '../components/layout'
 import { Button, Avatar } from '../components/ui'
 import { getSession } from '../services/sessions'
 import { useToast } from '../context/ToastContext'
-import { ArrowLeft, Calendar, Clock, FileText, Play, Download, Target, Activity, BarChart2, User } from 'lucide-react'
+import { ArrowLeft, Calendar, Clock, FileText, Play, Download, Target, Activity, BarChart2, User, Trash2, CheckCircle, XCircle } from 'lucide-react'
 import { format } from 'date-fns'
+import { deleteSessionData } from '../services/sessions'
 
 export default function SessionDetailPage() {
     const { id } = useParams()
@@ -13,6 +14,8 @@ export default function SessionDetailPage() {
     const { toast } = useToast()
     const [session, setSession] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [deleting, setDeleting] = useState(null) // Track which item is being deleted
+    const [deleteConfirmId, setDeleteConfirmId] = useState(null) // For delete confirmation modal
 
     // Fetch session data
     useEffect(() => {
@@ -187,6 +190,80 @@ export default function SessionDetailPage() {
                                 </p>
                             </div>
                         </div>
+
+                        {/* Session Data Points */}
+                        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-heading text-lg font-bold text-gray-900">Session Data</h3>
+                                <span className="text-sm text-gray-500">{session.data?.length || 0} data points</span>
+                            </div>
+
+                            {session.data && session.data.length > 0 ? (
+                                <div className="space-y-2 max-h-96 overflow-y-auto">
+                                    {session.data.map((dataPoint, idx) => (
+                                        <div
+                                            key={dataPoint.id || idx}
+                                            className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                {/* Result indicator */}
+                                                {dataPoint.result === 'correct' && (
+                                                    <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                                                        <CheckCircle size={16} className="text-green-600" />
+                                                    </div>
+                                                )}
+                                                {dataPoint.result === 'incorrect' && (
+                                                    <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                                                        <XCircle size={16} className="text-red-600" />
+                                                    </div>
+                                                )}
+                                                {!dataPoint.result && dataPoint.count && (
+                                                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                                        <span className="text-xs font-bold text-blue-600">+{dataPoint.count}</span>
+                                                    </div>
+                                                )}
+                                                {!dataPoint.result && dataPoint.duration_seconds && (
+                                                    <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                                                        <Clock size={16} className="text-purple-600" />
+                                                    </div>
+                                                )}
+
+                                                <div>
+                                                    <p className="text-sm font-medium text-gray-900">
+                                                        {dataPoint.program_name || 'Unknown Program'}
+                                                        {dataPoint.prompt_level && (
+                                                            <span className="ml-2 text-xs text-gray-500">({dataPoint.prompt_level})</span>
+                                                        )}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500">
+                                                        {format(new Date(dataPoint.timestamp || dataPoint.created_at), 'h:mm:ss a')}
+                                                        {dataPoint.duration_seconds && ` • ${dataPoint.duration_seconds}s`}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                onClick={() => setDeleteConfirmId(dataPoint.id)}
+                                                disabled={deleting === dataPoint.id}
+                                                className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                title="Remove data point"
+                                            >
+                                                {deleting === dataPoint.id ? (
+                                                    <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                                                ) : (
+                                                    <Trash2 size={16} />
+                                                )}
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8 text-gray-400">
+                                    <FileText size={32} className="mx-auto mb-2 opacity-50" />
+                                    <p>No data recorded in this session</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Sidebar */}
@@ -272,6 +349,60 @@ export default function SessionDetailPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirmId && (
+                <>
+                    <div
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+                        onClick={() => setDeleteConfirmId(null)}
+                    ></div>
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+                            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+                                <Trash2 size={24} className="text-red-600" />
+                            </div>
+                            <h3 className="font-heading text-xl font-bold text-gray-900 text-center mb-2">
+                                Remove Data Point?
+                            </h3>
+                            <p className="text-gray-500 text-center mb-6">
+                                This data point will be removed from this session's records. This action can't be undone.
+                            </p>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setDeleteConfirmId(null)}
+                                    className="flex-1 px-4 py-3 border-2 border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        const idToDelete = deleteConfirmId
+                                        setDeleteConfirmId(null)
+                                        setDeleting(idToDelete)
+                                        try {
+                                            await deleteSessionData(idToDelete)
+                                            setSession(prev => ({
+                                                ...prev,
+                                                data: prev.data.filter(d => d.id !== idToDelete),
+                                                data_points: (prev.data_points || 0) - 1
+                                            }))
+                                            toast.success('Data point removed')
+                                        } catch (err) {
+                                            toast.error('Failed to remove data point')
+                                        } finally {
+                                            setDeleting(null)
+                                        }
+                                    }}
+                                    className="flex-1 px-4 py-3 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 transition-colors"
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
         </DashboardLayout>
     )
 }

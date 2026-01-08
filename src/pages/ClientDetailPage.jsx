@@ -235,6 +235,7 @@ export default function ClientDetailPage() {
                         </div>
 
                         <div className="flex items-center gap-3">
+                            {/* Staff Access button - hidden for now, enable later if needed
                             <button
                                 onClick={() => setShowStaffModal(true)}
                                 className="btn-outline-premium bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center gap-2"
@@ -242,6 +243,7 @@ export default function ClientDetailPage() {
                                 <Users size={18} />
                                 Staff Access
                             </button>
+                            */}
                             <button
                                 onClick={() => navigate(`/clients/${id}/edit`)}
                                 className="btn-outline-premium bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center gap-2"

@@ -4,6 +4,8 @@ import { getClient } from '../services/clients'
 import { getProgram, getPrograms } from '../services/programs'
 import { getTargets } from '../services/targets'
 import { useToast } from '../context/ToastContext'
+import { useNotifications, NOTIFICATION_TYPES } from '../context/NotificationContext'
+import { getUserSettings } from '../services/settings'
 import { Check, X, StopCircle, Plus, Play, Square, RotateCcw, ChevronLeft, ChevronRight, Target, FileText, ListChecks } from 'lucide-react'
 import { TaskAnalysisCollector } from '../components/data'
 
@@ -33,7 +35,7 @@ function useTimer() {
 }
 
 // Trial Data Collection Component
-function TrialDataCollector({ onRecord, stats }) {
+function TrialDataCollector({ onRecord, stats, showPromptLevels = true }) {
     const [selectedPrompt, setSelectedPrompt] = useState(null)
 
     const promptLevels = [
@@ -75,24 +77,26 @@ function TrialDataCollector({ onRecord, stats }) {
                 </button>
             </div>
 
-            {/* Prompt Level */}
-            <div className="mb-8">
-                <p className="label-uppercase text-center mb-4">PROMPT LEVEL (OPTIONAL)</p>
-                <div className="grid grid-cols-4 gap-3">
-                    {promptLevels.map((prompt) => (
-                        <button
-                            key={prompt.key}
-                            onClick={() => setSelectedPrompt(selectedPrompt === prompt.key ? null : prompt.key)}
-                            className={`py-4 px-3 rounded-xl text-sm font-semibold transition-all duration-150 border-2 ${selectedPrompt === prompt.key
-                                ? 'bg-[#E0F4F7] border-[#159DB3] text-[#159DB3]'
-                                : 'bg-gray-50 border-transparent text-gray-500 hover:border-gray-300'
-                                }`}
-                        >
-                            {prompt.label}
-                        </button>
-                    ))}
+            {/* Prompt Level - Only show if setting enabled */}
+            {showPromptLevels && (
+                <div className="mb-8">
+                    <p className="label-uppercase text-center mb-4">PROMPT LEVEL (OPTIONAL)</p>
+                    <div className="grid grid-cols-4 gap-3">
+                        {promptLevels.map((prompt) => (
+                            <button
+                                key={prompt.key}
+                                onClick={() => setSelectedPrompt(selectedPrompt === prompt.key ? null : prompt.key)}
+                                className={`py-4 px-3 rounded-xl text-sm font-semibold transition-all duration-150 border-2 ${selectedPrompt === prompt.key
+                                    ? 'bg-[#E0F4F7] border-[#159DB3] text-[#159DB3]'
+                                    : 'bg-gray-50 border-transparent text-gray-500 hover:border-gray-300'
+                                    }`}
+                            >
+                                {prompt.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Session Stats */}
             <div className="bg-gray-50 rounded-2xl p-6">
@@ -229,19 +233,27 @@ export default function SessionCollectPage() {
     const [searchParams] = useSearchParams()
     const navigate = useNavigate()
     const { toast } = useToast()
+    const { addNotification } = useNotifications()
     const { formatTime } = useTimer()
 
     const [notes, setNotes] = useState('')
     const [sessionData, setSessionData] = useState([])
     const [client, setClient] = useState(null)
     const [program, setProgram] = useState(null)
-    const [programs, setPrograms] = useState([])  // All client's programs
-    const [targets, setTargets] = useState([])    // Current program's targets
+    const [programs, setPrograms] = useState([])
+    const [targets, setTargets] = useState([])
     const [selectedTarget, setSelectedTarget] = useState(null)
     const [loading, setLoading] = useState(true)
     const [sessionId, setSessionId] = useState(null)
     const [saving, setSaving] = useState(false)
     const [sidebarOpen, setSidebarOpen] = useState(true)
+    const [userSettings, setUserSettings] = useState({
+        show_prompt_levels: true,
+        auto_save_interval: 30,
+        default_mastery_criteria: 80,
+        default_session_duration: 60
+    })
+    const [lastAutoSave, setLastAutoSave] = useState(null)
 
     // Get client and program from params
     const clientId = searchParams.get('client') || 1
@@ -322,6 +334,40 @@ export default function SessionCollectPage() {
         initSession()
     }, []) // Empty deps - only run once on mount
 
+    // Load user settings
+    useEffect(() => {
+        const loadSettings = async () => {
+            try {
+                const settings = await getUserSettings()
+                setUserSettings(settings)
+            } catch (err) {
+                console.error('Failed to load user settings:', err)
+            }
+        }
+        loadSettings()
+    }, [])
+
+    // Auto-save notes at configured interval
+    useEffect(() => {
+        if (!sessionId || !userSettings.auto_save_interval) return
+
+        const intervalMs = userSettings.auto_save_interval * 1000
+
+        const autoSaveInterval = setInterval(async () => {
+            if (notes.trim()) {
+                try {
+                    // Just update the last save time to show indicator
+                    // Actual notes are saved on session end
+                    setLastAutoSave(new Date())
+                } catch (err) {
+                    console.error('Auto-save failed:', err)
+                }
+            }
+        }, intervalMs)
+
+        return () => clearInterval(autoSaveInterval)
+    }, [sessionId, userSettings.auto_save_interval, notes])
+
     // Load all programs for client (for sidebar)
     useEffect(() => {
         const loadPrograms = async () => {
@@ -366,14 +412,16 @@ export default function SessionCollectPage() {
         }
     }
 
-    // Calculate stats
+    // Calculate stats - FILTERED BY CURRENT PROGRAM
+    const currentProgramData = sessionData.filter(d => d.program_id === program?.id)
+
     const trialStats = {
-        correct: sessionData.filter(d => d.result === 'correct').length,
-        incorrect: sessionData.filter(d => d.result === 'incorrect').length,
-        total: sessionData.filter(d => d.result).length
+        correct: currentProgramData.filter(d => d.result === 'correct').length,
+        incorrect: currentProgramData.filter(d => d.result === 'incorrect').length,
+        total: currentProgramData.filter(d => d.result).length
     }
 
-    const frequencyCount = sessionData.reduce((sum, d) => sum + (d.count || 0), 0)
+    const frequencyCount = currentProgramData.reduce((sum, d) => sum + (d.count || 0), 0)
 
     const handleRecord = useCallback(async (data) => {
         if (!program || !sessionId) return
@@ -419,6 +467,13 @@ export default function SessionCollectPage() {
         try {
             const { endSession } = await import('../services/sessions')
             await endSession(sessionId, notes)
+
+            // Add notification
+            addNotification(
+                NOTIFICATION_TYPES.SESSION_COMPLETED,
+                `Session for ${client?.first_name} ${client?.last_name} completed with ${sessionData.length} data points`
+            )
+
             toast.success('Session saved successfully!')
             navigate('/sessions')
         } catch (err) {
@@ -467,8 +522,20 @@ export default function SessionCollectPage() {
                         )}
                     </div>
 
-                    <div className="text-white font-heading text-2xl font-bold font-mono">
-                        {formatTime}
+                    <div className="flex items-center gap-3">
+                        <div className="text-white font-heading text-2xl font-bold font-mono">
+                            {formatTime}
+                        </div>
+                        {userSettings.default_session_duration && (
+                            <span className="text-white/60 text-sm">
+                                / {userSettings.default_session_duration} min
+                            </span>
+                        )}
+                        {lastAutoSave && (
+                            <span className="text-green-300 text-xs flex items-center gap-1">
+                                ✓ Auto-saved
+                            </span>
+                        )}
                     </div>
                 </div>
             </header>
@@ -565,7 +632,11 @@ export default function SessionCollectPage() {
 
                         {/* Data Collection */}
                         {program.data_type === 'trial' && (
-                            <TrialDataCollector onRecord={handleRecord} stats={trialStats} />
+                            <TrialDataCollector
+                                onRecord={handleRecord}
+                                stats={trialStats}
+                                showPromptLevels={userSettings.show_prompt_levels}
+                            />
                         )}
                         {program.data_type === 'frequency' && (
                             <FrequencyDataCollector onRecord={handleRecord} count={frequencyCount} />

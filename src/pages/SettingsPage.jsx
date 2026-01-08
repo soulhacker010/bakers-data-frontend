@@ -1,29 +1,38 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { DashboardLayout } from '../components/layout'
 import { Button, Input, Select, Card } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
-import { LogOut, Check } from 'lucide-react'
+import { useToast } from '../context/ToastContext'
+import { LogOut, Check, Download, FileText, Loader2 } from 'lucide-react'
+import {
+    getUserSettings,
+    updateUserSettings,
+    updateUserProfile,
+    downloadDataExport
+} from '../services/settings'
 
 const settingsNav = [
     { id: 'account', label: 'Account Settings', description: 'Personal details, email, password' },
-    { id: 'notifications', label: 'Notifications', description: 'Email and push preferences' },
+    { id: 'notifications', label: 'Notifications', description: 'In-app notification preferences' },
     { id: 'therapy', label: 'Therapy Defaults', description: 'Default session and program settings' },
     { id: 'data', label: 'Data & Export', description: 'Export your data, privacy controls' },
 ]
 
 const roleOptions = [
+    { value: 'BCBA', label: 'BCBA (Board Certified Behavior Analyst)' },
+    { value: 'RBT', label: 'RBT (Registered Behavior Technician)' },
     { value: 'Therapist', label: 'Therapist' },
-    { value: 'BCBA', label: 'BCBA' },
-    { value: 'RBT', label: 'RBT' },
     { value: 'Supervisor', label: 'Supervisor' },
+    { value: 'Other', label: 'Other' },
 ]
 
-function AccountSettings({ user }) {
+function AccountSettings({ user, toast, setUser }) {
     const [formData, setFormData] = useState({
         full_name: user?.full_name || '',
         email: user?.email || '',
-        role: 'Therapist'
+        role: user?.role || 'Therapist'
     })
+    const [saving, setSaving] = useState(false)
     const [saved, setSaved] = useState(false)
 
     const handleChange = (e) => {
@@ -32,11 +41,26 @@ function AccountSettings({ user }) {
         setSaved(false)
     }
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault()
-        console.log('Saving:', formData)
-        setSaved(true)
-        setTimeout(() => setSaved(false), 2000)
+        setSaving(true)
+        try {
+            const result = await updateUserProfile({
+                full_name: formData.full_name,
+                email: formData.email,
+                role: formData.role
+            })
+            // Update auth context with new user data
+            setUser(result)
+            setSaved(true)
+            toast.success('Profile updated successfully!')
+            setTimeout(() => setSaved(false), 2000)
+        } catch (err) {
+            console.error('Profile update error:', err)
+            toast.error(err.response?.data?.detail || 'Failed to update profile')
+        } finally {
+            setSaving(false)
+        }
     }
 
     return (
@@ -74,21 +98,64 @@ function AccountSettings({ user }) {
                     placeholder=""
                 />
 
-                <Button type="submit" icon={saved ? <Check size={18} /> : null}>
-                    {saved ? 'Saved!' : 'Update Details'}
+                <Button type="submit" disabled={saving} icon={saved ? <Check size={18} /> : null}>
+                    {saving ? 'Saving...' : saved ? 'Saved!' : 'Update Details'}
                 </Button>
             </form>
         </div>
     )
 }
 
-function TherapySettings() {
+function TherapySettings({ toast }) {
     const [settings, setSettings] = useState({
-        defaultSessionDuration: 60,
-        defaultMasteryCriteria: 80,
-        autoSaveInterval: 30,
-        showPromptLevels: true
+        default_session_duration: 60,
+        default_mastery_criteria: 80,
+        default_mastery_sessions: 3,
+        auto_save_interval: 30,
+        show_prompt_levels: true
     })
+    const [loading, setLoading] = useState(true)
+    const [saving, setSaving] = useState(false)
+
+    useEffect(() => {
+        const loadSettings = async () => {
+            try {
+                const data = await getUserSettings()
+                setSettings(prev => ({ ...prev, ...data }))
+            } catch (err) {
+                console.error('Failed to load settings:', err)
+            } finally {
+                setLoading(false)
+            }
+        }
+        loadSettings()
+    }, [])
+
+    const handleSave = async () => {
+        setSaving(true)
+        try {
+            await updateUserSettings({
+                default_session_duration: settings.default_session_duration,
+                default_mastery_criteria: settings.default_mastery_criteria,
+                default_mastery_sessions: settings.default_mastery_sessions,
+                auto_save_interval: settings.auto_save_interval,
+                show_prompt_levels: settings.show_prompt_levels
+            })
+            toast.success('Therapy defaults saved!')
+        } catch (err) {
+            toast.error('Failed to save settings')
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+        )
+    }
 
     return (
         <div>
@@ -104,22 +171,29 @@ function TherapySettings() {
                 <Input
                     label="Default Session Duration (minutes)"
                     type="number"
-                    value={settings.defaultSessionDuration}
-                    onChange={(e) => setSettings({ ...settings, defaultSessionDuration: e.target.value })}
+                    value={settings.default_session_duration}
+                    onChange={(e) => setSettings({ ...settings, default_session_duration: parseInt(e.target.value) || 60 })}
                 />
 
                 <Input
                     label="Default Mastery Criteria (%)"
                     type="number"
-                    value={settings.defaultMasteryCriteria}
-                    onChange={(e) => setSettings({ ...settings, defaultMasteryCriteria: e.target.value })}
+                    value={settings.default_mastery_criteria}
+                    onChange={(e) => setSettings({ ...settings, default_mastery_criteria: parseInt(e.target.value) || 80 })}
+                />
+
+                <Input
+                    label="Consecutive Sessions for Mastery"
+                    type="number"
+                    value={settings.default_mastery_sessions}
+                    onChange={(e) => setSettings({ ...settings, default_mastery_sessions: parseInt(e.target.value) || 3 })}
                 />
 
                 <Input
                     label="Auto-save Interval (seconds)"
                     type="number"
-                    value={settings.autoSaveInterval}
-                    onChange={(e) => setSettings({ ...settings, autoSaveInterval: e.target.value })}
+                    value={settings.auto_save_interval}
+                    onChange={(e) => setSettings({ ...settings, auto_save_interval: parseInt(e.target.value) || 30 })}
                 />
 
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
@@ -128,23 +202,39 @@ function TherapySettings() {
                         <p className="text-sm text-gray-500">Display prompt level options during data collection</p>
                     </div>
                     <button
-                        onClick={() => setSettings({ ...settings, showPromptLevels: !settings.showPromptLevels })}
-                        className={`w-12 h-6 rounded-full transition-colors ${settings.showPromptLevels ? 'bg-primary' : 'bg-gray-300'}`}
+                        onClick={() => setSettings({ ...settings, show_prompt_levels: !settings.show_prompt_levels })}
+                        className={`w-12 h-6 rounded-full transition-colors ${settings.show_prompt_levels ? 'bg-primary' : 'bg-gray-300'}`}
                     >
-                        <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${settings.showPromptLevels ? 'translate-x-6' : 'translate-x-0.5'}`}></div>
+                        <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${settings.show_prompt_levels ? 'translate-x-6' : 'translate-x-0.5'}`}></div>
                     </button>
                 </div>
 
-                <Button>Save Defaults</Button>
+                <Button onClick={handleSave} disabled={saving}>
+                    {saving ? 'Saving...' : 'Save Defaults'}
+                </Button>
             </div>
         </div>
     )
 }
 
-function DataSettings() {
+function DataSettings({ toast }) {
+    const [exporting, setExporting] = useState(false)
+
+    const handleExport = async () => {
+        setExporting(true)
+        try {
+            await downloadDataExport()
+            toast.success('Data exported successfully!')
+        } catch (err) {
+            toast.error('Failed to export data')
+        } finally {
+            setExporting(false)
+        }
+    }
+
     return (
         <div>
-            <p className="label-uppercase mb-2">D A T A &nbsp; && &nbsp; E X P O R T</p>
+            <p className="label-uppercase mb-2">D A T A &nbsp; & &nbsp; E X P O R T</p>
             <h2 className="font-heading text-3xl font-bold text-gray-900 mb-4">
                 Data & Export Options
             </h2>
@@ -154,31 +244,106 @@ function DataSettings() {
 
             <div className="space-y-6 max-w-xl">
                 <Card className="p-6">
-                    <h3 className="font-heading text-xl font-bold text-gray-900 mb-2">Export All Data</h3>
-                    <p className="text-gray-500 text-sm mb-4">
-                        Download all your clients, programs, and session data as a CSV file.
-                    </p>
-                    <Button variant="outline">Export to CSV</Button>
+                    <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <Download size={24} className="text-primary" />
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="font-heading text-xl font-bold text-gray-900 mb-2">Export All Data</h3>
+                            <p className="text-gray-500 text-sm mb-4">
+                                Download all your clients, programs, and session data as a JSON file.
+                            </p>
+                            <Button variant="outline" onClick={handleExport} disabled={exporting}>
+                                {exporting ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                        Exporting...
+                                    </>
+                                ) : (
+                                    'Export to JSON'
+                                )}
+                            </Button>
+                        </div>
+                    </div>
                 </Card>
 
                 <Card className="p-6">
-                    <h3 className="font-heading text-xl font-bold text-gray-900 mb-2">Session Reports</h3>
-                    <p className="text-gray-500 text-sm mb-4">
-                        Generate detailed session reports for billing or documentation.
-                    </p>
-                    <Button variant="outline">Generate Reports</Button>
+                    <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+                            <FileText size={24} className="text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="font-heading text-xl font-bold text-gray-900 mb-2">Session Reports</h3>
+                            <p className="text-gray-500 text-sm mb-4">
+                                Generate detailed session reports for billing or documentation.
+                            </p>
+                            <Button variant="outline" onClick={() => window.location.href = '/reports'}>
+                                Go to Reports
+                            </Button>
+                        </div>
+                    </div>
                 </Card>
             </div>
         </div>
     )
 }
 
-function NotificationSettings() {
+function NotificationSettings({ toast }) {
     const [prefs, setPrefs] = useState({
-        emailNotifications: true,
-        sessionReminders: true,
-        progressAlerts: false
+        notify_session_reminders: true,
+        notify_progress_alerts: true,
+        notify_mastery_achieved: true,
+        email_notifications: false,
+        email_weekly_digest: false
     })
+    const [loading, setLoading] = useState(true)
+    const [saving, setSaving] = useState(false)
+
+    useEffect(() => {
+        const loadSettings = async () => {
+            try {
+                const data = await getUserSettings()
+                setPrefs(prev => ({ ...prev, ...data }))
+            } catch (err) {
+                console.error('Failed to load settings:', err)
+            } finally {
+                setLoading(false)
+            }
+        }
+        loadSettings()
+    }, [])
+
+    const handleToggle = async (key) => {
+        const newValue = !prefs[key]
+        setPrefs({ ...prefs, [key]: newValue })
+
+        try {
+            await updateUserSettings({ [key]: newValue })
+        } catch (err) {
+            // Revert on error
+            setPrefs({ ...prefs, [key]: !newValue })
+            toast.error('Failed to update preference')
+        }
+    }
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+        )
+    }
+
+    const notificationItems = [
+        { key: 'notify_session_reminders', label: 'Session Reminders', desc: 'Get notified before scheduled sessions' },
+        { key: 'notify_progress_alerts', label: 'Progress Alerts', desc: 'Notifications when clients make progress' },
+        { key: 'notify_mastery_achieved', label: 'Mastery Notifications', desc: 'Notify when clients reach mastery criteria' },
+    ]
+
+    const emailItems = [
+        { key: 'email_notifications', label: 'Email Notifications', desc: 'Receive important updates via email', disabled: true },
+        { key: 'email_weekly_digest', label: 'Weekly Digest', desc: 'Get a weekly summary of all activity', disabled: true },
+    ]
 
     return (
         <div>
@@ -190,32 +355,55 @@ function NotificationSettings() {
                 Control how and when you receive notifications.
             </p>
 
-            <div className="space-y-4 max-w-xl">
-                {[
-                    { key: 'emailNotifications', label: 'Email Notifications', desc: 'Receive updates via email' },
-                    { key: 'sessionReminders', label: 'Session Reminders', desc: 'Get reminded before scheduled sessions' },
-                    { key: 'progressAlerts', label: 'Progress Alerts', desc: 'Notify when clients reach mastery criteria' },
-                ].map((item) => (
-                    <div key={item.key} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                        <div>
-                            <p className="font-medium text-gray-900">{item.label}</p>
-                            <p className="text-sm text-gray-500">{item.desc}</p>
-                        </div>
-                        <button
-                            onClick={() => setPrefs({ ...prefs, [item.key]: !prefs[item.key] })}
-                            className={`w-12 h-6 rounded-full transition-colors ${prefs[item.key] ? 'bg-primary' : 'bg-gray-300'}`}
-                        >
-                            <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${prefs[item.key] ? 'translate-x-6' : 'translate-x-0.5'}`}></div>
-                        </button>
+            <div className="space-y-6 max-w-xl">
+                <div>
+                    <h3 className="font-semibold text-gray-900 mb-3">In-App Notifications</h3>
+                    <div className="space-y-3">
+                        {notificationItems.map((item) => (
+                            <div key={item.key} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                                <div>
+                                    <p className="font-medium text-gray-900">{item.label}</p>
+                                    <p className="text-sm text-gray-500">{item.desc}</p>
+                                </div>
+                                <button
+                                    onClick={() => handleToggle(item.key)}
+                                    className={`w-12 h-6 rounded-full transition-colors ${prefs[item.key] ? 'bg-primary' : 'bg-gray-300'}`}
+                                >
+                                    <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${prefs[item.key] ? 'translate-x-6' : 'translate-x-0.5'}`}></div>
+                                </button>
+                            </div>
+                        ))}
                     </div>
-                ))}
+                </div>
+
+                <div>
+                    <h3 className="font-semibold text-gray-900 mb-3">Email Notifications</h3>
+                    <p className="text-sm text-gray-500 mb-3">Email notifications will be available after email service is configured.</p>
+                    <div className="space-y-3">
+                        {emailItems.map((item) => (
+                            <div key={item.key} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl opacity-50">
+                                <div>
+                                    <p className="font-medium text-gray-900">{item.label}</p>
+                                    <p className="text-sm text-gray-500">{item.desc}</p>
+                                </div>
+                                <button
+                                    disabled
+                                    className="w-12 h-6 rounded-full bg-gray-300 cursor-not-allowed"
+                                >
+                                    <div className="w-5 h-5 bg-white rounded-full shadow translate-x-0.5"></div>
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
         </div>
     )
 }
 
 export default function SettingsPage() {
-    const { user, logout } = useAuth()
+    const { user, logout, setUser } = useAuth()
+    const { toast } = useToast()
     const [activeSection, setActiveSection] = useState('account')
 
     return (
@@ -263,10 +451,10 @@ export default function SettingsPage() {
 
                     {/* Main Content */}
                     <div className="lg:col-span-3">
-                        {activeSection === 'account' && <AccountSettings user={user} />}
-                        {activeSection === 'notifications' && <NotificationSettings />}
-                        {activeSection === 'therapy' && <TherapySettings />}
-                        {activeSection === 'data' && <DataSettings />}
+                        {activeSection === 'account' && <AccountSettings user={user} toast={toast} setUser={setUser} />}
+                        {activeSection === 'notifications' && <NotificationSettings toast={toast} />}
+                        {activeSection === 'therapy' && <TherapySettings toast={toast} />}
+                        {activeSection === 'data' && <DataSettings toast={toast} />}
                     </div>
                 </div>
             </div>

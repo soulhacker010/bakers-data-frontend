@@ -89,6 +89,14 @@ export const editSessionData = async (dataId, updateData) => {
     return response.data
 }
 
+/**
+ * Delete session data point
+ * @param {number} dataId - Session data ID to delete
+ */
+export const deleteSessionData = async (dataId) => {
+    await api.delete(`/api/sessions/data/${dataId}`)
+}
+
 export default {
     getSessions,
     getSession,
@@ -97,6 +105,6 @@ export default {
     endSession,
     deleteSession,
     editSessionData,
+    deleteSessionData,
 }
-
 

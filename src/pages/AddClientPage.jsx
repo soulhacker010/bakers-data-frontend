@@ -4,11 +4,13 @@ import { DashboardLayout } from '../components/layout'
 import { Button, Input, Card } from '../components/ui'
 import { ArrowLeft, Calendar } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
+import { useNotifications, NOTIFICATION_TYPES } from '../context/NotificationContext'
 import { createClient } from '../services/clients'
 
 export default function AddClientPage() {
     const navigate = useNavigate()
     const { toast } = useToast()
+    const { addNotification } = useNotifications()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
 
@@ -41,6 +43,12 @@ export default function AddClientPage() {
         try {
             // Create client via API
             const newClient = await createClient(formData)
+
+            // Add notification
+            addNotification(
+                NOTIFICATION_TYPES.CLIENT_ADDED,
+                `New client "${formData.first_name} ${formData.last_name}" added`
+            )
 
             // Success toast and navigate
             toast.success(`Client "${formData.first_name} ${formData.last_name}" added successfully!`)

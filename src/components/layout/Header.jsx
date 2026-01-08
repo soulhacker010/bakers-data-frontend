@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useNotifications } from '../../context/NotificationContext'
 import {
     Home,
     Users,
@@ -10,9 +11,16 @@ import {
     Search,
     LogOut,
     Menu,
-    X
+    X,
+    Check,
+    Trash2,
+    CheckCircle2,
+    UserPlus,
+    Award,
+    UserCheck
 } from 'lucide-react'
 import { useState } from 'react'
+import { formatDistanceToNow } from 'date-fns'
 
 const navItems = [
     { path: '/dashboard', label: 'HOME', icon: Home },
@@ -29,7 +37,18 @@ export default function Header() {
     const [showUserMenu, setShowUserMenu] = useState(false)
     const [showMobileMenu, setShowMobileMenu] = useState(false)
     const [showMobileSearch, setShowMobileSearch] = useState(false)
+    const [showNotifications, setShowNotifications] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
+    const { notifications, unreadCount, markRead, markAllRead, clearAll } = useNotifications()
+
+    // Handle search submit
+    const handleSearch = (e) => {
+        if (e.key === 'Enter' && searchQuery.trim()) {
+            navigate(`/clients?search=${encodeURIComponent(searchQuery.trim())}`)
+            setSearchQuery('')
+            setShowMobileSearch(false)
+        }
+    }
 
     const handleLogout = () => {
         logout()
@@ -72,6 +91,7 @@ export default function Header() {
                                 placeholder="Search clients"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
+                                onKeyDown={handleSearch}
                                 className="search-input"
                             />
                         </div>
@@ -107,12 +127,104 @@ export default function Header() {
                         </button>
 
                         {/* Notifications */}
-                        <button className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors">
-                            <Bell size={20} />
-                            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                                4
-                            </span>
-                        </button>
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowNotifications(!showNotifications)}
+                                className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                                <Bell size={20} />
+                                {unreadCount > 0 && (
+                                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                                        {unreadCount > 9 ? '9+' : unreadCount}
+                                    </span>
+                                )}
+                            </button>
+
+                            {showNotifications && (
+                                <>
+                                    <div
+                                        className="fixed inset-0 z-10"
+                                        onClick={() => setShowNotifications(false)}
+                                    ></div>
+                                    <div className="absolute right-0 top-12 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-20 overflow-hidden">
+                                        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                                            <p className="font-semibold text-gray-900">Notifications</p>
+                                            <div className="flex gap-2">
+                                                {notifications.length > 0 && (
+                                                    <>
+                                                        <button
+                                                            onClick={markAllRead}
+                                                            className="text-xs text-primary hover:underline"
+                                                            title="Mark all read"
+                                                        >
+                                                            <Check size={14} />
+                                                        </button>
+                                                        <button
+                                                            onClick={clearAll}
+                                                            className="text-xs text-gray-400 hover:text-red-500"
+                                                            title="Clear all"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="max-h-80 overflow-y-auto">
+                                            {notifications.length === 0 ? (
+                                                <div className="px-4 py-8 text-center text-gray-400">
+                                                    <Bell size={24} className="mx-auto mb-2 opacity-50" />
+                                                    <p className="text-sm">No notifications</p>
+                                                </div>
+                                            ) : (
+                                                notifications.slice(0, 10).map((n) => {
+                                                    // Icon and color based on notification type
+                                                    const getNotificationStyle = (type) => {
+                                                        switch (type) {
+                                                            case 'session_completed':
+                                                                return { icon: CheckCircle2, bg: 'bg-green-100', color: 'text-green-600' }
+                                                            case 'client_added':
+                                                                return { icon: UserPlus, bg: 'bg-blue-100', color: 'text-blue-600' }
+                                                            case 'target_mastered':
+                                                                return { icon: Award, bg: 'bg-yellow-100', color: 'text-yellow-600' }
+                                                            case 'staff_assigned':
+                                                                return { icon: UserCheck, bg: 'bg-purple-100', color: 'text-purple-600' }
+                                                            default:
+                                                                return { icon: Bell, bg: 'bg-gray-100', color: 'text-gray-600' }
+                                                        }
+                                                    }
+                                                    const style = getNotificationStyle(n.type)
+                                                    const IconComponent = style.icon
+
+                                                    return (
+                                                        <div
+                                                            key={n.id}
+                                                            onClick={() => markRead(n.id)}
+                                                            className={`flex items-start gap-3 px-4 py-3 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors ${!n.read ? 'bg-blue-50/30' : ''}`}
+                                                        >
+                                                            <div className={`flex-shrink-0 w-8 h-8 rounded-full ${style.bg} ${style.color} flex items-center justify-center mt-0.5`}>
+                                                                <IconComponent size={16} />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className={`text-sm ${!n.read ? 'font-medium text-gray-900' : 'text-gray-600'}`}>
+                                                                    {n.message}
+                                                                </p>
+                                                                <p className="text-xs text-gray-400 mt-1">
+                                                                    {formatDistanceToNow(new Date(n.timestamp), { addSuffix: true })}
+                                                                </p>
+                                                            </div>
+                                                            {!n.read && (
+                                                                <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-2"></div>
+                                                            )}
+                                                        </div>
+                                                    )
+                                                })
+                                            )}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
 
                         {/* User Menu */}
                         <div className="relative">
@@ -145,7 +257,7 @@ export default function Header() {
                                                 Account Settings
                                             </Link>
                                             <Link
-                                                to="/help"
+                                                to="/support"
                                                 className="block px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
                                                 onClick={() => setShowUserMenu(false)}
                                             >
