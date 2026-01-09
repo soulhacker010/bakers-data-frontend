@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { Button, Input, Select } from '../components/ui'
 import { Eye, EyeOff, Check, ArrowRight } from 'lucide-react'
+import api from '../services/api'
 
 const roleOptions = [
     { value: 'BCBA', label: 'BCBA (Board Certified Behavior Analyst)' },
@@ -23,7 +23,6 @@ export default function RegisterPage() {
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
 
-    const { register } = useAuth()
     const { toast } = useToast()
     const navigate = useNavigate()
 
@@ -52,11 +51,18 @@ export default function RegisterPage() {
         setLoading(true)
 
         try {
-            await register(fullName, email, password, role || 'Therapist')
-            toast.success('Account created successfully! Welcome to Data Sirena.')
-            navigate('/dashboard')
+            await api.post('/api/auth/register', {
+                full_name: fullName,
+                email,
+                password,
+                role: role || 'Therapist'
+            })
+
+            toast.success('Account created! Enter the verification code sent to your email.')
+            // Redirect to verification page with email
+            navigate(`/verify-code?email=${encodeURIComponent(email)}`)
         } catch (err) {
-            const errorMsg = err.message || 'Registration failed. Please try again.'
+            const errorMsg = err.response?.data?.detail || err.message || 'Registration failed'
             setError(errorMsg)
             toast.error(errorMsg)
         } finally {
@@ -84,7 +90,7 @@ export default function RegisterPage() {
                     className="absolute inset-0 w-full h-full object-cover"
                 />
 
-                {/* Gradient Overlay - matches our teal/blue brand colors, with transparency for image */}
+                {/* Gradient Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-br from-[#0E8499]/90 via-[#159DB3]/80 to-[#214B9D]/85"></div>
 
                 {/* Animated Background Shapes */}
