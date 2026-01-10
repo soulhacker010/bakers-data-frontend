@@ -1,180 +1,246 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Button, Input } from '../components/ui'
-import { ArrowLeft, Eye, EyeOff, Check, Lock } from 'lucide-react'
+import { resetPassword, validateCode } from '../services/auth'
 import { useToast } from '../context/ToastContext'
+import { Button, Input } from '../components/ui'
+import { ArrowLeft, ArrowRight, Eye, EyeOff, Check, X, Loader2 } from 'lucide-react'
 
 export default function ResetPasswordPage() {
     const [searchParams] = useSearchParams()
     const navigate = useNavigate()
     const { toast } = useToast()
 
-    const token = searchParams.get('token')
+    const [email, setEmail] = useState('')
+    const [code, setCode] = useState('')
+    const [newPass, setNewPass] = useState('')
+    const [confirmPass, setConfirmPass] = useState('')
+    const [showPass, setShowPass] = useState(false)
 
-    const [password, setPassword] = useState('')
-    const [confirmPassword, setConfirmPassword] = useState('')
-    const [showPassword, setShowPassword] = useState(false)
+    // UI States
     const [loading, setLoading] = useState(false)
+    const [verifying, setVerifying] = useState(false)
+    const [isVerified, setIsVerified] = useState(false)
+    const [error, setError] = useState('')
+    const [codeError, setCodeError] = useState('')
 
-    // Password strength checks
-    const hasLength = password.length >= 8
-    const hasUpper = /[A-Z]/.test(password)
-    const hasLower = /[a-z]/.test(password)
-    const hasNumber = /\d/.test(password)
-    const passwordsMatch = password === confirmPassword && password.length > 0
+    useEffect(() => {
+        const emailParam = searchParams.get('email')
+        if (emailParam) setEmail(emailParam)
+    }, [searchParams])
+
+    // Auto-verify code when 6 digits entered
+    useEffect(() => {
+        const verify = async () => {
+            if (code.length === 6) {
+                setVerifying(true)
+                setCodeError('')
+                setError('')
+                try {
+                    await validateCode(email, code)
+                    setIsVerified(true)
+                    // toast.success("Code verified!") // Optional: User sees Green Check
+                } catch (err) {
+                    setIsVerified(false)
+                    setCodeError('Invalid code')
+                    // toast.error("Invalid code")
+                } finally {
+                    setVerifying(false)
+                }
+            } else {
+                setIsVerified(false)
+                setCodeError('')
+            }
+        }
+
+        // Debounce slightly or just run? Run immediately on 6th digit.
+        const timer = setTimeout(() => {
+            if (code.length === 6 && email) verify()
+        }, 500) // Small delay to prevent spam while typing fast? 
+
+        return () => clearTimeout(timer)
+    }, [code, email])
+
 
     const handleSubmit = async (e) => {
         e.preventDefault()
+        setError('')
 
-        if (password !== confirmPassword) {
-            toast.error('Passwords do not match')
+        if (!isVerified) {
+            setError('Please enter a valid code first.')
             return
         }
 
-        if (!hasLength || !hasUpper || !hasLower || !hasNumber) {
-            toast.error('Password does not meet requirements')
+        if (newPass !== confirmPass) {
+            setError('Passwords do not match')
+            return
+        }
+
+        if (newPass.length < 6) {
+            setError('Password must be at least 6 characters')
             return
         }
 
         setLoading(true)
 
         try {
-            // Mock API call - will connect to backend later
-            console.log('Resetting password with token:', token)
-            await new Promise(resolve => setTimeout(resolve, 1000))
-
-            toast.success('Password reset successfully! Please login with your new password.')
+            await resetPassword(email, code, newPass)
+            toast.success('Password updated successfully! Please log in.')
             navigate('/login')
         } catch (err) {
-            toast.error('Failed to reset password. Please try again.')
+            // api.js interceptor throws Error(detail), so err.message contains the backend text
+            const msg = err.message || err.response?.data?.detail || 'Invalid code or expired.'
+            setError(msg)
         } finally {
             setLoading(false)
         }
     }
 
-    const PasswordCheck = ({ met, text }) => (
-        <div className={`flex items-center gap-2 text-xs transition-colors ${met ? 'text-green-600' : 'text-gray-400'}`}>
-            <div className={`w-4 h-4 rounded-full flex items-center justify-center transition-colors ${met ? 'bg-green-100' : 'bg-gray-100'}`}>
-                {met && <Check size={10} />}
-            </div>
-            {text}
-        </div>
-    )
-
     return (
         <div className="min-h-screen flex">
-            {/* Left Side - Image */}
+            {/* Left Side */}
             <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
                 <img
-                    src="/images/login-bg.jpg"
-                    alt="Data Sirena"
-                    className="object-cover w-full h-full"
+                    src="/images/threpahy.jpg"
+                    alt="Therapy"
+                    className="absolute inset-0 w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-br from-[#159DB3]/80 to-[#214B9D]/80"></div>
-                <div className="absolute inset-0 flex items-center justify-center p-12">
-                    <div className="text-center text-white">
-                        <img
-                            src="/images/logo.png"
-                            alt="Data Sirena"
-                            className="h-20 mx-auto mb-8 drop-shadow-lg"
-                        />
-                        <h2 className="font-heading text-3xl font-bold mb-4">
-                            Create New Password
-                        </h2>
-                        <p className="text-white/80 text-lg max-w-md mx-auto">
-                            Choose a strong password to keep your account secure.
-                        </p>
+                <div className="absolute inset-0 bg-gradient-to-br from-[#0E8499]/90 via-[#159DB3]/80 to-[#214B9D]/85"></div>
+                <div className="absolute inset-0 overflow-hidden">
+                    <div className="absolute -top-20 -left-20 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
+                    <div className="absolute bottom-20 right-20 w-72 h-72 bg-white/5 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+                </div>
+                <div className="relative z-10 flex flex-col justify-between p-12 text-white">
+                    <div>
+                        <img src="/images/logo.png" alt="Data Sirena" className="h-20 w-auto mb-4" />
+                        <p className="text-white/70 text-lg">New Credentials</p>
+                    </div>
+                    <div className="max-w-md">
+                        <blockquote className="text-2xl font-heading font-medium leading-relaxed mb-4">
+                            "Security is our priority. Let's get you a new fresh start."
+                        </blockquote>
+                    </div>
+                    <div className="text-sm text-white/60">
+                        &copy; {new Date().getFullYear()} ABA Data Collection
                     </div>
                 </div>
             </div>
 
-            {/* Right Side - Form */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gray-50">
-                <div className="w-full max-w-md">
-                    {/* Mobile Logo */}
-                    <div className="lg:hidden text-center mb-8">
-                        <img
-                            src="/images/logo.png"
-                            alt="Data Sirena"
-                            className="h-12 mx-auto mb-4"
-                        />
+            {/* Right Side */}
+            <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12 bg-gray-50">
+                <div className="w-full max-w-md animate-fade-in">
+                    <div className="mb-8">
+                        <h2 className="font-heading text-3xl font-bold text-gray-900 mb-2">
+                            Reset Password
+                        </h2>
+                        <p className="text-gray-500">
+                            Enter the code sent to your email and choose a new password.
+                        </p>
                     </div>
 
-                    {/* Back to Login */}
-                    <Link
-                        to="/login"
-                        className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-8 transition-colors"
-                    >
-                        <ArrowLeft size={18} />
-                        Back to Login
-                    </Link>
-
-                    <h1 className="font-heading text-3xl font-bold text-gray-900 mb-2">
-                        Reset Password
-                    </h1>
-                    <p className="text-gray-500 mb-8">
-                        Enter your new password below.
-                    </p>
-
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* New Password */}
-                        <div className="relative">
-                            <Input
-                                label="New Password"
-                                type={showPassword ? 'text' : 'password'}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="••••••••"
-                                icon={<Lock size={18} className="text-gray-400" />}
-                                required
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-4 top-10 text-gray-400 hover:text-gray-600"
-                            >
-                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                            </button>
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-600 text-sm mb-6 flex items-center gap-2">
+                            <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                            {error}
                         </div>
+                    )}
 
-                        {/* Password Requirements */}
-                        <div className="grid grid-cols-2 gap-2 p-3 bg-gray-50 rounded-xl">
-                            <PasswordCheck met={hasLength} text="8+ characters" />
-                            <PasswordCheck met={hasUpper} text="Uppercase" />
-                            <PasswordCheck met={hasLower} text="Lowercase" />
-                            <PasswordCheck met={hasNumber} text="Number" />
-                        </div>
-
-                        {/* Confirm Password */}
+                    <form onSubmit={handleSubmit} className="space-y-5">
                         <Input
-                            label="Confirm Password"
-                            type={showPassword ? 'text' : 'password'}
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            placeholder="••••••••"
-                            icon={<Lock size={18} className="text-gray-400" />}
-                            error={confirmPassword && !passwordsMatch ? "Passwords don't match" : ''}
+                            label="Email Address"
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
                             required
+                        // Disabled if verified to lock it in? (Optional)
                         />
+
+                        <div className="space-y-1 relative">
+                            <label className="label-uppercase block">Verification Code</label>
+                            <div className="relative">
+                                <Input
+                                    value={code}
+                                    onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                    placeholder="123456"
+                                    className={`tracking-widest font-mono text-center text-lg pr-12 transition-colors ${isVerified ? 'border-green-500 bg-green-50 focus:ring-green-200' :
+                                        codeError ? 'border-red-500 bg-red-50 focus:ring-red-200' : ''
+                                        }`}
+                                    maxLength={6}
+                                    required
+                                />
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                                    {verifying ? (
+                                        <Loader2 className="animate-spin text-primary" size={20} />
+                                    ) : isVerified ? (
+                                        <Check className="text-green-600" size={24} strokeWidth={3} />
+                                    ) : code.length === 6 && codeError ? (
+                                        <X className="text-red-500" size={24} strokeWidth={3} />
+                                    ) : null}
+                                </div>
+                            </div>
+                            {isVerified && <p className="text-xs text-green-600 font-medium">Code verified successfully!</p>}
+                            {codeError && <p className="text-xs text-red-600 font-medium">{codeError}</p>}
+                        </div>
+
+                        {/* Transition wrapper for password fields */}
+                        <div className={`space-y-5 transition-all duration-300 ${!isVerified ? 'opacity-50 grayscale pointer-events-none' : ''}`}>
+                            <div>
+                                <label className="label-uppercase block mb-2">New Password</label>
+                                <div className="relative">
+                                    <input
+                                        type={showPass ? 'text' : 'password'}
+                                        value={newPass}
+                                        onChange={(e) => setNewPass(e.target.value)}
+                                        placeholder="••••••••"
+                                        className="input-premium pr-12"
+                                        required
+                                        minLength={6}
+                                        disabled={!isVerified}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPass(!showPass)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                        disabled={!isVerified}
+                                    >
+                                        {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="label-uppercase block mb-2">Confirm Password</label>
+                                <input
+                                    type="password"
+                                    value={confirmPass}
+                                    onChange={(e) => setConfirmPass(e.target.value)}
+                                    placeholder="••••••••"
+                                    className="input-premium"
+                                    required
+                                    disabled={!isVerified}
+                                />
+                            </div>
+                        </div>
 
                         <Button
                             type="submit"
-                            className="w-full"
-                            size="lg"
                             loading={loading}
-                            disabled={!passwordsMatch || !hasLength || !hasUpper || !hasLower || !hasNumber}
+                            className={`w-full py-4 text-base group transition-all duration-300 ${!isVerified ? 'bg-gray-400 hover:bg-gray-400 cursor-not-allowed' : ''}`}
+                            disabled={!isVerified || loading}
                         >
-                            Reset Password
+                            {loading ? 'Updating...' : (
+                                <>
+                                    Update Password
+                                    <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                                </>
+                            )}
                         </Button>
                     </form>
 
-                    {/* Footer */}
-                    <p className="text-center text-gray-400 text-sm mt-12">
-                        Remember your password?{' '}
-                        <Link to="/login" className="text-[#159DB3] hover:underline font-medium">
-                            Sign in
+                    <div className="mt-8 text-center">
+                        <Link to="/login" className="text-gray-500 hover:text-gray-900 transition-colors text-sm">
+                            Wait, I remember my password
                         </Link>
-                    </p>
+                    </div>
                 </div>
             </div>
         </div>

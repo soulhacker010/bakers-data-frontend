@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import Turnstile from 'react-turnstile'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { Button, Input } from '../components/ui'
@@ -9,6 +10,7 @@ export default function LoginPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
+    const [turnstileToken, setTurnstileToken] = useState('')
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
 
@@ -19,10 +21,18 @@ export default function LoginPage() {
     const handleSubmit = async (e) => {
         e.preventDefault()
         setError('')
+
+        if (!turnstileToken) {
+            setError('Please complete the CAPTCHA')
+            toast.error('Please complete the CAPTCHA')
+            return
+        }
+
         setLoading(true)
 
         try {
-            await login(email, password)
+            // Updated login signature: { email, password, turnstile_token }
+            await login({ email, password, turnstile_token: turnstileToken })
             toast.success('Welcome back! Login successful.')
             navigate('/dashboard')
         } catch (err) {
@@ -158,11 +168,21 @@ export default function LoginPage() {
                             </Link>
                         </div>
 
+                        {/* Turnstile CAPTCHA */}
+                        <div className="flex justify-center my-4">
+                            <Turnstile
+                                sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                                onVerify={(token) => setTurnstileToken(token)}
+                                theme="light"
+                            />
+                        </div>
+
                         {/* Submit */}
                         <Button
                             type="submit"
                             loading={loading}
-                            className="w-full py-4 text-base group"
+                            disabled={!turnstileToken}
+                            className="w-full py-4 text-base group disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {loading ? 'Signing in...' : (
                                 <>

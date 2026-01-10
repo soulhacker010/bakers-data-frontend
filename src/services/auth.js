@@ -8,6 +8,7 @@ import api, { setToken, removeToken } from './api'
  * @param {Object} userData - { email, password, full_name, role }
  */
 export const register = async (userData) => {
+    // userData contains { email, password, full_name, turnstile_token }
     const response = await api.post('/api/auth/register', userData)
     return response.data
 }
@@ -18,15 +19,18 @@ export const register = async (userData) => {
  * @param {string} password 
  * @returns {Object} - { access_token, token_type, user }
  */
-export const login = async (email, password) => {
-    const response = await api.post('/api/auth/login', { email, password })
+export const login = async (credentials) => {
+    // credentials contains { email, password, turnstile_token }
+    const response = await api.post('/api/auth/login', credentials)
     const { access_token, user } = response.data
 
-    // Store token and user
-    setToken(access_token)
-    localStorage.setItem('user', JSON.stringify(user))
-
-    return { token: access_token, user }
+    if (access_token) {
+        setToken(access_token)
+        if (user) {
+            localStorage.setItem('user', JSON.stringify(user))
+        }
+    }
+    return response.data
 }
 
 /**
@@ -61,6 +65,31 @@ export const getStoredUser = () => {
  */
 export const isAuthenticated = () => {
     return !!localStorage.getItem('access_token')
+}
+
+export const validateCode = async (email, code) => {
+    const response = await api.post('/api/auth/validate-code', { email, code })
+    return response.data
+}
+
+export const verifyCode = async (email, code) => {
+    const response = await api.post('/api/auth/verify-code', { email, code })
+    return response.data
+}
+
+export const resendCode = async (email) => {
+    const response = await api.post('/api/auth/resend-code', { email })
+    return response.data
+}
+
+export const forgotPassword = async (email) => {
+    const response = await api.post('/api/auth/forgot-password', { email })
+    return response.data
+}
+
+export const resetPassword = async (email, code, new_password) => {
+    const response = await api.post('/api/auth/reset-password', { email, code, new_password })
+    return response.data
 }
 
 export default {

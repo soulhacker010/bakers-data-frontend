@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import Turnstile from 'react-turnstile'
 import { useToast } from '../context/ToastContext'
 import { Button, Input, Select } from '../components/ui'
 import { Eye, EyeOff, Check, ArrowRight } from 'lucide-react'
@@ -20,6 +21,7 @@ export default function RegisterPage() {
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
+    const [turnstileToken, setTurnstileToken] = useState('')
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
 
@@ -48,6 +50,12 @@ export default function RegisterPage() {
             return
         }
 
+        if (!turnstileToken) {
+            setError('Please complete the CAPTCHA')
+            toast.error('Please complete the CAPTCHA')
+            return
+        }
+
         setLoading(true)
 
         try {
@@ -55,7 +63,8 @@ export default function RegisterPage() {
                 full_name: fullName,
                 email,
                 password,
-                role: role || 'Therapist'
+                role: role || 'Therapist',
+                turnstile_token: turnstileToken
             })
 
             toast.success('Account created! Enter the verification code sent to your email.')
@@ -246,11 +255,21 @@ export default function RegisterPage() {
                             required
                         />
 
+                        {/* Turnstile CAPTCHA */}
+                        <div className="flex justify-center my-4">
+                            <Turnstile
+                                sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                                onVerify={(token) => setTurnstileToken(token)}
+                                theme="light"
+                            />
+                        </div>
+
                         {/* Submit */}
                         <Button
                             type="submit"
                             loading={loading}
-                            className="w-full py-4 text-base mt-2 group"
+                            disabled={!turnstileToken}
+                            className="w-full py-4 text-base mt-2 group disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {loading ? 'Creating account...' : (
                                 <>
