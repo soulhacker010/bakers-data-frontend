@@ -85,7 +85,7 @@ Set when a target is considered "mastered":
 - **Threshold**: Required accuracy (e.g., 80%)
 - **Consecutive Sessions**: How many sessions in a row (e.g., 3)
         `
-    },
+    }, 
     {
         id: 'targets',
         title: 'Targets',
@@ -102,17 +102,17 @@ Targets are specific skills within a program. For example, a "Receptive Language
 4. Set mastery criteria (defaults from your Settings)
 5. Click Save
 
-### Target Status
+### Target Status 
 - **Active**: Currently being worked on
 - **Mastered**: Met criteria, shown with green badge
 - **On Hold**: Temporarily paused
 
-### Progress Tracking
+### Progress Tracking 
 Each target shows:
 - Current accuracy percentage
 - Number of trials/sessions
 - Progress toward mastery
-- Historical performance graph
+- Historical performance graph 
         `
     },
     {

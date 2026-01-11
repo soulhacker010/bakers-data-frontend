@@ -262,7 +262,7 @@ export default function Header() {
                                                 onClick={() => setShowUserMenu(false)}
                                             >
                                                 Help & Support
-                                            </Link>
+                                            </Link> 
                                         </div>
                                         <div className="border-t border-gray-100 pt-1">
                                             <button
@@ -276,7 +276,7 @@ export default function Header() {
                                     </div>
                                 </>
                             )}
-                        </div>
+                        </div> 
                     </div>
                 </div>
             </header>

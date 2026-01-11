@@ -52,7 +52,7 @@ export default function RegisterPage() {
 
         if (!turnstileToken) {
             setError('Please complete the CAPTCHA')
-            toast.error('Please complete the CAPTCHA')
+            toast.error('Please complete the CAPTCHA') 
             return
         }
 
@@ -68,7 +68,7 @@ export default function RegisterPage() {
             })
 
             toast.success('Account created! Enter the verification code sent to your email.')
-            // Redirect to verification page with email
+            // Redirect to verification page with email 
             navigate(`/verify-code?email=${encodeURIComponent(email)}`)
         } catch (err) {
             const errorMsg = err.response?.data?.detail || err.message || 'Registration failed'
@@ -125,7 +125,7 @@ export default function RegisterPage() {
 
                         <div className="space-y-4">
                             {[
-                                'Track client progress with precision',
+                                'Track client progress with precision', 
                                 'Generate insightful reports instantly',
                                 'Collaborate with your therapy team',
                                 'Secure and HIPAA-compliant platform'
