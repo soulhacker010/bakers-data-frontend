@@ -3,7 +3,8 @@ import { DashboardLayout } from '../components/layout'
 import { Button, Input, Select, Card } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { LogOut, Check, Download, FileText, Loader2 } from 'lucide-react'
+import { LogOut, Check, Download, FileText, Loader2, Shield } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import {
     getUserSettings,
     updateUserSettings,
@@ -436,7 +437,18 @@ export default function SettingsPage() {
                                 ))}
                             </nav>
 
-                            <div className="border-t border-gray-100 mt-6 pt-6">
+                            <div className="border-t border-gray-100 mt-6 pt-6 space-y-3">
+                                {/* Admin Panel Button - Only visible to admin */}
+                                {user?.role === 'admin' && (
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => window.location.href = '/admin'}
+                                        icon={<Shield size={16} />}
+                                        className="w-full justify-start text-purple-600 border-purple-300 hover:bg-purple-50"
+                                    >
+                                        Admin Panel
+                                    </Button>
+                                )}
                                 <Button
                                     variant="ghost"
                                     onClick={logout}

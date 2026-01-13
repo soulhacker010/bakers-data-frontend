@@ -3,10 +3,11 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { getClient } from '../services/clients'
 import { getProgram, getPrograms } from '../services/programs'
 import { getTargets } from '../services/targets'
+import { pauseSession, resumeSession } from '../services/sessions'
 import { useToast } from '../context/ToastContext'
 import { useNotifications, NOTIFICATION_TYPES } from '../context/NotificationContext'
 import { getUserSettings } from '../services/settings'
-import { Check, X, StopCircle, Plus, Play, Square, RotateCcw, ChevronLeft, ChevronRight, Target, FileText, ListChecks } from 'lucide-react'
+import { Check, X, StopCircle, Plus, Play, Square, RotateCcw, ChevronLeft, ChevronRight, Target, FileText, ListChecks, Pause } from 'lucide-react'
 import { TaskAnalysisCollector } from '../components/data'
 
 // Timer hook
@@ -234,7 +235,8 @@ export default function SessionCollectPage() {
     const navigate = useNavigate()
     const { toast } = useToast()
     const { addNotification } = useNotifications()
-    const { formatTime } = useTimer()
+    const timer = useTimer()
+    const { formatTime, pause: pauseTimer, resume: resumeTimer } = timer
 
     const [notes, setNotes] = useState('')
     const [sessionData, setSessionData] = useState([])
@@ -247,6 +249,7 @@ export default function SessionCollectPage() {
     const [sessionId, setSessionId] = useState(null)
     const [saving, setSaving] = useState(false)
     const [sidebarOpen, setSidebarOpen] = useState(true)
+    const [isPaused, setIsPaused] = useState(false)
     const [userSettings, setUserSettings] = useState({
         show_prompt_levels: true,
         auto_save_interval: 30,
@@ -457,6 +460,34 @@ export default function SessionCollectPage() {
         }
     }, [program, sessionId, toast, navigate])
 
+    // Handle pause session
+    const handlePause = async () => {
+        if (!sessionId) return
+        try {
+            await pauseSession(sessionId)
+            setIsPaused(true)
+            pauseTimer()
+            toast.info('Session paused')
+        } catch (err) {
+            console.error('Failed to pause session:', err)
+            toast.error('Failed to pause session')
+        }
+    }
+
+    // Handle resume session
+    const handleResume = async () => {
+        if (!sessionId) return
+        try {
+            await resumeSession(sessionId)
+            setIsPaused(false)
+            resumeTimer()
+            toast.info('Session resumed')
+        } catch (err) {
+            console.error('Failed to resume session:', err)
+            toast.error('Failed to resume session')
+        }
+    }
+
     const handleEndSession = async () => {
         if (!sessionId) {
             navigate('/sessions')
@@ -500,17 +531,43 @@ export default function SessionCollectPage() {
     return (
         <div className="min-h-screen bg-[#F8FAFB]">
             {/* Session Header */}
-            <header className="fixed top-0 left-0 right-0 h-16 hero-gradient z-50 shadow-lg">
+            <header className={`fixed top-0 left-0 right-0 h-16 z-50 shadow-lg ${isPaused ? 'bg-amber-500' : 'hero-gradient'}`}>
                 <div className="h-full px-6 flex items-center justify-between">
-                    <button
-                        onClick={handleEndSession}
-                        className="bg-white/20 hover:bg-white/30 text-white px-5 py-2.5 rounded-full font-semibold text-sm transition-colors flex items-center gap-2"
-                    >
-                        <StopCircle size={18} />
-                        End Session
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={handleEndSession}
+                            className="bg-white/20 hover:bg-white/30 text-white px-5 py-2.5 rounded-full font-semibold text-sm transition-colors flex items-center gap-2"
+                        >
+                            <StopCircle size={18} />
+                            End Session
+                        </button>
+
+                        {/* Pause/Resume Button */}
+                        {isPaused ? (
+                            <button
+                                onClick={handleResume}
+                                className="bg-green-500 hover:bg-green-600 text-white px-5 py-2.5 rounded-full font-semibold text-sm transition-colors flex items-center gap-2"
+                            >
+                                <Play size={18} />
+                                Resume
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handlePause}
+                                className="bg-white/20 hover:bg-white/30 text-white px-5 py-2.5 rounded-full font-semibold text-sm transition-colors flex items-center gap-2"
+                            >
+                                <Pause size={18} />
+                                Pause
+                            </button>
+                        )}
+                    </div>
 
                     <div className="text-white text-lg font-medium flex items-center gap-3">
+                        {isPaused && (
+                            <span className="bg-white/20 px-3 py-1 rounded-full text-sm animate-pulse">
+                                PAUSED
+                            </span>
+                        )}
                         <span>{client.first_name} {client.last_name}</span>
                         <span className="text-white/50">•</span>
                         <span>{program.name}</span>
@@ -523,7 +580,7 @@ export default function SessionCollectPage() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <div className="text-white font-heading text-2xl font-bold font-mono">
+                        <div className={`text-white font-heading text-2xl font-bold font-mono ${isPaused ? 'animate-pulse' : ''}`}>
                             {formatTime}
                         </div>
                         {userSettings.default_session_duration && (

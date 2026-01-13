@@ -120,7 +120,7 @@ export default function ResetPasswordPage() {
                         </blockquote>
                     </div>
                     <div className="text-sm text-white/60">
-                        &copy; {new Date().getFullYear()} ABA Data Collection
+                        &copy; {new Date().getFullYear()} Data Sirena
                     </div>
                 </div>
             </div>

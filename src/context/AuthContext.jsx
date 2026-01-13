@@ -72,13 +72,14 @@ export function AuthProvider({ children }) {
     }, [])
 
     /**
-     * Login with email and password
+     * Login with credentials
+     * @param {Object} credentials - { email, password, turnstile_token }
      */
-    const login = async (email, password) => {
+    const login = async (credentials) => {
         setError(null)
         setSessionExpired(false)
         try {
-            const { user: loggedInUser } = await apiLogin(email, password)
+            const { user: loggedInUser } = await apiLogin(credentials)
             setUser(loggedInUser)
             return true
         } catch (err) {

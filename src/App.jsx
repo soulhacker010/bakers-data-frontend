@@ -28,6 +28,8 @@ import SettingsPage from './pages/SettingsPage'
 import SupportPage from './pages/SupportPage'
 import GettingStartedPage from './pages/GettingStartedPage'
 import DocumentationPage from './pages/DocumentationPage'
+import AdminDashboardPage from './pages/AdminDashboardPage'
+import RegistrationSuccessPage from './pages/RegistrationSuccessPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 function App() {
@@ -43,6 +45,7 @@ function App() {
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/verify-code" element={<VerifyCodePage />} />
+              <Route path="/registration-success" element={<RegistrationSuccessPage />} />
 
               {/* Protected Routes */}
               <Route path="/dashboard" element={
@@ -164,6 +167,13 @@ function App() {
               <Route path="/docs" element={
                 <ProtectedRoute>
                   <DocumentationPage />
+                </ProtectedRoute>
+              } />
+
+              {/* Admin Route (admin only) */}
+              <Route path="/admin" element={
+                <ProtectedRoute>
+                  <AdminDashboardPage />
                 </ProtectedRoute>
               } />
 

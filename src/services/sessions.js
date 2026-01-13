@@ -97,6 +97,26 @@ export const deleteSessionData = async (dataId) => {
     await api.delete(`/api/sessions/data/${dataId}`)
 }
 
+/**
+ * Pause an active therapy session
+ * @param {number} sessionId 
+ * @returns {Object} - Pause confirmation with pause_started_at
+ */
+export const pauseSession = async (sessionId) => {
+    const response = await api.post(`/api/sessions/${sessionId}/pause`)
+    return response.data
+}
+
+/**
+ * Resume a paused therapy session
+ * @param {number} sessionId 
+ * @returns {Object} - Resume confirmation with total_paused_seconds
+ */
+export const resumeSession = async (sessionId) => {
+    const response = await api.post(`/api/sessions/${sessionId}/resume`)
+    return response.data
+}
+
 export default {
     getSessions,
     getSession,
@@ -106,5 +126,7 @@ export default {
     deleteSession,
     editSessionData,
     deleteSessionData,
+    pauseSession,
+    resumeSession,
 }
 

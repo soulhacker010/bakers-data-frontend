@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Turnstile from 'react-turnstile'
 import { useAuth } from '../context/AuthContext'
@@ -11,6 +11,7 @@ export default function LoginPage() {
     const [password, setPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
     const [turnstileToken, setTurnstileToken] = useState('')
+    const [turnstileKey, setTurnstileKey] = useState(0) // Key to force re-render/reset Turnstile
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
 
@@ -39,6 +40,9 @@ export default function LoginPage() {
             const errorMsg = err.message || 'Invalid email or password'
             setError(errorMsg)
             toast.error(errorMsg)
+            // Reset Turnstile on error so user can try again
+            setTurnstileToken('')
+            setTurnstileKey(prev => prev + 1) // Force Turnstile to re-render
         } finally {
             setLoading(false)
         }
@@ -171,8 +175,10 @@ export default function LoginPage() {
                         {/* Turnstile CAPTCHA */}
                         <div className="flex justify-center my-4">
                             <Turnstile
+                                key={turnstileKey}
                                 sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
                                 onVerify={(token) => setTurnstileToken(token)}
+                                onExpire={() => setTurnstileToken('')}
                                 theme="light"
                             />
                         </div>

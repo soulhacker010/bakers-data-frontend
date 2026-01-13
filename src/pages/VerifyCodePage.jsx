@@ -100,9 +100,9 @@ export default function VerifyCodePage() {
                 code: fullCode
             })
 
-            // Success - redirect to login
-            toast.success('Email verified successfully! Please log in.')
-            navigate('/login')
+            // Success - redirect to registration success page
+            toast.success('Email verified successfully!')
+            navigate('/registration-success')
         } catch (err) {
             let errorMsg = err.response?.data?.detail || 'Verification failed. Please try again.'
 
