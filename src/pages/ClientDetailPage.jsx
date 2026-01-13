@@ -4,6 +4,7 @@ import { DashboardLayout } from '../components/layout'
 import { getClient, deleteClient } from '../services/clients'
 import { getPrograms } from '../services/programs'
 import { getSessions } from '../services/sessions'
+import { getMasteryProgress } from '../services/analytics'
 import {
     Edit3,
     Plus,
@@ -14,7 +15,10 @@ import {
     Clock,
     ChevronRight,
     ArrowLeft,
-    Users
+    Users,
+    Award,
+    Target,
+    Star
 } from 'lucide-react'
 import { format } from 'date-fns'
 import StaffAssignmentModal from '../components/staff/StaffAssignmentModal'
@@ -150,6 +154,7 @@ export default function ClientDetailPage() {
     const [client, setClient] = useState(null)
     const [clientPrograms, setClientPrograms] = useState([])
     const [clientSessions, setClientSessions] = useState([])
+    const [masteryData, setMasteryData] = useState(null)
     const [loading, setLoading] = useState(true)
 
     // Fetch client data on mount
@@ -157,14 +162,16 @@ export default function ClientDetailPage() {
         const fetchData = async () => {
             try {
                 setLoading(true)
-                const [clientData, programsData, sessionsData] = await Promise.all([
+                const [clientData, programsData, sessionsData, masteryRes] = await Promise.all([
                     getClient(id),
                     getPrograms({ client_id: id }),
-                    getSessions({ client_id: id })
+                    getSessions({ client_id: id }),
+                    getMasteryProgress(id).catch(() => null)
                 ])
                 setClient(clientData)
                 setClientPrograms(programsData)
                 setClientSessions(sessionsData)
+                setMasteryData(masteryRes)
             } catch (err) {
                 toast.error('Failed to load client data')
                 navigate('/clients')
@@ -276,6 +283,16 @@ export default function ClientDetailPage() {
                             Programs ({clientPrograms.length})
                         </button>
                         <button
+                            onClick={() => setActiveTab('mastery')}
+                            className={`py-4 text-sm font-medium uppercase tracking-wider border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'mastery'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-gray-500 hover:text-gray-700'
+                                }`}
+                        >
+                            <Award size={16} />
+                            Mastery Progress
+                        </button>
+                        <button
                             onClick={() => setActiveTab('history')}
                             className={`py-4 text-sm font-medium uppercase tracking-wider border-b-2 transition-colors ${activeTab === 'history'
                                 ? 'border-primary text-primary'
@@ -290,7 +307,7 @@ export default function ClientDetailPage() {
 
             {/* Content */}
             <div className="px-6 py-8 max-w-screen-xl mx-auto">
-                {activeTab === 'programs' ? (
+                {activeTab === 'programs' && (
                     <div className="space-y-4">
                         {clientPrograms.length === 0 ? (
                             <div className="text-center py-12">
@@ -326,7 +343,95 @@ export default function ClientDetailPage() {
                             </>
                         )}
                     </div>
-                ) : (
+                )}
+
+                {activeTab === 'mastery' && (
+                    <div className="space-y-4">
+                        {!masteryData || masteryData.programs?.length === 0 ? (
+                            <div className="text-center py-12">
+                                <Award size={48} className="mx-auto text-gray-300 mb-4" />
+                                <p className="text-gray-500">No mastery data available yet.</p>
+                                <p className="text-gray-400 text-sm">Complete some sessions to see progress.</p>
+                            </div>
+                        ) : (
+                            <div className="grid gap-4">
+                                {masteryData.programs.map(program => (
+                                    <div key={program.program_id} className="card-premium p-6">
+                                        <div className="flex items-start justify-between mb-4">
+                                            <div>
+                                                <span className={`badge-pill mb-2 ${program.program_type === 'skill' ? 'badge-skill' : 'badge-behavior'}`}>
+                                                    {program.program_type === 'skill' ? 'Skill' : 'Behavior'}
+                                                </span>
+                                                <h3 className="font-heading text-xl font-bold text-gray-900">
+                                                    {program.program_name}
+                                                </h3>
+                                                <p className="text-sm text-gray-500 mt-1">
+                                                    Mastery: {program.mastery_criteria}
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                {program.status === 'mastered' && (
+                                                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                                                        <Star size={14} fill="currentColor" />
+                                                        MASTERED
+                                                    </span>
+                                                )}
+                                                {program.status === 'almost_there' && (
+                                                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-semibold">
+                                                        🔥 Almost There!
+                                                    </span>
+                                                )}
+                                                {program.status === 'progressing' && (
+                                                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+                                                        <TrendingUp size={14} />
+                                                        Progressing
+                                                    </span>
+                                                )}
+                                                {program.status === 'in_progress' && (
+                                                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-semibold">
+                                                        In Progress
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Progress Bar */}
+                                        <div className="mb-4">
+                                            <div className="flex items-center justify-between text-sm mb-2">
+                                                <span className="text-gray-600">Progress to Mastery</span>
+                                                <span className="font-semibold text-gray-900">
+                                                    {program.current_accuracy}% / {program.mastery_target}%
+                                                </span>
+                                            </div>
+                                            <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full rounded-full transition-all duration-500 ${program.status === 'mastered' ? 'bg-gradient-to-r from-green-400 to-green-500' :
+                                                            program.status === 'almost_there' ? 'bg-gradient-to-r from-amber-400 to-amber-500' :
+                                                                'bg-gradient-to-r from-[#159DB3] to-[#0D7C8C]'
+                                                        }`}
+                                                    style={{ width: `${Math.min(100, program.mastery_progress)}%` }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Stats */}
+                                        <div className="flex items-center gap-6 text-sm text-gray-500">
+                                            <span className="flex items-center gap-1">
+                                                <Target size={14} />
+                                                {program.sessions_counted} sessions analyzed
+                                            </span>
+                                            <span>
+                                                {program.total_data_points} data points
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === 'history' && (
                     <div className="space-y-4">
                         {clientSessions.length === 0 ? (
                             <div className="text-center py-12">

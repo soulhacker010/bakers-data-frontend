@@ -72,9 +72,19 @@ export const getProgramProgress = async (programId, options = {}) => {
     return response.data
 }
 
+/**
+ * Get mastery progress for all programs of a client
+ * @param {number} clientId 
+ * @returns {Object} - Mastery progress data for each program
+ */
+export const getMasteryProgress = async (clientId) => {
+    const response = await api.get(`/api/analytics/mastery/${clientId}`)
+    return response.data
+}
+
 export default {
     getDashboardStats,
     getClientProgress,
     getProgramProgress,
+    getMasteryProgress,
 }
-

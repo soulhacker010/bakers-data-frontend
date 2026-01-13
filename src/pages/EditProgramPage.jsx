@@ -6,6 +6,7 @@ import { getProgram, updateProgram, deleteProgram } from '../services/programs'
 import { getClient } from '../services/clients'
 import { ArrowLeft, Check, Trash2 } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
+import TargetsManager from '../components/programs/TargetsManager'
 
 const programTypeOptions = [
     { value: 'skill', label: 'Skill Acquisition' },
@@ -16,6 +17,7 @@ const dataTypeOptions = [
     { value: 'trial', label: 'Trial-Based' },
     { value: 'frequency', label: 'Frequency' },
     { value: 'duration', label: 'Duration' },
+    { value: 'task_analysis', label: 'Task Analysis' },
 ]
 
 export default function EditProgramPage() {
@@ -238,6 +240,16 @@ export default function EditProgramPage() {
                         </div>
                     </Card>
                 </form>
+
+                {/* Targets/Steps Manager */}
+                {program && (
+                    <div className="max-w-2xl mt-8">
+                        <TargetsManager
+                            programId={program.id}
+                            dataType={formData.data_type}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Delete Confirmation Modal */}

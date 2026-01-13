@@ -36,7 +36,7 @@ function useTimer() {
 }
 
 // Trial Data Collection Component
-function TrialDataCollector({ onRecord, stats, showPromptLevels = true }) {
+function TrialDataCollector({ onRecord, stats, showPromptLevels = true, disabled = false }) {
     const [selectedPrompt, setSelectedPrompt] = useState(null)
 
     const promptLevels = [
@@ -47,6 +47,7 @@ function TrialDataCollector({ onRecord, stats, showPromptLevels = true }) {
     ]
 
     const handleRecord = (result) => {
+        if (disabled) return
         onRecord({ result, prompt_level: selectedPrompt })
         setSelectedPrompt(null)
     }
@@ -64,14 +65,16 @@ function TrialDataCollector({ onRecord, stats, showPromptLevels = true }) {
             <div className="grid grid-cols-2 gap-4 mb-8">
                 <button
                     onClick={() => handleRecord('correct')}
-                    className="bg-green-500 hover:bg-green-600 active:scale-95 text-white py-16 px-6 rounded-2xl text-2xl font-heading font-bold transition-all duration-150 flex flex-col items-center justify-center gap-3 shadow-lg hover:shadow-xl"
+                    disabled={disabled}
+                    className={`bg-green-500 hover:bg-green-600 active:scale-95 text-white py-16 px-6 rounded-2xl text-2xl font-heading font-bold transition-all duration-150 flex flex-col items-center justify-center gap-3 shadow-lg hover:shadow-xl ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                     <Check size={48} strokeWidth={3} />
                     CORRECT
                 </button>
                 <button
                     onClick={() => handleRecord('incorrect')}
-                    className="bg-red-500 hover:bg-red-600 active:scale-95 text-white py-16 px-6 rounded-2xl text-2xl font-heading font-bold transition-all duration-150 flex flex-col items-center justify-center gap-3 shadow-lg hover:shadow-xl"
+                    disabled={disabled}
+                    className={`bg-red-500 hover:bg-red-600 active:scale-95 text-white py-16 px-6 rounded-2xl text-2xl font-heading font-bold transition-all duration-150 flex flex-col items-center justify-center gap-3 shadow-lg hover:shadow-xl ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                     <X size={48} strokeWidth={3} />
                     INCORRECT
@@ -126,7 +129,7 @@ function TrialDataCollector({ onRecord, stats, showPromptLevels = true }) {
 }
 
 // Frequency Data Collection Component
-function FrequencyDataCollector({ onRecord, count }) {
+function FrequencyDataCollector({ onRecord, count, disabled = false }) {
     return (
         <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-8">
             <p className="label-uppercase text-center mb-2">D A T A &nbsp; C O L L E C T I O N</p>
@@ -142,8 +145,9 @@ function FrequencyDataCollector({ onRecord, count }) {
 
             {/* Add Occurrence Button */}
             <button
-                onClick={() => onRecord({ count: 1 })}
-                className="w-full bg-[#159DB3] hover:bg-[#0E8499] active:scale-95 text-white py-10 rounded-2xl text-2xl font-heading font-bold transition-all duration-150 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl"
+                onClick={() => !disabled && onRecord({ count: 1 })}
+                disabled={disabled}
+                className={`w-full bg-[#159DB3] hover:bg-[#0E8499] active:scale-95 text-white py-10 rounded-2xl text-2xl font-heading font-bold transition-all duration-150 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
                 <Plus size={32} />
                 Add Occurrence
@@ -153,7 +157,7 @@ function FrequencyDataCollector({ onRecord, count }) {
 }
 
 // Duration Data Collection Component
-function DurationDataCollector({ onRecord }) {
+function DurationDataCollector({ onRecord, disabled = false }) {
     const [durationSeconds, setDurationSeconds] = useState(0)
     const [isTracking, setIsTracking] = useState(false)
 
@@ -201,16 +205,16 @@ function DurationDataCollector({ onRecord }) {
             <div className="grid grid-cols-2 gap-4 mb-4">
                 <button
                     onClick={() => setIsTracking(true)}
-                    disabled={isTracking}
-                    className="bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-10 rounded-2xl text-xl font-heading font-bold transition-all flex items-center justify-center gap-3 shadow-lg"
+                    disabled={isTracking || disabled}
+                    className={`bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-10 rounded-2xl text-xl font-heading font-bold transition-all flex items-center justify-center gap-3 shadow-lg`}
                 >
                     <Play size={28} />
                     Start
                 </button>
                 <button
                     onClick={handleStop}
-                    disabled={!isTracking}
-                    className="bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-10 rounded-2xl text-xl font-heading font-bold transition-all flex items-center justify-center gap-3 shadow-lg"
+                    disabled={!isTracking || disabled}
+                    className={`bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-10 rounded-2xl text-xl font-heading font-bold transition-all flex items-center justify-center gap-3 shadow-lg`}
                 >
                     <Square size={28} />
                     Stop
@@ -693,16 +697,17 @@ export default function SessionCollectPage() {
                                 onRecord={handleRecord}
                                 stats={trialStats}
                                 showPromptLevels={userSettings.show_prompt_levels}
+                                disabled={isPaused}
                             />
                         )}
                         {program.data_type === 'frequency' && (
-                            <FrequencyDataCollector onRecord={handleRecord} count={frequencyCount} />
+                            <FrequencyDataCollector onRecord={handleRecord} count={frequencyCount} disabled={isPaused} />
                         )}
                         {program.data_type === 'duration' && (
-                            <DurationDataCollector onRecord={handleRecord} />
+                            <DurationDataCollector onRecord={handleRecord} disabled={isPaused} />
                         )}
                         {program.data_type === 'task_analysis' && (
-                            <TaskAnalysisCollector programId={program.id} onRecord={handleRecord} />
+                            <TaskAnalysisCollector programId={program.id} onRecord={handleRecord} disabled={isPaused} />
                         )}
 
                         {/* Quick Notes */}
@@ -712,7 +717,8 @@ export default function SessionCollectPage() {
                                 value={notes}
                                 onChange={(e) => setNotes(e.target.value)}
                                 placeholder="Add any observations or notes from this session..."
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-base min-h-[120px] resize-y focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+                                disabled={isPaused}
+                                className={`w-full px-4 py-3 border border-gray-200 rounded-xl text-base min-h-[120px] resize-y focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 ${isPaused ? 'bg-gray-200 cursor-not-allowed' : 'bg-gray-50'}`}
                             />
                         </div>
 

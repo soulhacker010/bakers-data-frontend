@@ -18,9 +18,9 @@ const PROMPT_LEVELS = [
 ]
 
 // Single step row component
-function StepRow({ step, selectedLevel, onSelectLevel }) {
+function StepRow({ step, selectedLevel, onSelectLevel, disabled = false }) {
     return (
-        <div className="flex items-center gap-2 py-3 border-b border-gray-100 last:border-0">
+        <div className={`flex items-center gap-2 py-3 border-b border-gray-100 last:border-0 ${disabled ? 'opacity-50' : ''}`}>
             {/* Step name */}
             <div className="flex-1 min-w-0">
                 <p className="font-medium text-gray-900 truncate">{step.name}</p>
@@ -34,10 +34,11 @@ function StepRow({ step, selectedLevel, onSelectLevel }) {
                 {PROMPT_LEVELS.map(level => (
                     <button
                         key={level.key}
-                        onClick={() => onSelectLevel(step.id, level.key)}
+                        onClick={() => !disabled && onSelectLevel(step.id, level.key)}
+                        disabled={disabled}
                         className={`w-10 h-10 rounded-lg text-xs font-bold transition-all ${selectedLevel === level.key
-                                ? `${level.color} text-white shadow-lg scale-105`
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            ? `${level.color} text-white shadow-lg scale-105`
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
                         title={level.full}
                     >
@@ -49,7 +50,7 @@ function StepRow({ step, selectedLevel, onSelectLevel }) {
     )
 }
 
-export default function TaskAnalysisCollector({ programId, onRecord }) {
+export default function TaskAnalysisCollector({ programId, onRecord, disabled = false }) {
     const [steps, setSteps] = useState([])
     const [loading, setLoading] = useState(true)
     const [stepData, setStepData] = useState({})  // { stepId: promptLevel }
@@ -168,6 +169,7 @@ export default function TaskAnalysisCollector({ programId, onRecord }) {
                         step={step}
                         selectedLevel={stepData[step.id]}
                         onSelectLevel={handleSelectLevel}
+                        disabled={disabled}
                     />
                 ))}
             </div>
@@ -195,7 +197,7 @@ export default function TaskAnalysisCollector({ programId, onRecord }) {
             {/* Submit Button */}
             <button
                 onClick={handleSubmit}
-                disabled={completedSteps === 0 || saving}
+                disabled={completedSteps === 0 || saving || disabled}
                 className="w-full py-4 bg-gradient-to-r from-[#159DB3] to-[#0D7C8C] text-white font-bold rounded-2xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 {saving ? 'Recording...' : `Record ${completedSteps} Step${completedSteps !== 1 ? 's' : ''}`}
