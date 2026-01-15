@@ -405,6 +405,7 @@ function NotificationSettings({ toast }) {
 export default function SettingsPage() {
     const { user, logout, setUser } = useAuth()
     const { toast } = useToast()
+    const navigate = useNavigate()
     const [activeSection, setActiveSection] = useState('account')
 
     return (
@@ -442,7 +443,7 @@ export default function SettingsPage() {
                                 {user?.is_admin && (
                                     <Button
                                         variant="outline"
-                                        onClick={() => window.location.href = '/admin'}
+                                        onClick={() => navigate('/admin')}
                                         icon={<Shield size={16} />}
                                         className="w-full justify-start text-purple-600 border-purple-300 hover:bg-purple-50"
                                     >
