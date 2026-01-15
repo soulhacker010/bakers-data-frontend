@@ -439,7 +439,7 @@ export default function SettingsPage() {
 
                             <div className="border-t border-gray-100 mt-6 pt-6 space-y-3">
                                 {/* Admin Panel Button - Only visible to admin */}
-                                {user?.role === 'admin' && (
+                                {user?.is_admin && (
                                     <Button
                                         variant="outline"
                                         onClick={() => window.location.href = '/admin'}
