@@ -175,7 +175,8 @@ export default function AdminDashboardPage() {
     const openConfirmModal = (config) => setConfirmModal({ isOpen: true, ...config });
     const closeConfirmModal = () => setConfirmModal(prev => ({ ...prev, isOpen: false }));
 
-    if (user?.role !== 'admin') {
+    // Check is_admin flag (NOT role!) - admin status is separate from professional role
+    if (!user?.is_admin) {
         return <Navigate to="/dashboard" replace />;
     }
 
