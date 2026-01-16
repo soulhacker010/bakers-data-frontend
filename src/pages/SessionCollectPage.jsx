@@ -9,6 +9,11 @@ import { useNotifications, NOTIFICATION_TYPES } from '../context/NotificationCon
 import { getUserSettings } from '../services/settings'
 import { Check, X, StopCircle, Plus, Play, Square, RotateCcw, ChevronLeft, ChevronRight, Target, FileText, ListChecks, Pause } from 'lucide-react'
 import { TaskAnalysisCollector } from '../components/data'
+import {
+    saveActiveSession,
+    clearActiveSession,
+    acquireSessionLock
+} from '../utils/sessionStorage'
 
 // Timer hook
 function useTimer() {
@@ -329,6 +334,10 @@ export default function SessionCollectPage() {
                     const newSession = await startSession(parseInt(clientId))
                     setSessionId(newSession.id)
                     toast.success('Session started')
+
+                    // Save session for recovery (browser refresh)
+                    saveActiveSession(newSession.id, clientId)
+                    acquireSessionLock(newSession.id)
                 }
             } catch (err) {
                 console.error('Failed to initialize session:', err)
@@ -510,6 +519,10 @@ export default function SessionCollectPage() {
             )
 
             toast.success('Session saved successfully!')
+
+            // Clear session recovery data
+            clearActiveSession()
+
             navigate('/sessions')
         } catch (err) {
             console.error('Failed to end session:', err)

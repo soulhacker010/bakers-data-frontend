@@ -44,10 +44,25 @@ api.interceptors.response.use(
             // Handle specific status codes
             switch (response.status) {
                 case 401:
-                    // Token expired or invalid
-                    // DON'T clear tokens here - let the AuthContext handle navigation
-                    // Clearing tokens here causes race conditions on login
-                    console.warn('401 Unauthorized - request failed:', response.config.url)
+                    // Token expired or invalid - redirect to login
+                    // Skip redirect for auth endpoints (login, register, verify)
+                    const isAuthEndpoint = response.config.url?.includes('/auth/login') ||
+                        response.config.url?.includes('/auth/register') ||
+                        response.config.url?.includes('/auth/verify');
+
+                    if (!isAuthEndpoint) {
+                        console.warn('401 Unauthorized - token expired, redirecting to login');
+                        // Clear tokens and session data
+                        localStorage.removeItem('access_token');
+                        localStorage.removeItem('user');
+                        localStorage.removeItem('active_session');
+                        localStorage.removeItem('session_lock');
+
+                        // Redirect to login (check if not already on login page to avoid loops)
+                        if (!window.location.pathname.includes('/login')) {
+                            window.location.href = '/login?expired=true';
+                        }
+                    }
                     break
                 case 403:
                     console.error('Access forbidden:', response.config.url)
