@@ -55,6 +55,11 @@ export const getAllClients = async () => {
     return response.data;
 };
 
+export const getAuditLogs = async (params = {}) => {
+    const response = await api.get('/api/admin/audit-logs', { params });
+    return response.data;
+};
+
 export default {
     getAdminStats,
     getAllUsers,
@@ -65,4 +70,5 @@ export default {
     activateUser,
     deleteUser,
     getAllClients,
+    getAuditLogs,
 };

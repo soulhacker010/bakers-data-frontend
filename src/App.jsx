@@ -29,6 +29,7 @@ import SupportPage from './pages/SupportPage'
 import GettingStartedPage from './pages/GettingStartedPage'
 import DocumentationPage from './pages/DocumentationPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
+import AuditLogsPage from './pages/AuditLogsPage'
 import RegistrationSuccessPage from './pages/RegistrationSuccessPage'
 import NotFoundPage from './pages/NotFoundPage'
 
@@ -176,6 +177,12 @@ function App() {
                   <AdminDashboardPage />
                 </ProtectedRoute>
               } />
+              <Route path="/admin/audit-logs" element={
+                <ProtectedRoute>
+                  <AuditLogsPage />
+                </ProtectedRoute>
+              } />
+
 
               {/* Default Redirect */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />

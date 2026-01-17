@@ -291,9 +291,18 @@ export default function AdminDashboardPage() {
                                 <h1 className="font-heading text-3xl font-bold text-white">System Dashboard</h1>
                             </div>
                         </div>
-                        <Button onClick={fetchData} variant="ghost" className="text-white/80 hover:text-white hover:bg-white/10">
-                            <RefreshCw className="w-4 h-4 mr-2" /> Refresh
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                onClick={() => window.location.href = '/admin/audit-logs'}
+                                variant="ghost"
+                                className="text-white/80 hover:text-white hover:bg-white/10"
+                            >
+                                <Shield className="w-4 h-4 mr-2" /> Audit Logs
+                            </Button>
+                            <Button onClick={fetchData} variant="ghost" className="text-white/80 hover:text-white hover:bg-white/10">
+                                <RefreshCw className="w-4 h-4 mr-2" /> Refresh
+                            </Button>
+                        </div>
                     </div>
 
                     {/* Clickable Stat Cards */}
