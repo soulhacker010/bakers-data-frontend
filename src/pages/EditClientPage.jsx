@@ -39,7 +39,7 @@ export default function EditClientPage() {
                     notes: data.notes || ''
                 })
             } catch (err) {
-                toast.error('Failed to load client')
+                toast.error(err.message || 'Failed to load client')
                 navigate('/clients')
             } finally {
                 setLoading(false)

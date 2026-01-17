@@ -26,7 +26,7 @@ export default function AddProgramPage() {
                 const data = await getClient(clientId)
                 setClient(data)
             } catch (err) {
-                toast.error('Failed to load client')
+                toast.error(err.message || 'Failed to load client')
                 navigate('/clients')
             } finally {
                 setPageLoading(false)

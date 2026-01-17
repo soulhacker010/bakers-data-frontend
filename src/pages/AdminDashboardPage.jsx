@@ -202,7 +202,7 @@ export default function AdminDashboardPage() {
     const handleApprove = async (userId) => {
         setActionLoading(userId);
         try { await approveUser(userId); toast.success('User approved'); fetchData(); }
-        catch (err) { toast.error('Failed to approve'); }
+        catch (err) { toast.error(err.message || 'Failed to approve user'); }
         finally { setActionLoading(null); }
     };
 
@@ -219,7 +219,7 @@ export default function AdminDashboardPage() {
     const handleReject = async (userId) => {
         setActionLoading(userId);
         try { await rejectUser(userId); toast.success('User rejected'); fetchData(); }
-        catch (err) { toast.error('Failed to reject'); }
+        catch (err) { toast.error(err.message || 'Failed to reject user'); }
         finally { setActionLoading(null); }
     };
 
@@ -236,14 +236,14 @@ export default function AdminDashboardPage() {
     const handleDeactivate = async (userId) => {
         setActionLoading(userId);
         try { await deactivateUser(userId); toast.success('User deactivated'); fetchData(); }
-        catch (err) { toast.error('Failed to deactivate'); }
+        catch (err) { toast.error(err.message || 'Failed to deactivate user'); }
         finally { setActionLoading(null); }
     };
 
     const handleActivate = async (userId) => {
         setActionLoading(userId);
         try { await activateUser(userId); toast.success('User activated'); fetchData(); }
-        catch (err) { toast.error('Failed to activate'); }
+        catch (err) { toast.error(err.message || 'Failed to activate user'); }
         finally { setActionLoading(null); }
     };
 
@@ -260,7 +260,7 @@ export default function AdminDashboardPage() {
     const handleDelete = async (userId, hard) => {
         setActionLoading(userId);
         try { await deleteUser(userId, hard); toast.success('User deleted'); fetchData(); }
-        catch (err) { toast.error('Failed to delete'); }
+        catch (err) { toast.error(err.message || 'Failed to delete user'); }
         finally { setActionLoading(null); }
     };
 

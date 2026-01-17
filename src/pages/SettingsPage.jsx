@@ -144,7 +144,7 @@ function TherapySettings({ toast }) {
             })
             toast.success('Therapy defaults saved!')
         } catch (err) {
-            toast.error('Failed to save settings')
+            toast.error(err.message || 'Failed to save settings')
         } finally {
             setSaving(false)
         }
@@ -227,7 +227,7 @@ function DataSettings({ toast }) {
             await downloadDataExport()
             toast.success('Data exported successfully!')
         } catch (err) {
-            toast.error('Failed to export data')
+            toast.error(err.message || 'Failed to export data')
         } finally {
             setExporting(false)
         }
@@ -323,7 +323,7 @@ function NotificationSettings({ toast }) {
         } catch (err) {
             // Revert on error
             setPrefs({ ...prefs, [key]: !newValue })
-            toast.error('Failed to update preference')
+            toast.error(err.message || 'Failed to update preference')
         }
     }
 

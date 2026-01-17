@@ -78,8 +78,29 @@ api.interceptors.response.use(
                     break
             }
 
-            // Return error with message from backend
-            const message = response.data?.detail || 'An error occurred'
+            // Extract readable error message from backend response
+            let message = 'An error occurred'
+
+            const detail = response.data?.detail
+
+            if (typeof detail === 'string') {
+                // Simple string error
+                message = detail
+            } else if (Array.isArray(detail)) {
+                // Pydantic validation errors - format: [{ loc: [...], msg: "...", type: "..." }]
+                const errors = detail.map(err => {
+                    const field = err.loc?.[err.loc.length - 1] || 'field'
+                    return `${field}: ${err.msg}`
+                }).join(', ')
+                message = errors || 'Validation error'
+            } else if (typeof detail === 'object' && detail !== null) {
+                // Object error - try to extract message
+                message = detail.msg || detail.message || detail.error || JSON.stringify(detail)
+            } else if (response.data?.message) {
+                // Fallback to message field
+                message = response.data.message
+            }
+
             return Promise.reject(new Error(message))
         }
 

@@ -60,7 +60,7 @@ export default function AuditLogsPage() {
                 const data = await getAuditLogs(params)
                 setLogs(data)
             } catch (err) {
-                toast.error('Failed to load audit logs')
+                toast.error(err.message || 'Failed to load audit logs')
             } finally {
                 setLoading(false)
             }

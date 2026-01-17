@@ -341,7 +341,7 @@ export default function SessionCollectPage() {
                 }
             } catch (err) {
                 console.error('Failed to initialize session:', err)
-                toast.error('Failed to load session')
+                toast.error(err.message || 'Failed to load session')
                 navigate('/sessions')
             } finally {
                 setLoading(false)
@@ -424,7 +424,7 @@ export default function SessionCollectPage() {
             setProgram(programData)
             toast.info(`Switched to ${newProgram.name}`)
         } catch (err) {
-            toast.error('Failed to switch program')
+            toast.error(err.message || 'Failed to switch program')
         }
     }
 
@@ -469,7 +469,7 @@ export default function SessionCollectPage() {
                 navigate('/sessions')
                 return
             }
-            toast.error('Failed to save data point')
+            toast.error(err.message || 'Failed to save data point')
         }
     }, [program, sessionId, toast, navigate])
 
@@ -483,7 +483,7 @@ export default function SessionCollectPage() {
             toast.info('Session paused')
         } catch (err) {
             console.error('Failed to pause session:', err)
-            toast.error('Failed to pause session')
+            toast.error(err.message || 'Failed to pause session')
         }
     }
 
@@ -497,7 +497,7 @@ export default function SessionCollectPage() {
             toast.info('Session resumed')
         } catch (err) {
             console.error('Failed to resume session:', err)
-            toast.error('Failed to resume session')
+            toast.error(err.message || 'Failed to resume session')
         }
     }
 
@@ -526,7 +526,7 @@ export default function SessionCollectPage() {
             navigate('/sessions')
         } catch (err) {
             console.error('Failed to end session:', err)
-            toast.error('Failed to save session')
+            toast.error(err.message || 'Failed to save session')
         } finally {
             setSaving(false)
         }

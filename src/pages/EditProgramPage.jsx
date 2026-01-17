@@ -61,7 +61,7 @@ export default function EditProgramPage() {
                     setClient(clientData)
                 }
             } catch (err) {
-                toast.error('Failed to load program')
+                toast.error(err.message || 'Failed to load program')
                 navigate('/programs')
             } finally {
                 setLoading(false)

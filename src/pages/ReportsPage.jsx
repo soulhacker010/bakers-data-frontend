@@ -47,7 +47,7 @@ export default function ReportsPage() {
             setSessionSummaryModal(false)
             toast.success('Report generated!')
         } catch (err) {
-            toast.error('Failed to generate report')
+            toast.error(err.message || 'Failed to generate session summary')
         } finally {
             setLoading(false)
         }
@@ -66,7 +66,7 @@ export default function ReportsPage() {
             setClientReportModal(false)
             toast.success('Report generated!')
         } catch (err) {
-            toast.error('Failed to generate report')
+            toast.error(err.message || 'Failed to generate client report')
         } finally {
             setLoading(false)
         }
@@ -81,7 +81,7 @@ export default function ReportsPage() {
             setMonthlyModal(false)
             toast.success('Report generated!')
         } catch (err) {
-            toast.error('Failed to generate report')
+            toast.error(err.message || 'Failed to generate monthly report')
         } finally {
             setLoading(false)
         }
@@ -94,7 +94,7 @@ export default function ReportsPage() {
             await downloadSummary()
             toast.success('Summary export downloaded!')
         } catch (err) {
-            toast.error('Export failed')
+            toast.error(err.message || 'Failed to export data')
         } finally {
             setLoading(false)
         }

@@ -132,7 +132,7 @@ export default function ClientsPage() {
                 setClients(data)
             } catch (err) {
                 setError(err.message)
-                toast.error('Failed to load clients')
+                toast.error(err.message || 'Failed to load clients')
             } finally {
                 setLoading(false)
             }

@@ -25,7 +25,7 @@ export default function ForgotPasswordPage() {
             // Redirect to reset page with email pre-filled
             navigate(`/reset-password?email=${encodeURIComponent(email)}`)
         } catch (err) {
-            setError('Something went wrong. Please try again.')
+            setError(err.message || 'Something went wrong. Please try again.')
             console.error(err)
         } finally {
             setLoading(false)

@@ -173,7 +173,7 @@ export default function ClientDetailPage() {
                 setClientSessions(sessionsData)
                 setMasteryData(masteryRes)
             } catch (err) {
-                toast.error('Failed to load client data')
+                toast.error(err.message || 'Failed to load client data')
                 navigate('/clients')
             } finally {
                 setLoading(false)
@@ -406,8 +406,8 @@ export default function ClientDetailPage() {
                                             <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
                                                 <div
                                                     className={`h-full rounded-full transition-all duration-500 ${program.status === 'mastered' ? 'bg-gradient-to-r from-green-400 to-green-500' :
-                                                            program.status === 'almost_there' ? 'bg-gradient-to-r from-amber-400 to-amber-500' :
-                                                                'bg-gradient-to-r from-[#159DB3] to-[#0D7C8C]'
+                                                        program.status === 'almost_there' ? 'bg-gradient-to-r from-amber-400 to-amber-500' :
+                                                            'bg-gradient-to-r from-[#159DB3] to-[#0D7C8C]'
                                                         }`}
                                                     style={{ width: `${Math.min(100, program.mastery_progress)}%` }}
                                                 />
