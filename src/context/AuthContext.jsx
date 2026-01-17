@@ -74,14 +74,23 @@ export function AuthProvider({ children }) {
     /**
      * Login with credentials
      * @param {Object} credentials - { email, password, turnstile_token }
+     * @returns {Object} - Returns { otp_required, email_masked, message } if 2FA needed, or true if success
      */
     const login = async (credentials) => {
         setError(null)
         setSessionExpired(false)
         try {
-            const { user: loggedInUser } = await apiLogin(credentials)
-            setUser(loggedInUser)
-            return true
+            const result = await apiLogin(credentials)
+
+            // Check if OTP is required (2FA)
+            if (result.otp_required) {
+                // Return the OTP response to the caller (LoginPage)
+                return result
+            }
+
+            // Normal login - set user and return success
+            setUser(result.user)
+            return result
         } catch (err) {
             setError(err.message)
             throw err

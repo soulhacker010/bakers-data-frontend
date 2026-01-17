@@ -3,7 +3,7 @@ import { DashboardLayout } from '../components/layout'
 import { Button, Input, Select, Card } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { LogOut, Check, Download, FileText, Loader2, Shield } from 'lucide-react'
+import { LogOut, Check, Download, FileText, Loader2, Shield, Smartphone, Trash2, ShieldCheck, ShieldOff } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import {
     getUserSettings,
@@ -11,9 +11,16 @@ import {
     updateUserProfile,
     downloadDataExport
 } from '../services/settings'
+import {
+    toggleOTP,
+    getTrustedDevices,
+    removeTrustedDevice,
+    removeAllTrustedDevices
+} from '../services/auth'
 
 const settingsNav = [
     { id: 'account', label: 'Account Settings', description: 'Personal details, email, password' },
+    { id: 'security', label: 'Security', description: 'Two-factor authentication, trusted devices' },
     { id: 'notifications', label: 'Notifications', description: 'In-app notification preferences' },
     { id: 'therapy', label: 'Therapy Defaults', description: 'Default session and program settings' },
     { id: 'data', label: 'Data & Export', description: 'Export your data, privacy controls' },
@@ -103,6 +110,168 @@ function AccountSettings({ user, toast, setUser }) {
                     {saving ? 'Saving...' : saved ? 'Saved!' : 'Update Details'}
                 </Button>
             </form>
+        </div>
+    )
+}
+
+function SecuritySettings({ user, toast, setUser }) {
+    const [otpEnabled, setOtpEnabled] = useState(user?.otp_enabled || false)
+    const [devices, setDevices] = useState([])
+    const [loading, setLoading] = useState(true)
+    const [toggling, setToggling] = useState(false)
+
+    useEffect(() => {
+        loadDevices()
+    }, [])
+
+    const loadDevices = async () => {
+        try {
+            const data = await getTrustedDevices()
+            setDevices(data)
+        } catch (err) {
+            console.error('Failed to load devices:', err)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleToggleOTP = async () => {
+        setToggling(true)
+        try {
+            const result = await toggleOTP()
+            const newStatus = !otpEnabled
+            setOtpEnabled(newStatus)
+            // Update user context
+            if (setUser && user) {
+                setUser({ ...user, otp_enabled: newStatus })
+            }
+            toast.success(result.message)
+            // If disabled, devices are cleared server-side
+            if (!newStatus) {
+                setDevices([])
+            }
+        } catch (err) {
+            toast.error(err.message || 'Failed to toggle 2FA')
+        } finally {
+            setToggling(false)
+        }
+    }
+
+    const handleRemoveDevice = async (deviceId) => {
+        try {
+            await removeTrustedDevice(deviceId)
+            setDevices(devices.filter(d => d.id !== deviceId))
+            toast.success('Device removed')
+        } catch (err) {
+            toast.error(err.message || 'Failed to remove device')
+        }
+    }
+
+    const handleRemoveAllDevices = async () => {
+        if (!window.confirm('Remove all trusted devices? You will need to verify OTP on your next login.')) return
+        try {
+            await removeAllTrustedDevices()
+            setDevices([])
+            toast.success('All devices removed')
+        } catch (err) {
+            toast.error(err.message || 'Failed to remove devices')
+        }
+    }
+
+    return (
+        <div>
+            <p className="label-uppercase mb-2">S E C U R I T Y</p>
+            <h2 className="font-heading text-3xl font-bold text-gray-900 mb-4">
+                Two-Factor Authentication
+            </h2>
+            <p className="text-gray-500 mb-8">
+                Add an extra layer of security to your account by requiring a code sent to your email.
+            </p>
+
+            {/* 2FA Toggle */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-6">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${otpEnabled ? 'bg-green-100' : 'bg-gray-100'}`}>
+                            {otpEnabled ? <ShieldCheck className="text-green-600" size={24} /> : <ShieldOff className="text-gray-400" size={24} />}
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-gray-900">Email Verification</h3>
+                            <p className="text-sm text-gray-500">
+                                {otpEnabled
+                                    ? 'A 6-digit code will be sent to your email on new devices'
+                                    : 'Enable to require verification on new devices'}
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={handleToggleOTP}
+                        disabled={toggling}
+                        className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 ${otpEnabled ? 'bg-primary' : 'bg-gray-200'
+                            } ${toggling ? 'opacity-50' : ''}`}
+                    >
+                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${otpEnabled ? 'translate-x-6' : 'translate-x-1'
+                            }`} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Trusted Devices */}
+            {otpEnabled && (
+                <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 className="font-semibold text-gray-900">Trusted Devices</h3>
+                            <p className="text-sm text-gray-500">Devices that can skip email verification</p>
+                        </div>
+                        {devices.length > 0 && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleRemoveAllDevices}
+                                className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                            >
+                                <Trash2 size={14} className="mr-1" /> Remove All
+                            </Button>
+                        )}
+                    </div>
+
+                    {loading ? (
+                        <div className="flex justify-center py-8">
+                            <Loader2 className="animate-spin text-primary" size={24} />
+                        </div>
+                    ) : devices.length === 0 ? (
+                        <div className="text-center py-8 text-gray-400">
+                            <Smartphone size={32} className="mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No trusted devices yet</p>
+                            <p className="text-xs mt-1">Check "Remember this device" when logging in</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {devices.map(device => (
+                                <div key={device.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                                    <div className="flex items-center gap-3">
+                                        <Smartphone size={20} className="text-gray-400" />
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-900">{device.device_name || 'Unknown Device'}</p>
+                                            <p className="text-xs text-gray-400">
+                                                Last used: {new Date(device.last_used_at).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => handleRemoveDevice(device.id)}
+                                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                        title="Remove device"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     )
 }
@@ -465,6 +634,7 @@ export default function SettingsPage() {
                     {/* Main Content */}
                     <div className="lg:col-span-3">
                         {activeSection === 'account' && <AccountSettings user={user} toast={toast} setUser={setUser} />}
+                        {activeSection === 'security' && <SecuritySettings user={user} toast={toast} setUser={setUser} />}
                         {activeSection === 'notifications' && <NotificationSettings toast={toast} />}
                         {activeSection === 'therapy' && <TherapySettings toast={toast} />}
                         {activeSection === 'data' && <DataSettings toast={toast} />}
