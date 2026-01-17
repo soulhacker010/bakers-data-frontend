@@ -510,11 +510,6 @@ function NotificationSettings({ toast }) {
         { key: 'notify_mastery_achieved', label: 'Mastery Notifications', desc: 'Notify when clients reach mastery criteria' },
     ]
 
-    const emailItems = [
-        { key: 'email_notifications', label: 'Email Notifications', desc: 'Receive important updates via email', disabled: true },
-        { key: 'email_weekly_digest', label: 'Weekly Digest', desc: 'Get a weekly summary of all activity', disabled: true },
-    ]
-
     return (
         <div>
             <p className="label-uppercase mb-2">N O T I F I C A T I O N S</p>
@@ -540,27 +535,6 @@ function NotificationSettings({ toast }) {
                                     className={`w-12 h-6 rounded-full transition-colors ${prefs[item.key] ? 'bg-primary' : 'bg-gray-300'}`}
                                 >
                                     <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${prefs[item.key] ? 'translate-x-6' : 'translate-x-0.5'}`}></div>
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div>
-                    <h3 className="font-semibold text-gray-900 mb-3">Email Notifications</h3>
-                    <p className="text-sm text-gray-500 mb-3">Email notifications will be available after email service is configured.</p>
-                    <div className="space-y-3">
-                        {emailItems.map((item) => (
-                            <div key={item.key} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl opacity-50">
-                                <div>
-                                    <p className="font-medium text-gray-900">{item.label}</p>
-                                    <p className="text-sm text-gray-500">{item.desc}</p>
-                                </div>
-                                <button
-                                    disabled
-                                    className="w-12 h-6 rounded-full bg-gray-300 cursor-not-allowed"
-                                >
-                                    <div className="w-5 h-5 bg-white rounded-full shadow translate-x-0.5"></div>
                                 </button>
                             </div>
                         ))}

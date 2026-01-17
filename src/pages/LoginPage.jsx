@@ -405,7 +405,15 @@ export default function LoginPage() {
                                 sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
                                 onVerify={(token) => setTurnstileToken(token)}
                                 onExpire={() => setTurnstileToken('')}
+                                onError={() => {
+                                    setTurnstileToken('')
+                                    // Auto-retry on error
+                                    setTimeout(() => setTurnstileKey(prev => prev + 1), 1000)
+                                }}
                                 theme="light"
+                                size="flexible"
+                                retry="auto"
+                                retryInterval={3000}
                             />
                         </div>
 

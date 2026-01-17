@@ -52,7 +52,7 @@ export default function RegisterPage() {
 
         if (!turnstileToken) {
             setError('Please complete the CAPTCHA')
-            toast.error('Please complete the CAPTCHA') 
+            toast.error('Please complete the CAPTCHA')
             return
         }
 
@@ -125,7 +125,7 @@ export default function RegisterPage() {
 
                         <div className="space-y-4">
                             {[
-                                'Track client progress with precision', 
+                                'Track client progress with precision',
                                 'Generate insightful reports instantly',
                                 'Collaborate with your therapy team',
                                 'Secure and HIPAA-compliant platform'
@@ -260,7 +260,12 @@ export default function RegisterPage() {
                             <Turnstile
                                 sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
                                 onVerify={(token) => setTurnstileToken(token)}
+                                onExpire={() => setTurnstileToken('')}
+                                onError={() => setTurnstileToken('')}
                                 theme="light"
+                                size="flexible"
+                                retry="auto"
+                                retryInterval={3000}
                             />
                         </div>
 
