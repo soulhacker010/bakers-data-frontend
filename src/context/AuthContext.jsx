@@ -49,11 +49,11 @@ export function AuthProvider({ children }) {
                 // Check if we have a stored user
                 const storedUser = getStoredUser()
                 if (storedUser && checkAuth()) {
-                    // Verify token is still valid by fetching current user
+                   
                     try {
                         const currentUser = await getCurrentUser()
                         setUser(currentUser)
-                        // Update stored user with fresh data
+                       
                         localStorage.setItem('user', JSON.stringify(currentUser))
                     } catch (err) {
                         // Token invalid, clear everything
