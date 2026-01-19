@@ -58,7 +58,7 @@ function AccountSettings({ user, toast, setUser }) {
                 email: formData.email,
                 role: formData.role
             })
-            // Update auth context with new user data
+           
             setUser(result)
             setSaved(true)
             toast.success('Profile updated successfully!')
@@ -141,12 +141,12 @@ function SecuritySettings({ user, toast, setUser }) {
             const result = await toggleOTP()
             const newStatus = !otpEnabled
             setOtpEnabled(newStatus)
-            // Update user context
+        
             if (setUser && user) {
                 setUser({ ...user, otp_enabled: newStatus })
             }
             toast.success(result.message)
-            // If disabled, devices are cleared server-side
+            
             if (!newStatus) {
                 setDevices([])
             }
