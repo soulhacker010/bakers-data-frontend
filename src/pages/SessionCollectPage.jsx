@@ -445,6 +445,7 @@ export default function SessionCollectPage() {
         const dataPoint = {
             program_id: program.id,
             data_type: program.data_type,
+            target_id: selectedTarget?.id || null,  // Include target for progress tracking
             ...data
         }
 
@@ -471,7 +472,7 @@ export default function SessionCollectPage() {
             }
             toast.error(err.message || 'Failed to save data point')
         }
-    }, [program, sessionId, toast, navigate])
+    }, [program, sessionId, selectedTarget, toast, navigate])
 
     // Handle pause session
     const handlePause = async () => {
