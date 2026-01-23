@@ -58,7 +58,7 @@ function AccountSettings({ user, toast, setUser }) {
                 email: formData.email,
                 role: formData.role
             })
-           
+
             setUser(result)
             setSaved(true)
             toast.success('Profile updated successfully!')
@@ -141,12 +141,12 @@ function SecuritySettings({ user, toast, setUser }) {
             const result = await toggleOTP()
             const newStatus = !otpEnabled
             setOtpEnabled(newStatus)
-        
+
             if (setUser && user) {
                 setUser({ ...user, otp_enabled: newStatus })
             }
             toast.success(result.message)
-            
+
             if (!newStatus) {
                 setDevices([])
             }
@@ -278,7 +278,6 @@ function SecuritySettings({ user, toast, setUser }) {
 
 function TherapySettings({ toast }) {
     const [settings, setSettings] = useState({
-        default_session_duration: 60,
         default_mastery_criteria: 80,
         default_mastery_sessions: 3,
         auto_save_interval: 30,
@@ -305,7 +304,6 @@ function TherapySettings({ toast }) {
         setSaving(true)
         try {
             await updateUserSettings({
-                default_session_duration: settings.default_session_duration,
                 default_mastery_criteria: settings.default_mastery_criteria,
                 default_mastery_sessions: settings.default_mastery_sessions,
                 auto_save_interval: settings.auto_save_interval,
@@ -338,13 +336,6 @@ function TherapySettings({ toast }) {
             </p>
 
             <div className="space-y-6 max-w-xl">
-                <Input
-                    label="Default Session Duration (minutes)"
-                    type="number"
-                    value={settings.default_session_duration}
-                    onChange={(e) => setSettings({ ...settings, default_session_duration: parseInt(e.target.value) || 60 })}
-                />
-
                 <Input
                     label="Default Mastery Criteria (%)"
                     type="number"

@@ -262,8 +262,7 @@ export default function SessionCollectPage() {
     const [userSettings, setUserSettings] = useState({
         show_prompt_levels: true,
         auto_save_interval: 30,
-        default_mastery_criteria: 80,
-        default_session_duration: 60
+        default_mastery_criteria: 80
     })
     const [lastAutoSave, setLastAutoSave] = useState(null)
 
@@ -601,11 +600,6 @@ export default function SessionCollectPage() {
                         <div className={`text-white font-heading text-2xl font-bold font-mono ${isPaused ? 'animate-pulse' : ''}`}>
                             {formatTime}
                         </div>
-                        {userSettings.default_session_duration && (
-                            <span className="text-white/60 text-sm">
-                                / {userSettings.default_session_duration} min
-                            </span>
-                        )}
                         {lastAutoSave && (
                             <span className="text-green-300 text-xs flex items-center gap-1">
                                 ✓ Auto-saved
