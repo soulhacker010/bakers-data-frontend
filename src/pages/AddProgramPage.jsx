@@ -7,7 +7,7 @@ import { createProgram } from '../services/programs'
 import { createTarget } from '../services/targets'
 import { createTaskStep } from '../services/taskSteps'
 import { getUserSettings } from '../services/settings'
-import { ArrowLeft, Plus, Trash2, Target, ListChecks } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Target, ListChecks, Edit3 } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 
 export default function AddProgramPage() {
@@ -102,6 +102,18 @@ export default function AddProgramPage() {
 
     const removeTarget = (id) => {
         setTargets(prev => prev.filter(t => t.id !== id))
+    }
+
+    const [editingTarget, setEditingTarget] = useState(null)
+
+    const startEditTarget = (target) => {
+        setEditingTarget({ ...target })
+    }
+
+    const saveEditTarget = () => {
+        if (!editingTarget) return
+        setTargets(prev => prev.map(t => t.id === editingTarget.id ? editingTarget : t))
+        setEditingTarget(null)
     }
 
     // Step handlers for Task Analysis
@@ -200,6 +212,66 @@ export default function AddProgramPage() {
 
     return (
         <DashboardLayout>
+            {/* Edit Target Modal */}
+            {editingTarget && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+                        <h3 className="font-heading text-xl font-bold text-gray-900 mb-4">Edit Target</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Target Name</label>
+                                <input
+                                    type="text"
+                                    value={editingTarget.name}
+                                    onChange={(e) => setEditingTarget({ ...editingTarget, name: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3]"
+                                />
+                            </div>
+                            <div className="flex gap-4">
+                                <div className="flex-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Mastery %</label>
+                                    <input
+                                        type="number"
+                                        value={editingTarget.mastery_threshold}
+                                        onChange={(e) => setEditingTarget({ ...editingTarget, mastery_threshold: parseInt(e.target.value) || 80 })}
+                                        min="1"
+                                        max="100"
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3]"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Sessions</label>
+                                    <input
+                                        type="number"
+                                        value={editingTarget.mastery_consecutive_sessions}
+                                        onChange={(e) => setEditingTarget({ ...editingTarget, mastery_consecutive_sessions: parseInt(e.target.value) || 3 })}
+                                        min="1"
+                                        max="10"
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3]"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 mt-6">
+                            <button
+                                type="button"
+                                onClick={() => setEditingTarget(null)}
+                                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={saveEditTarget}
+                                className="flex-1 px-4 py-3 bg-[#159DB3] text-white rounded-xl font-medium hover:bg-[#128a9e] transition-colors"
+                            >
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Hero Section */}
             <div className="hero-gradient px-6 py-10">
                 <div className="max-w-screen-xl mx-auto">
@@ -336,13 +408,22 @@ export default function AddProgramPage() {
                                                     {target.mastery_threshold}% over {target.mastery_consecutive_sessions} sessions
                                                 </p>
                                             </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => removeTarget(target.id)}
-                                                className="p-1 text-red-500 hover:bg-red-50 rounded-lg"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => startEditTarget(target)}
+                                                    className="p-1 text-gray-400 hover:text-[#159DB3] hover:bg-[#E0F4F7] rounded-lg"
+                                                >
+                                                    <Edit3 size={16} />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeTarget(target.id)}
+                                                    className="p-1 text-red-500 hover:bg-red-50 rounded-lg"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>

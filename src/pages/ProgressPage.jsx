@@ -113,11 +113,11 @@ export default function ProgressPage() {
             )
         }
 
-        // Frequency: Bar chart
+        // Frequency: Line chart (changed from bar per client request)
         if (program?.data_type === 'frequency') {
             return (
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData}>
+                    <LineChart data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                         <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
@@ -130,8 +130,8 @@ export default function ProgressPage() {
                             }}
                             formatter={(value) => [value, 'Count']}
                         />
-                        <Bar dataKey="frequency" fill="#159DB3" radius={[4, 4, 0, 0]} />
-                    </BarChart>
+                        <Line type="monotone" dataKey="frequency" stroke="#159DB3" strokeWidth={3} dot={{ fill: '#159DB3', r: 4 }} activeDot={{ r: 6 }} />
+                    </LineChart>
                 </ResponsiveContainer>
             )
         }
@@ -164,11 +164,11 @@ export default function ProgressPage() {
             )
         }
 
-        // Task Analysis: Show info about steps (can be enhanced later)
+        // Task Analysis: Line chart (changed from bar per client request)
         if (program?.data_type === 'task_analysis') {
             return (
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData}>
+                    <LineChart data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                         <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
@@ -180,8 +180,8 @@ export default function ProgressPage() {
                             }}
                             formatter={(value) => [`${value}%`, 'Independent Steps']}
                         />
-                        <Bar dataKey="accuracy" fill="#10B981" radius={[4, 4, 0, 0]} />
-                    </BarChart>
+                        <Line type="monotone" dataKey="accuracy" stroke="#10B981" strokeWidth={3} dot={{ fill: '#10B981', r: 4 }} activeDot={{ r: 6 }} />
+                    </LineChart>
                 </ResponsiveContainer>
             )
         }

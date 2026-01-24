@@ -4,6 +4,7 @@ import { DashboardLayout } from '../components/layout'
 import { Button, Avatar } from '../components/ui'
 import { getSession } from '../services/sessions'
 import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/AuthContext'
 import { ArrowLeft, Calendar, Clock, FileText, Play, Download, Target, Activity, BarChart2, User, Trash2, CheckCircle, XCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { deleteSessionData } from '../services/sessions'
@@ -12,6 +13,7 @@ export default function SessionDetailPage() {
     const { id } = useParams()
     const navigate = useNavigate()
     const { toast } = useToast()
+    const { user } = useAuth()
     const [session, setSession] = useState(null)
     const [loading, setLoading] = useState(true)
     const [deleting, setDeleting] = useState(null) // Track which item is being deleted
@@ -218,8 +220,10 @@ export default function SessionDetailPage() {
                                                     </div>
                                                 )}
                                                 {!dataPoint.result && dataPoint.count && (
-                                                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                                                        <span className="text-xs font-bold text-blue-600">+{dataPoint.count}</span>
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${dataPoint.count > 0 ? 'bg-blue-100' : 'bg-red-100'}`}>
+                                                        <span className={`text-xs font-bold ${dataPoint.count > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                                            {dataPoint.count > 0 ? `+${dataPoint.count}` : dataPoint.count}
+                                                        </span>
                                                     </div>
                                                 )}
                                                 {!dataPoint.result && dataPoint.duration_seconds && (
@@ -242,18 +246,21 @@ export default function SessionDetailPage() {
                                                 </div>
                                             </div>
 
-                                            <button
-                                                onClick={() => setDeleteConfirmId(dataPoint.id)}
-                                                disabled={deleting === dataPoint.id}
-                                                className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                                title="Remove data point"
-                                            >
-                                                {deleting === dataPoint.id ? (
-                                                    <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
-                                                ) : (
-                                                    <Trash2 size={16} />
-                                                )}
-                                            </button>
+                                            {/* Delete button - Admin only */}
+                                            {user?.role === 'admin' && (
+                                                <button
+                                                    onClick={() => setDeleteConfirmId(dataPoint.id)}
+                                                    disabled={deleting === dataPoint.id}
+                                                    className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                    title="Remove data point"
+                                                >
+                                                    {deleting === dataPoint.id ? (
+                                                        <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                                                    ) : (
+                                                        <Trash2 size={16} />
+                                                    )}
+                                                </button>
+                                            )}
                                         </div>
                                     ))}
                                 </div>

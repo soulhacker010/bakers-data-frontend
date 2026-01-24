@@ -7,7 +7,7 @@ import { pauseSession, resumeSession } from '../services/sessions'
 import { useToast } from '../context/ToastContext'
 import { useNotifications, NOTIFICATION_TYPES } from '../context/NotificationContext'
 import { getUserSettings } from '../services/settings'
-import { Check, X, StopCircle, Plus, Play, Square, RotateCcw, ChevronLeft, ChevronRight, Target, FileText, ListChecks, Pause } from 'lucide-react'
+import { Check, X, StopCircle, Plus, Minus, Play, Square, RotateCcw, ChevronLeft, ChevronRight, Target, FileText, ListChecks, Pause } from 'lucide-react'
 import { TaskAnalysisCollector } from '../components/data'
 import {
     saveActiveSession,
@@ -134,7 +134,7 @@ function TrialDataCollector({ onRecord, stats, showPromptLevels = true, disabled
 }
 
 // Frequency Data Collection Component
-function FrequencyDataCollector({ onRecord, count, disabled = false }) {
+function FrequencyDataCollector({ onRecord, onSubtract, count, disabled = false }) {
     return (
         <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-8">
             <p className="label-uppercase text-center mb-2">D A T A &nbsp; C O L L E C T I O N</p>
@@ -148,15 +148,28 @@ function FrequencyDataCollector({ onRecord, count, disabled = false }) {
                 <p className="text-gray-500 mt-2 uppercase tracking-wider text-sm">Occurrences</p>
             </div>
 
-            {/* Add Occurrence Button */}
-            <button
-                onClick={() => !disabled && onRecord({ count: 1 })}
-                disabled={disabled}
-                className={`w-full bg-[#159DB3] hover:bg-[#0E8499] active:scale-95 text-white py-10 rounded-2xl text-2xl font-heading font-bold transition-all duration-150 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-                <Plus size={32} />
-                Add Occurrence
-            </button>
+            {/* Add and Subtract Buttons */}
+            <div className="flex gap-4">
+                {/* Subtract Button */}
+                <button
+                    onClick={() => !disabled && count > 0 && onSubtract && onSubtract()}
+                    disabled={disabled || count === 0}
+                    className={`flex-1 bg-red-500 hover:bg-red-600 active:scale-95 text-white py-6 rounded-2xl text-xl font-heading font-bold transition-all duration-150 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl ${(disabled || count === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                    <Minus size={28} />
+                    Remove
+                </button>
+
+                {/* Add Button */}
+                <button
+                    onClick={() => !disabled && onRecord({ count: 1 })}
+                    disabled={disabled}
+                    className={`flex-1 bg-[#159DB3] hover:bg-[#0E8499] active:scale-95 text-white py-6 rounded-2xl text-xl font-heading font-bold transition-all duration-150 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                    <Plus size={28} />
+                    Add
+                </button>
+            </div>
         </div>
     )
 }
@@ -474,6 +487,34 @@ export default function SessionCollectPage() {
         }
     }, [program, sessionId, selectedTarget, toast, navigate])
 
+    // Handle subtract for frequency counting (records with negative count)
+    const handleFrequencySubtract = useCallback(async () => {
+        if (!program || !sessionId || frequencyCount <= 0) return
+
+        const dataPoint = {
+            program_id: program.id,
+            data_type: 'frequency',
+            target_id: selectedTarget?.id || null,
+            count: -1  // Negative count for subtraction
+        }
+
+        // Add to local state immediately for responsive UI
+        const localEntry = {
+            id: Date.now(),
+            ...dataPoint,
+            timestamp: new Date().toISOString()
+        }
+        setSessionData(prev => [...prev, localEntry])
+
+        // Save to backend
+        try {
+            const { recordSessionData } = await import('../services/sessions')
+            await recordSessionData(sessionId, dataPoint)
+        } catch (err) {
+            console.error('Failed to subtract:', err)
+        }
+    }, [program, sessionId, selectedTarget, frequencyCount])
+
     // Handle pause session
     const handlePause = async () => {
         if (!sessionId) return
@@ -710,7 +751,12 @@ export default function SessionCollectPage() {
                             />
                         )}
                         {program.data_type === 'frequency' && (
-                            <FrequencyDataCollector onRecord={handleRecord} count={frequencyCount} disabled={isPaused} />
+                            <FrequencyDataCollector
+                                onRecord={handleRecord}
+                                onSubtract={handleFrequencySubtract}
+                                count={frequencyCount}
+                                disabled={isPaused}
+                            />
                         )}
                         {program.data_type === 'duration' && (
                             <DurationDataCollector onRecord={handleRecord} disabled={isPaused} />
