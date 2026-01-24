@@ -185,7 +185,10 @@ export default function SessionsPage() {
                                             </p>
                                             <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
                                                 <FileText size={12} />
-                                                {session.data_points || 0} data points collected
+                                                {session.frequency_count !== null && session.frequency_count !== undefined
+                                                    ? `${session.frequency_count} occurrences`
+                                                    : `${session.data_points || 0} data points collected`
+                                                }
                                             </p>
                                         </div>
                                     </div>
