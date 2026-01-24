@@ -73,15 +73,18 @@ function StepRow({ step, index, onEdit, onDelete }) {
 function ItemModal({ isOpen, onClose, onSave, item, type }) {
     const [name, setName] = useState('')
     const [description, setDescription] = useState('')
+    const [status, setStatus] = useState('active')
     const [saving, setSaving] = useState(false)
 
     useEffect(() => {
         if (item) {
             setName(item.name || '')
             setDescription(item.description || '')
+            setStatus(item.status || 'active')
         } else {
             setName('')
             setDescription('')
+            setStatus('active')
         }
     }, [item])
 
@@ -93,7 +96,11 @@ function ItemModal({ isOpen, onClose, onSave, item, type }) {
 
         setSaving(true)
         try {
-            await onSave({ name: name.trim(), description: description.trim() })
+            // Include status only for targets (not task analysis steps)
+            const data = type === 'Target'
+                ? { name: name.trim(), description: description.trim(), status }
+                : { name: name.trim(), description: description.trim() }
+            await onSave(data)
             onClose()
         } finally {
             setSaving(false)
@@ -136,6 +143,26 @@ function ItemModal({ isOpen, onClose, onSave, item, type }) {
                                     placeholder="Add a description..."
                                 />
                             </div>
+
+                            {/* Status selector - only for Targets */}
+                            {type === 'Target' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Initial Status
+                                    </label>
+                                    <select
+                                        value={status}
+                                        onChange={(e) => setStatus(e.target.value)}
+                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3] focus:border-transparent"
+                                    >
+                                        <option value="active">Active - Visible to therapists</option>
+                                        <option value="on-hold">On Hold - Saved for later (hidden from therapists)</option>
+                                    </select>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        "On Hold" targets won't appear during sessions until activated
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
 

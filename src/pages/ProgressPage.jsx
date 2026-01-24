@@ -6,7 +6,7 @@ import { getProgramProgress } from '../services/analytics'
 import { useToast } from '../context/ToastContext'
 import { Download, TrendingUp, TrendingDown, Minus, ArrowLeft, Target, Clock, Hash, ListChecks } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, BarChart, Bar } from 'recharts'
-import { format, subDays } from 'date-fns'
+import { format, subDays, parseISO } from 'date-fns'
 import { TargetsList } from '../components/targets'
 
 const dateRangeOptions = [
@@ -53,8 +53,9 @@ export default function ProgressPage() {
     }, [id, dateRange, toast])
 
     // Format chart data from analytics
+    // Use parseISO with noon time to avoid timezone date shift
     const chartData = analytics?.sessions?.map(session => ({
-        date: format(new Date(session.date), 'MMM d'),
+        date: format(parseISO(session.date + 'T12:00:00'), 'MMM d'),
         accuracy: session.accuracy || 0,
         frequency: session.frequency_count || 0,
         duration: Math.round((session.total_duration_seconds || 0) / 60), // Convert to minutes

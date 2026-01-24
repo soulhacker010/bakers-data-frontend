@@ -57,7 +57,7 @@ function ProgressBar({ accuracy, threshold }) {
 }
 
 // Single Target Item
-function TargetItem({ target, onUpdate, onDelete, showActions = true }) {
+function TargetItem({ target, onUpdate, onDelete, onEdit, showActions = true }) {
     const [showMenu, setShowMenu] = useState(false)
 
     const handleStatusChange = async (newStatus) => {
@@ -65,14 +65,19 @@ function TargetItem({ target, onUpdate, onDelete, showActions = true }) {
         setShowMenu(false)
     }
 
+    const handleEdit = () => {
+        setShowMenu(false)
+        if (onEdit) onEdit(target)
+    }
+
     return (
         <div className="group flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all">
             {/* Status indicator */}
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${target.status === 'mastered'
-                    ? 'bg-green-100 text-green-600'
-                    : target.status === 'on-hold'
-                        ? 'bg-yellow-100 text-yellow-600'
-                        : 'bg-[#E0F4F7] text-[#159DB3]'
+                ? 'bg-green-100 text-green-600'
+                : target.status === 'on-hold'
+                    ? 'bg-yellow-100 text-yellow-600'
+                    : 'bg-[#E0F4F7] text-[#159DB3]'
                 }`}>
                 <Target size={20} />
             </div>
@@ -85,13 +90,25 @@ function TargetItem({ target, onUpdate, onDelete, showActions = true }) {
                 </div>
                 <div className="flex items-center gap-4 text-xs text-gray-500">
                     <span>{target.mastery_threshold}% × {target.mastery_consecutive_sessions} sessions</span>
-                    <span>{target.sessions_at_criteria}/{target.mastery_consecutive_sessions} at criteria</span>
                 </div>
             </div>
 
-            {/* Progress */}
-            <div className="w-32">
-                <ProgressBar accuracy={target.current_accuracy} threshold={target.mastery_threshold} />
+            {/* Mastery Progress */}
+            <div className="w-40 text-right">
+                {/* Progress toward mastery (sessions at criteria) */}
+                {(() => {
+                    const masteryProgress = Math.round((target.sessions_at_criteria / target.mastery_consecutive_sessions) * 100)
+                    return (
+                        <div className="flex flex-col items-end gap-1">
+                            <span className={`text-sm font-semibold ${target.status === 'mastered' ? 'text-green-600' : 'text-[#159DB3]'}`}>
+                                {masteryProgress}% to mastery
+                            </span>
+                            <span className="text-xs text-gray-400">
+                                {target.sessions_at_criteria}/{target.mastery_consecutive_sessions} sessions
+                            </span>
+                        </div>
+                    )
+                })()}
             </div>
 
             {/* Actions */}
@@ -128,6 +145,12 @@ function TargetItem({ target, onUpdate, onDelete, showActions = true }) {
                                 </button>
                                 <hr className="my-1" />
                                 <button
+                                    onClick={handleEdit}
+                                    className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+                                >
+                                    <Edit2 size={14} /> Edit Target
+                                </button>
+                                <button
                                     onClick={() => { onDelete(target.id); setShowMenu(false) }}
                                     className="w-full px-3 py-2 text-left text-sm hover:bg-red-50 flex items-center gap-2 text-red-600"
                                 >
@@ -147,6 +170,8 @@ export default function TargetsList({ programId, onTargetSelect, selectedTargetI
     const [targets, setTargets] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
+    const [editingTarget, setEditingTarget] = useState(null)
+    const [editForm, setEditForm] = useState({ name: '', description: '' })
 
     useEffect(() => {
         const fetchTargets = async () => {
@@ -186,6 +211,21 @@ export default function TargetsList({ programId, onTargetSelect, selectedTargetI
         }
     }
 
+    const handleEdit = (target) => {
+        setEditingTarget(target)
+        setEditForm({ name: target.name, description: target.description || '' })
+    }
+
+    const handleSaveEdit = async () => {
+        if (!editingTarget) return
+        try {
+            await handleUpdate(editingTarget.id, editForm)
+            setEditingTarget(null)
+        } catch (err) {
+            console.error('Failed to save target:', err)
+        }
+    }
+
     if (loading) {
         return (
             <div className="py-8 text-center text-gray-500">
@@ -222,15 +262,15 @@ export default function TargetsList({ programId, onTargetSelect, selectedTargetI
                         key={target.id}
                         onClick={() => onTargetSelect?.(target)}
                         className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all ${selectedTargetId === target.id
-                                ? 'bg-[#159DB3] text-white'
-                                : 'hover:bg-gray-100'
+                            ? 'bg-[#159DB3] text-white'
+                            : 'hover:bg-gray-100'
                             }`}
                     >
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${selectedTargetId === target.id
-                                ? 'bg-white/20'
-                                : target.status === 'mastered'
-                                    ? 'bg-green-100 text-green-600'
-                                    : 'bg-[#E0F4F7] text-[#159DB3]'
+                            ? 'bg-white/20'
+                            : target.status === 'mastered'
+                                ? 'bg-green-100 text-green-600'
+                                : 'bg-[#E0F4F7] text-[#159DB3]'
                             }`}>
                             {target.status === 'mastered' ? <CheckCircle2 size={16} /> : <Target size={16} />}
                         </div>
@@ -250,15 +290,61 @@ export default function TargetsList({ programId, onTargetSelect, selectedTargetI
 
     // Full mode
     return (
-        <div className="space-y-2">
-            {targets.map(target => (
-                <TargetItem
-                    key={target.id}
-                    target={target}
-                    onUpdate={handleUpdate}
-                    onDelete={handleDelete}
-                />
-            ))}
-        </div>
+        <>
+            {/* Edit Modal */}
+            {editingTarget && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+                        <h3 className="font-heading text-xl font-bold text-gray-900 mb-4">Edit Target</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Target Name</label>
+                                <input
+                                    type="text"
+                                    value={editForm.name}
+                                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3]"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
+                                <textarea
+                                    value={editForm.description}
+                                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                                    rows={3}
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3]"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex gap-3 mt-6">
+                            <button
+                                onClick={() => setEditingTarget(null)}
+                                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveEdit}
+                                className="flex-1 px-4 py-3 bg-[#159DB3] text-white rounded-xl font-medium hover:bg-[#128a9e] transition-colors"
+                            >
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="space-y-2">
+                {targets.map(target => (
+                    <TargetItem
+                        key={target.id}
+                        target={target}
+                        onUpdate={handleUpdate}
+                        onDelete={handleDelete}
+                        onEdit={handleEdit}
+                    />
+                ))}
+            </div>
+        </>
     )
 }

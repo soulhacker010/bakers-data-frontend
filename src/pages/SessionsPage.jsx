@@ -5,12 +5,14 @@ import { Button, Avatar } from '../components/ui'
 import { getSessions, deleteSession } from '../services/sessions'
 import { getClients } from '../services/clients'
 import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/AuthContext'
 import { Calendar, Clock, ChevronRight, Plus, Search, User, FileText, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 
 export default function SessionsPage() {
     const navigate = useNavigate()
     const { toast } = useToast()
+    const { user } = useAuth()
     const [searchTerm, setSearchTerm] = useState('')
     const [deleteConfirm, setDeleteConfirm] = useState(null) // session id to delete
 
@@ -188,18 +190,20 @@ export default function SessionsPage() {
                                         </div>
                                     </div>
 
-                                    {/* Actions */}
+                                    {/* Actions - Delete only visible to admins */}
                                     <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation()
-                                                setDeleteConfirm(session.id)
-                                            }}
-                                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                            title="Delete session"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
+                                        {user?.role === 'admin' && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    setDeleteConfirm(session.id)
+                                                }}
+                                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                title="Delete session"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        )}
                                         <ChevronRight size={24} className="text-gray-300 group-hover:text-[#159DB3] transition-colors flex-shrink-0" />
                                     </div>
                                 </div>

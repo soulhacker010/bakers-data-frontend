@@ -403,10 +403,11 @@ export default function SessionCollectPage() {
             if (!program?.id) return
             try {
                 const programTargets = await getTargets(program.id)
-                setTargets(programTargets)
+                // Filter to only show 'active' targets during session (hide 'on-hold', 'mastered', etc.)
+                const activeTargets = programTargets.filter(t => t.status === 'active')
+                setTargets(activeTargets)
                 // Select first active target by default
-                const firstActive = programTargets.find(t => t.status === 'active')
-                setSelectedTarget(firstActive || programTargets[0] || null)
+                setSelectedTarget(activeTargets[0] || null)
             } catch (err) {
                 console.error('Failed to load targets:', err)
                 setTargets([])
