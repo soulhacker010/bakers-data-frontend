@@ -5,6 +5,7 @@ import axios from 'axios'
 
 // API Base URL - uses Vite env variable or defaults to localhost
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const isDev = import.meta.env.DEV
 
 // Create axios instance
 const api = axios.create({
@@ -51,11 +52,13 @@ api.interceptors.response.use(
                         response.config.url?.includes('/auth/verify');
 
                     if (!isAuthEndpoint) {
-                        console.warn('401 Unauthorized - token expired, redirecting to login');
+                        if (isDev) {
+                            console.warn('401 Unauthorized - token expired, redirecting to login');
+                        }
                         // Clear tokens and session data
                         localStorage.removeItem('access_token');
                         localStorage.removeItem('user');
-                        localStorage.removeItem('active_session');
+                        sessionStorage.removeItem('active_session');
                         localStorage.removeItem('session_lock');
 
                         // Redirect to login (check if not already on login page to avoid loops)
@@ -65,16 +68,24 @@ api.interceptors.response.use(
                     }
                     break
                 case 403:
-                    console.error('Access forbidden:', response.config.url)
+                    if (isDev) {
+                        console.error('Access forbidden:', response.config.url)
+                    }
                     break
                 case 404:
-                    console.error('Resource not found:', response.config.url)
+                    if (isDev) {
+                        console.error('Resource not found:', response.config.url)
+                    }
                     break
                 case 429:
-                    console.error('Rate limit exceeded')
+                    if (isDev) {
+                        console.error('Rate limit exceeded')
+                    }
                     break
                 case 500:
-                    console.error('Server error')
+                    if (isDev) {
+                        console.error('Server error')
+                    }
                     break
             }
 

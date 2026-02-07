@@ -5,6 +5,7 @@
  * This is required for HIPAA compliance to protect PHI.
  */
 import { useEffect, useRef, useCallback } from 'react'
+const isDev = import.meta.env.DEV
 
 /**
  * Track user activity and trigger callback after idle timeout.
@@ -46,7 +47,9 @@ export function useIdleTimeout(onIdle, idleTime = 15 * 60 * 1000) {
         if (idleTime && isEnabledRef.current) {
             timeoutRef.current = setTimeout(() => {
                 if (isEnabledRef.current) {
-                    console.log('Idle timeout triggered after', idleTime / 1000 / 60, 'minutes')
+                    if (isDev) {
+                        console.log('Idle timeout triggered after', idleTime / 1000 / 60, 'minutes')
+                    }
                     onIdleRef.current?.()
                 }
             }, idleTime)
@@ -95,4 +98,3 @@ export function useIdleTimeout(onIdle, idleTime = 15 * 60 * 1000) {
 }
 
 export default useIdleTimeout
-

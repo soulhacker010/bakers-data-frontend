@@ -10,6 +10,7 @@ import {
 import { useIdleTimeout } from '../hooks/useIdleTimeout'
 
 const AuthContext = createContext(null)
+const isDev = import.meta.env.DEV
 
 // Session timeout duration (15 minutes for HIPAA compliance)
 const SESSION_TIMEOUT_MS = 15 * 60 * 1000
@@ -34,7 +35,9 @@ export function AuthProvider({ children }) {
     // HIPAA: Auto-logout after 15 minutes of inactivity
     const handleIdleTimeout = useCallback(() => {
         if (user) {
-            console.log('Session timeout: Logging out due to inactivity')
+            if (isDev) {
+                console.log('Session timeout: Logging out due to inactivity')
+            }
             logout(true)
         }
     }, [user, logout])
@@ -62,7 +65,9 @@ export function AuthProvider({ children }) {
                     }
                 }
             } catch (err) {
-                console.error('Auth initialization error:', err)
+                if (isDev) {
+                    console.error('Auth initialization error:', err)
+                }
             } finally {
                 setLoading(false)
             }

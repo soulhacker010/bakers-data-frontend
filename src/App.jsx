@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext'
 import { ToastProvider } from './context/ToastContext'
 import { NotificationProvider } from './context/NotificationContext'
 import ProtectedRoute from './components/ProtectedRoute'
+import AdminRoute from './components/AdminRoute'
 
 // Pages
 import LoginPage from './pages/LoginPage'
@@ -173,14 +174,14 @@ function App() {
 
               {/* Admin Route (admin only) */}
               <Route path="/admin" element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <AdminDashboardPage />
-                </ProtectedRoute>
+                </AdminRoute>
               } />
               <Route path="/admin/audit-logs" element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <AuditLogsPage />
-                </ProtectedRoute>
+                </AdminRoute>
               } />
 
 

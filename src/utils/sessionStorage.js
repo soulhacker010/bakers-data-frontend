@@ -6,6 +6,8 @@
 const SESSION_STORAGE_KEY = 'active_session';
 const SESSION_LOCK_KEY = 'session_lock';
 
+const getSessionStorage = () => sessionStorage
+
 /**
  * Store the active session ID for recovery after refresh
  */
@@ -16,7 +18,7 @@ export const saveActiveSession = (sessionId, clientId) => {
         timestamp: Date.now(),
         tabId: getTabId()
     };
-    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionData));
+    getSessionStorage().setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionData));
 };
 
 /**
@@ -24,7 +26,7 @@ export const saveActiveSession = (sessionId, clientId) => {
  */
 export const getActiveSession = () => {
     try {
-        const data = localStorage.getItem(SESSION_STORAGE_KEY);
+        const data = getSessionStorage().getItem(SESSION_STORAGE_KEY);
         if (!data) return null;
 
         const session = JSON.parse(data);
@@ -47,7 +49,7 @@ export const getActiveSession = () => {
  * Clear the stored active session
  */
 export const clearActiveSession = () => {
-    localStorage.removeItem(SESSION_STORAGE_KEY);
+    getSessionStorage().removeItem(SESSION_STORAGE_KEY);
     localStorage.removeItem(SESSION_LOCK_KEY);
 };
 
