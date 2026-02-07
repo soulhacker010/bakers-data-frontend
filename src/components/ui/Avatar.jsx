@@ -7,12 +7,14 @@ import multiavatar from '@multiavatar/multiavatar'
 export default function Avatar({ name, size = 48, className = '' }) {
     // Generate SVG avatar from the name string
     const svgCode = multiavatar(name || 'default')
+    const encodedSvg = encodeURIComponent(svgCode)
 
     return (
-        <div
+        <img
+            src={`data:image/svg+xml;utf8,${encodedSvg}`}
+            alt={`${name || 'User'} avatar`}
             className={`rounded-full overflow-hidden flex-shrink-0 ${className}`}
             style={{ width: size, height: size }}
-            dangerouslySetInnerHTML={{ __html: svgCode }}
         />
     )
 }
