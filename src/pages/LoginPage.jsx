@@ -199,7 +199,7 @@ export default function LoginPage() {
                     <div className="w-full max-w-md animate-fade-in">
                         {/* Mobile Logo */}
                         <div className="lg:hidden text-center mb-8">
-                            <img src="/images/logo.png" alt="Data Sirena" className="h-12 w-auto mx-auto mb-2" />
+                            <img src="/images/logo-variant2.jpg" alt="Data Sirena" className="h-12 w-auto mx-auto mb-2" />
                         </div>
 
                         <button onClick={handleBackToLogin} className="flex items-center text-gray-500 hover:text-gray-900 mb-6 transition-colors">
@@ -342,7 +342,7 @@ export default function LoginPage() {
                 <div className="w-full max-w-md animate-fade-in">
                     {/* Mobile Logo */}
                     <div className="lg:hidden text-center mb-8">
-                        <img src="/images/logo.png" alt="Data Sirena" className="h-12 w-auto mx-auto mb-2" />
+                        <img src="/images/logo-variant2.jpg" alt="Data Sirena" className="h-12 w-auto mx-auto mb-2" />
                         <p className="text-gray-500 mt-1">Therapy Data Platform</p>
                     </div>
 

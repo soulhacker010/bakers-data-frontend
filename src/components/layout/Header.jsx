@@ -75,12 +75,12 @@ export default function Header() {
 
                         {/* Logo on mobile */}
                         <Link to="/dashboard" className="md:hidden flex items-center">
-                            <img src="/images/logo.png" alt="Data Sirena" className="h-8 w-auto rounded" />
+                            <img src="/images/logo-variant2.jpg" alt="Data Sirena" className="h-8 w-auto rounded" />
                         </Link>
 
                         {/* Logo on desktop */}
                         <Link to="/dashboard" className="hidden md:flex items-center mr-4">
-                            <img src="/images/logo.png" alt="Data Sirena" className="h-10 w-auto" />
+                            <img src="/images/logo-variant2.jpg" alt="Data Sirena" className="h-10 w-auto" />
                         </Link>
 
                         {/* Search - Desktop only */}
@@ -262,7 +262,7 @@ export default function Header() {
                                                 onClick={() => setShowUserMenu(false)}
                                             >
                                                 Help & Support
-                                            </Link> 
+                                            </Link>
                                         </div>
                                         <div className="border-t border-gray-100 pt-1">
                                             <button
@@ -276,7 +276,7 @@ export default function Header() {
                                     </div>
                                 </>
                             )}
-                        </div> 
+                        </div>
                     </div>
                 </div>
             </header>
@@ -325,7 +325,7 @@ export default function Header() {
                     <div className="fixed top-0 left-0 bottom-0 w-72 bg-white z-50 md:hidden shadow-2xl">
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 border-b border-gray-100">
-                            <img src="/images/logo.png" alt="Data Sirena" className="h-10 w-auto" />
+                            <img src="/images/logo-variant2.jpg" alt="Data Sirena" className="h-10 w-auto" />
                             <button
                                 onClick={() => setShowMobileMenu(false)}
                                 className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
