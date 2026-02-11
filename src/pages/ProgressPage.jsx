@@ -5,7 +5,7 @@ import { getProgram } from '../services/programs'
 import { getProgramProgress } from '../services/analytics'
 import { useToast } from '../context/ToastContext'
 import { Download, TrendingUp, TrendingDown, Minus, ArrowLeft, Target, Clock, Hash, ListChecks } from 'lucide-react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, BarChart, Bar } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, BarChart, Bar, ReferenceLine } from 'recharts'
 import { format, subDays, parseISO } from 'date-fns'
 import { TargetsList } from '../components/targets'
 
@@ -65,6 +65,9 @@ export default function ProgressPage() {
     const totalSessions = analytics?.overall_stats?.total_sessions || 0
     const latestAccuracy = chartData.length > 0 ? chartData[chartData.length - 1]?.accuracy : 0
     const trend = analytics?.overall_stats?.trend || 'stable'
+
+    // Extract targets for reference lines on graph
+    const targets = analytics?.targets || []
 
     const handleExport = async () => {
         try {
@@ -180,6 +183,23 @@ export default function ProgressPage() {
                             }}
                             formatter={(value) => [`${value}%`, 'Independent Steps']}
                         />
+                        {/* Target threshold reference lines */}
+                        {targets.map((target) => (
+                            <ReferenceLine
+                                key={target.id}
+                                y={target.mastery_threshold}
+                                stroke={target.status === 'mastered' ? '#10B981' : '#F59E0B'}
+                                strokeDasharray={target.status === 'mastered' ? '4 4' : '8 4'}
+                                strokeWidth={2}
+                                label={{
+                                    value: `${target.name} (${target.mastery_threshold}%)`,
+                                    position: 'right',
+                                    fontSize: 11,
+                                    fill: target.status === 'mastered' ? '#10B981' : '#F59E0B',
+                                    fontWeight: 600,
+                                }}
+                            />
+                        ))}
                         <Line type="monotone" dataKey="accuracy" stroke="#10B981" strokeWidth={3} dot={{ fill: '#10B981', r: 4 }} activeDot={{ r: 6 }} />
                     </LineChart>
                 </ResponsiveContainer>
@@ -208,6 +228,23 @@ export default function ProgressPage() {
                         }}
                         formatter={(value) => [`${value}%`, 'Accuracy']}
                     />
+                    {/* Target threshold reference lines */}
+                    {targets.map((target) => (
+                        <ReferenceLine
+                            key={target.id}
+                            y={target.mastery_threshold}
+                            stroke={target.status === 'mastered' ? '#10B981' : '#F59E0B'}
+                            strokeDasharray={target.status === 'mastered' ? '4 4' : '8 4'}
+                            strokeWidth={2}
+                            label={{
+                                value: `${target.name} (${target.mastery_threshold}%)`,
+                                position: 'right',
+                                fontSize: 11,
+                                fill: target.status === 'mastered' ? '#10B981' : '#F59E0B',
+                                fontWeight: 600,
+                            }}
+                        />
+                    ))}
                     <Area type="monotone" dataKey="accuracy" stroke="#159DB3" strokeWidth={3} fill="url(#colorAccuracy)" dot={{ fill: '#159DB3', r: 4 }} activeDot={{ r: 6, fill: '#159DB3', stroke: '#fff', strokeWidth: 2 }} />
                 </AreaChart>
             </ResponsiveContainer>

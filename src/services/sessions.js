@@ -41,10 +41,15 @@ export const getSession = async (sessionId) => {
 /**
  * Start a new therapy session
  * @param {number} clientId - Client to start session for
+ * @param {string|null} sessionDate - Optional date for backdating (YYYY-MM-DD)
  * @returns {Object} - Created session with details
  */
-export const startSession = async (clientId) => {
-    const response = await api.post('/api/sessions/start', { client_id: clientId })
+export const startSession = async (clientId, sessionDate = null) => {
+    const payload = { client_id: clientId }
+    if (sessionDate) {
+        payload.session_date = sessionDate
+    }
+    const response = await api.post('/api/sessions/start', payload)
     return response.data
 }
 

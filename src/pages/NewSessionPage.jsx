@@ -13,7 +13,8 @@ import {
     Target,
     Activity,
     Play,
-    ChevronRight
+    ChevronRight,
+    Calendar
 } from 'lucide-react'
 
 export default function NewSessionPage() {
@@ -23,6 +24,7 @@ export default function NewSessionPage() {
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedClient, setSelectedClient] = useState(null)
     const [selectedPrograms, setSelectedPrograms] = useState([])
+    const [sessionDate, setSessionDate] = useState('')  // For backdating: 'YYYY-MM-DD' or empty
 
     // State for API data
     const [clients, setClients] = useState([])
@@ -84,7 +86,11 @@ export default function NewSessionPage() {
 
         // Navigate to session collect with first program (can cycle through others)
         const firstProgram = selectedPrograms[0]
-        navigate(`/sessions/new/collect?client=${selectedClient.id}&program=${firstProgram}`)
+        let url = `/sessions/new/collect?client=${selectedClient.id}&program=${firstProgram}`
+        if (sessionDate) {
+            url += `&session_date=${sessionDate}`
+        }
+        navigate(url)
     }
 
     return (
@@ -210,6 +216,34 @@ export default function NewSessionPage() {
                             >
                                 Change
                             </button>
+                        </div>
+
+                        {/* Backdate Session Option */}
+                        <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-6">
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={!!sessionDate}
+                                    onChange={(e) => setSessionDate(e.target.checked ? new Date().toISOString().split('T')[0] : '')}
+                                    className="w-5 h-5 rounded border-gray-300 text-[#159DB3] focus:ring-[#159DB3]"
+                                />
+                                <div className="flex items-center gap-2">
+                                    <Calendar size={18} className="text-gray-500" />
+                                    <span className="font-medium text-gray-700">Session for a different date?</span>
+                                </div>
+                            </label>
+                            {sessionDate && (
+                                <div className="mt-3 ml-8">
+                                    <input
+                                        type="date"
+                                        value={sessionDate}
+                                        onChange={(e) => setSessionDate(e.target.value)}
+                                        max={new Date().toISOString().split('T')[0]}
+                                        className="px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3] text-gray-900 font-medium"
+                                    />
+                                    <p className="text-xs text-gray-400 mt-1">Enter the date this session actually took place</p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Program Selection */}

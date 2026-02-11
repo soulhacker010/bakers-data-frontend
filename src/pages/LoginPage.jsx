@@ -177,7 +177,9 @@ export default function LoginPage() {
                     </div>
                     <div className="relative z-10 flex flex-col justify-between p-12 text-white">
                         <div>
-                            <img src="/images/logo.png" alt="Data Sirena" className="h-20 w-auto mb-4" />
+                            <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-3 inline-block">
+                                <img src="/images/logo.png" alt="Data Sirena" className="h-20 w-auto" />
+                            </div>
                             <p className="text-white/70 text-lg">Secure Verification</p>
                         </div>
                         <div className="max-w-md">
@@ -306,7 +308,9 @@ export default function LoginPage() {
                 </div>
                 <div className="relative z-10 flex flex-col justify-between p-12 text-white">
                     <div>
-                        <img src="/images/logo.png" alt="Data Sirena" className="h-20 w-auto mb-4" />
+                        <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-3 inline-block">
+                            <img src="/images/logo.png" alt="Data Sirena" className="h-20 w-auto" />
+                        </div>
                         <p className="text-white/70 text-lg">Therapy Data Platform</p>
                     </div>
                     <div className="max-w-md">

@@ -282,6 +282,7 @@ export default function SessionCollectPage() {
     // Get client and program from params
     const clientId = searchParams.get('client') || 1
     const programId = searchParams.get('program') || 1
+    const sessionDate = searchParams.get('session_date') || null  // For backdating
 
     // Ref to prevent multiple session starts
     const hasInitialized = useRef(false)
@@ -343,7 +344,7 @@ export default function SessionCollectPage() {
                     setProgram(programData)
 
                     const { startSession } = await import('../services/sessions')
-                    const newSession = await startSession(parseInt(clientId))
+                    const newSession = await startSession(parseInt(clientId), sessionDate)
                     setSessionId(newSession.id)
                     toast.success('Session started')
 
