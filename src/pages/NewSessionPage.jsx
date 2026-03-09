@@ -14,7 +14,9 @@ import {
     Activity,
     Play,
     ChevronRight,
-    Calendar
+    Calendar,
+    CheckSquare,
+    Square
 } from 'lucide-react'
 
 export default function NewSessionPage() {
@@ -64,10 +66,12 @@ export default function NewSessionPage() {
         return allPrograms.filter(p => p.client_id === selectedClient.id)
     }, [selectedClient, allPrograms])
 
-    // Handle client selection
+    // Handle client selection - auto-select all programs
     const handleSelectClient = (client) => {
         setSelectedClient(client)
-        setSelectedPrograms([])
+        // Auto-select all programs for this client
+        const programIds = allPrograms.filter(p => p.client_id === client.id).map(p => p.id)
+        setSelectedPrograms(programIds)
         setStep(2)
     }
 
@@ -78,6 +82,15 @@ export default function NewSessionPage() {
                 ? prev.filter(id => id !== programId)
                 : [...prev, programId]
         )
+    }
+
+    // Handle select all / deselect all
+    const handleSelectAll = () => {
+        if (selectedPrograms.length === clientPrograms.length) {
+            setSelectedPrograms([])
+        } else {
+            setSelectedPrograms(clientPrograms.map(p => p.id))
+        }
     }
 
     // Start the session
@@ -247,9 +260,27 @@ export default function NewSessionPage() {
                         </div>
 
                         {/* Program Selection */}
-                        <h3 className="font-heading text-lg font-bold text-gray-900 mb-4">
-                            Select programs to run this session
-                        </h3>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="font-heading text-lg font-bold text-gray-900">
+                                Select programs to run this session
+                            </h3>
+                            {clientPrograms.length > 0 && (
+                                <button
+                                    onClick={handleSelectAll}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border-2 hover:shadow-md"
+                                    style={{
+                                        backgroundColor: selectedPrograms.length === clientPrograms.length ? '#E0F4F7' : '#F9FAFB',
+                                        borderColor: selectedPrograms.length === clientPrograms.length ? '#159DB3' : '#E5E7EB',
+                                        color: selectedPrograms.length === clientPrograms.length ? '#159DB3' : '#6B7280',
+                                    }}
+                                >
+                                    {selectedPrograms.length === clientPrograms.length
+                                        ? <><CheckSquare size={18} /> Deselect All</>
+                                        : <><Square size={18} /> Select All</>
+                                    }
+                                </button>
+                            )}
+                        </div>
 
                         {clientPrograms.length === 0 ? (
                             <div className="text-center py-12 bg-white rounded-2xl border border-gray-100">

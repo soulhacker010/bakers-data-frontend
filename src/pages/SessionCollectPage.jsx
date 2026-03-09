@@ -7,7 +7,7 @@ import { pauseSession, resumeSession } from '../services/sessions'
 import { useToast } from '../context/ToastContext'
 import { useNotifications, NOTIFICATION_TYPES } from '../context/NotificationContext'
 import { getUserSettings } from '../services/settings'
-import { Check, X, StopCircle, Plus, Minus, Play, Square, RotateCcw, ChevronLeft, ChevronRight, Target, FileText, ListChecks, Pause } from 'lucide-react'
+import { Check, X, StopCircle, Plus, Minus, Play, Square, RotateCcw, ChevronLeft, ChevronRight, Target, FileText, ListChecks, Pause, CircleSlash } from 'lucide-react'
 import { TaskAnalysisCollector } from '../components/data'
 import {
     saveActiveSession,
@@ -134,7 +134,7 @@ function TrialDataCollector({ onRecord, stats, showPromptLevels = true, disabled
 }
 
 // Frequency Data Collection Component
-function FrequencyDataCollector({ onRecord, onSubtract, count, disabled = false }) {
+function FrequencyDataCollector({ onRecord, onSubtract, onRecordZero, count, disabled = false, zeroRecorded = false }) {
     return (
         <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-8">
             <p className="label-uppercase text-center mb-2">D A T A &nbsp; C O L L E C T I O N</p>
@@ -147,6 +147,32 @@ function FrequencyDataCollector({ onRecord, onSubtract, count, disabled = false 
                 <p className="font-heading text-8xl font-bold text-[#159DB3]">{count}</p>
                 <p className="text-gray-500 mt-2 uppercase tracking-wider text-sm">Occurrences</p>
             </div>
+
+            {/* Record Zero Button */}
+            {count === 0 && (
+                <div className="mb-4">
+                    <button
+                        onClick={() => !disabled && onRecordZero && onRecordZero()}
+                        disabled={disabled || zeroRecorded}
+                        className={`w-full py-4 rounded-2xl text-lg font-heading font-bold transition-all duration-150 flex items-center justify-center gap-3 border-2 ${zeroRecorded
+                                ? 'bg-green-50 border-green-300 text-green-700 cursor-default'
+                                : disabled
+                                    ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+                                    : 'bg-amber-50 border-amber-400 text-amber-700 hover:bg-amber-100 hover:border-amber-500 active:scale-95 shadow-md hover:shadow-lg'
+                            }`}
+                    >
+                        {zeroRecorded
+                            ? <><Check size={22} /> Zero Recorded for Today</>
+                            : <><CircleSlash size={22} /> Record Zero — No Behaviors Occurred</>
+                        }
+                    </button>
+                    {!zeroRecorded && (
+                        <p className="text-xs text-gray-400 text-center mt-2">
+                            Use this to confirm the behavior was tracked but did not occur
+                        </p>
+                    )}
+                </div>
+            )}
 
             {/* Add and Subtract Buttons */}
             <div className="flex gap-4">
@@ -516,6 +542,43 @@ export default function SessionCollectPage() {
         }
     }, [program, sessionId, selectedTarget, frequencyCount])
 
+    // Track whether zero has been recorded for current program
+    const [zeroRecordedPrograms, setZeroRecordedPrograms] = useState(new Set())
+    const isZeroRecorded = program ? zeroRecordedPrograms.has(program.id) : false
+
+    // Handle record zero for frequency/behavior programs
+    const handleRecordZero = useCallback(async () => {
+        if (!program || !sessionId) return
+
+        const dataPoint = {
+            program_id: program.id,
+            data_type: 'frequency',
+            target_id: selectedTarget?.id || null,
+            count: 0  // Explicit zero — behavior tracked but did not occur
+        }
+
+        // Add to local state
+        const localEntry = {
+            id: Date.now(),
+            ...dataPoint,
+            timestamp: new Date().toISOString()
+        }
+        setSessionData(prev => [...prev, localEntry])
+
+        // Mark as zero recorded for this program
+        setZeroRecordedPrograms(prev => new Set([...prev, program.id]))
+
+        // Save to backend
+        try {
+            const { recordSessionData } = await import('../services/sessions')
+            await recordSessionData(sessionId, dataPoint)
+            toast.success('Zero recorded — no behaviors occurred')
+        } catch (err) {
+            console.error('Failed to record zero:', err)
+            toast.error(err.message || 'Failed to record zero')
+        }
+    }, [program, sessionId, selectedTarget, toast])
+
     // Handle pause session
     const handlePause = async () => {
         if (!sessionId) return
@@ -755,8 +818,10 @@ export default function SessionCollectPage() {
                             <FrequencyDataCollector
                                 onRecord={handleRecord}
                                 onSubtract={handleFrequencySubtract}
+                                onRecordZero={handleRecordZero}
                                 count={frequencyCount}
                                 disabled={isPaused}
+                                zeroRecorded={isZeroRecorded}
                             />
                         )}
                         {program.data_type === 'duration' && (
