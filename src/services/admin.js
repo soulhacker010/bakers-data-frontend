@@ -55,6 +55,11 @@ export const getAllClients = async () => {
     return response.data;
 };
 
+export const toggleAdmin = async (userId) => {
+    const response = await api.post(`/api/admin/users/${userId}/toggle-admin`);
+    return response.data;
+};
+
 export const getAuditLogs = async (params = {}) => {
     const response = await api.get('/api/admin/audit-logs', { params });
     return response.data;
@@ -71,4 +76,5 @@ export default {
     deleteUser,
     getAllClients,
     getAuditLogs,
+    toggleAdmin,
 };

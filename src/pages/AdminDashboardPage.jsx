@@ -32,7 +32,8 @@ import {
     rejectUser,
     deactivateUser,
     activateUser,
-    deleteUser
+    deleteUser,
+    toggleAdmin
 } from '../services/admin';
 
 // Clickable stat card - always white bg for visibility on gradient header
@@ -264,6 +265,21 @@ export default function AdminDashboardPage() {
         finally { setActionLoading(null); }
     };
 
+    const handleToggleAdmin = async (userId, currentAdminStatus) => {
+        const action = currentAdminStatus ? 'revoke admin from' : 'grant admin to';
+        if (!window.confirm(`Are you sure you want to ${action} this user?`)) return;
+        setActionLoading(userId);
+        try {
+            const result = await toggleAdmin(userId);
+            toast.success(result.message);
+            fetchData();
+        } catch (err) {
+            toast.error(err.response?.data?.detail || 'Failed to toggle admin');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
     if (loading) {
         return (
             <DashboardLayout>
@@ -440,7 +456,12 @@ export default function AdminDashboardPage() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3"><RoleBadge role={u.role} /></td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-center gap-1">
+                                                <RoleBadge role={u.role} />
+                                                {u.is_admin && <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700">Admin</span>}
+                                            </div>
+                                        </td>
                                         <td className="px-4 py-3 text-center font-semibold text-gray-700">{u.client_count}</td>
                                         <td className="px-4 py-3 text-center font-semibold text-gray-700">{u.program_count}</td>
                                         <td className="px-4 py-3 text-center font-semibold text-gray-700">{u.session_count}</td>
@@ -448,6 +469,15 @@ export default function AdminDashboardPage() {
                                         <td className="px-4 py-3 text-sm text-gray-500">{u.last_session ? new Date(u.last_session).toLocaleDateString() : 'Never'}</td>
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex justify-end gap-1">
+                                                {u.id !== user.id && (
+                                                    <button
+                                                        onClick={() => handleToggleAdmin(u.id, u.is_admin)}
+                                                        className={`p-1.5 rounded-lg ${u.is_admin ? 'hover:bg-purple-50 text-purple-600' : 'hover:bg-gray-100 text-gray-400'}`}
+                                                        title={u.is_admin ? 'Revoke Admin' : 'Make Admin'}
+                                                    >
+                                                        <Shield className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                                 {u.is_active ? (
                                                     <button onClick={() => confirmDeactivate(u.id, u.full_name)} className="p-1.5 rounded-lg hover:bg-amber-50 text-amber-600" title="Deactivate">
                                                         <UserX className="w-4 h-4" />
@@ -457,9 +487,11 @@ export default function AdminDashboardPage() {
                                                         <RefreshCw className="w-4 h-4" />
                                                     </button>
                                                 )}
-                                                <button onClick={() => confirmDelete(u.id, u.full_name)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-600" title="Delete">
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
+                                                {u.id !== user.id && (
+                                                    <button onClick={() => confirmDelete(u.id, u.full_name)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-600" title="Delete">
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

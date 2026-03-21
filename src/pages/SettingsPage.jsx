@@ -3,7 +3,7 @@ import { DashboardLayout } from '../components/layout'
 import { Button, Input, Select, Card } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { LogOut, Check, Download, FileText, Loader2, Shield, Smartphone, Trash2, ShieldCheck, ShieldOff } from 'lucide-react'
+import { LogOut, Check, Download, FileText, Loader2, Shield, Smartphone, Trash2, ShieldCheck, ShieldOff, Lock, Eye, EyeOff } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import {
     getUserSettings,
@@ -15,7 +15,8 @@ import {
     toggleOTP,
     getTrustedDevices,
     removeTrustedDevice,
-    removeAllTrustedDevices
+    removeAllTrustedDevices,
+    changePassword
 } from '../services/auth'
 
 const settingsNav = [
@@ -272,6 +273,119 @@ function SecuritySettings({ user, toast, setUser }) {
                     )}
                 </div>
             )}
+
+            {/* Change Password */}
+            <ChangePasswordForm toast={toast} />
+        </div>
+    )
+}
+
+function ChangePasswordForm({ toast }) {
+    const [formData, setFormData] = useState({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+    })
+    const [saving, setSaving] = useState(false)
+    const [showCurrent, setShowCurrent] = useState(false)
+    const [showNew, setShowNew] = useState(false)
+
+    const handleChange = (e) => {
+        const { name, value } = e.target
+        setFormData(prev => ({ ...prev, [name]: value }))
+    }
+
+    const handleSubmit = async (e) => {
+        e.preventDefault()
+
+        if (formData.newPassword.length < 8) {
+            toast.error('Password must be at least 8 characters')
+            return
+        }
+
+        if (formData.newPassword !== formData.confirmPassword) {
+            toast.error('New passwords do not match')
+            return
+        }
+
+        setSaving(true)
+        try {
+            await changePassword(formData.currentPassword, formData.newPassword)
+            toast.success('Password changed successfully!')
+            setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+        } catch (err) {
+            toast.error(err.response?.data?.detail || 'Failed to change password')
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    return (
+        <div className="bg-white rounded-2xl border border-gray-100 p-6 mt-6">
+            <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                    <Lock className="text-amber-600" size={20} />
+                </div>
+                <div>
+                    <h3 className="font-semibold text-gray-900">Change Password</h3>
+                    <p className="text-sm text-gray-500">Update your account password</p>
+                </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
+                <div className="relative">
+                    <Input
+                        label="Current Password"
+                        type={showCurrent ? 'text' : 'password'}
+                        name="currentPassword"
+                        value={formData.currentPassword}
+                        onChange={handleChange}
+                        required
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowCurrent(!showCurrent)}
+                        className="absolute right-3 top-9 text-gray-400 hover:text-gray-600"
+                    >
+                        {showCurrent ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                </div>
+
+                <div className="relative">
+                    <Input
+                        label="New Password"
+                        type={showNew ? 'text' : 'password'}
+                        name="newPassword"
+                        value={formData.newPassword}
+                        onChange={handleChange}
+                        required
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowNew(!showNew)}
+                        className="absolute right-3 top-9 text-gray-400 hover:text-gray-600"
+                    >
+                        {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                </div>
+
+                <Input
+                    label="Confirm New Password"
+                    type="password"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    required
+                />
+
+                {formData.newPassword && formData.newPassword.length < 8 && (
+                    <p className="text-xs text-amber-600">Password must be at least 8 characters</p>
+                )}
+
+                <Button type="submit" disabled={saving || !formData.currentPassword || !formData.newPassword || !formData.confirmPassword}>
+                    {saving ? 'Changing...' : 'Change Password'}
+                </Button>
+            </form>
         </div>
     )
 }

@@ -183,6 +183,19 @@ export const resetPassword = async (email, code, new_password) => {
     return response.data
 }
 
+/**
+ * Change password for authenticated user
+ * @param {string} currentPassword
+ * @param {string} newPassword
+ */
+export const changePassword = async (currentPassword, newPassword) => {
+    const response = await api.put('/api/auth/change-password', {
+        current_password: currentPassword,
+        new_password: newPassword
+    })
+    return response.data
+}
+
 export default {
     register,
     login,
@@ -195,6 +208,6 @@ export default {
     toggleOTP,
     getTrustedDevices,
     removeTrustedDevice,
-    removeAllTrustedDevices
+    removeAllTrustedDevices,
+    changePassword
 }
-
