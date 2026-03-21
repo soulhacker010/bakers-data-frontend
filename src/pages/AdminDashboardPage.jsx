@@ -469,7 +469,7 @@ export default function AdminDashboardPage() {
                                         <td className="px-4 py-3 text-sm text-gray-500">{u.last_session ? new Date(u.last_session).toLocaleDateString() : 'Never'}</td>
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex justify-end gap-1">
-                                                {u.id !== user.id && (
+                                                {u.id !== user.id && !u.is_admin && (
                                                     <button
                                                         onClick={() => handleToggleAdmin(u.id, u.is_admin)}
                                                         className={`p-1.5 rounded-lg ${u.is_admin ? 'hover:bg-purple-50 text-purple-600' : 'hover:bg-gray-100 text-gray-400'}`}
@@ -487,7 +487,7 @@ export default function AdminDashboardPage() {
                                                         <RefreshCw className="w-4 h-4" />
                                                     </button>
                                                 )}
-                                                {u.id !== user.id && (
+                                                {u.id !== user.id && !u.is_admin && (
                                                     <button onClick={() => confirmDelete(u.id, u.full_name)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-600" title="Delete">
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
