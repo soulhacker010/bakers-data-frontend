@@ -459,7 +459,8 @@ export default function AdminDashboardPage() {
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-1">
                                                 <RoleBadge role={u.role} />
-                                                {u.is_admin && <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700">Admin</span>}
+                                                {u.is_superadmin && <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-700">Owner</span>}
+                                                {u.is_admin && !u.is_superadmin && <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700">Admin</span>}
                                             </div>
                                         </td>
                                         <td className="px-4 py-3 text-center font-semibold text-gray-700">{u.client_count}</td>
@@ -469,7 +470,7 @@ export default function AdminDashboardPage() {
                                         <td className="px-4 py-3 text-sm text-gray-500">{u.last_session ? new Date(u.last_session).toLocaleDateString() : 'Never'}</td>
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex justify-end gap-1">
-                                                {u.id !== user.id && !u.is_admin && (
+                                                {u.id !== user.id && !u.is_superadmin && (user.is_superadmin || !u.is_admin) && (
                                                     <button
                                                         onClick={() => handleToggleAdmin(u.id, u.is_admin)}
                                                         className={`p-1.5 rounded-lg ${u.is_admin ? 'hover:bg-purple-50 text-purple-600' : 'hover:bg-gray-100 text-gray-400'}`}
@@ -478,16 +479,17 @@ export default function AdminDashboardPage() {
                                                         <Shield className="w-4 h-4" />
                                                     </button>
                                                 )}
-                                                {u.is_active ? (
+                                                {u.id !== user.id && !u.is_superadmin && (user.is_superadmin || !u.is_admin) && u.is_active && (
                                                     <button onClick={() => confirmDeactivate(u.id, u.full_name)} className="p-1.5 rounded-lg hover:bg-amber-50 text-amber-600" title="Deactivate">
                                                         <UserX className="w-4 h-4" />
                                                     </button>
-                                                ) : (
+                                                )}
+                                                {!u.is_active && (
                                                     <button onClick={() => handleActivate(u.id)} className="p-1.5 rounded-lg hover:bg-green-50 text-green-600" title="Activate">
                                                         <RefreshCw className="w-4 h-4" />
                                                     </button>
                                                 )}
-                                                {u.id !== user.id && !u.is_admin && (
+                                                {u.id !== user.id && !u.is_superadmin && (user.is_superadmin || !u.is_admin) && (
                                                     <button onClick={() => confirmDelete(u.id, u.full_name)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-600" title="Delete">
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
