@@ -95,13 +95,12 @@ export default function StaffAssignmentModal({ clientId, clientName, onClose, on
                     ) : staffMembers.length === 0 ? (
                         <div className="text-center py-8">
                             <User size={48} className="mx-auto text-gray-300 mb-2" />
-                            <p className="text-gray-500">No staff members found</p>
-                            <p className="text-sm text-gray-400">Staff must register with "staff" role</p>
+                            <p className="text-gray-500">No users available to assign</p>
                         </div>
                     ) : (
                         <>
                             <p className="text-sm text-gray-500 mb-4">
-                                Select staff members who can access this client:
+                                Select users who can access this client:
                             </p>
 
                             <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -125,7 +124,7 @@ export default function StaffAssignmentModal({ clientId, clientName, onClose, on
                                         </div>
                                         <div className="flex-1">
                                             <p className="font-medium text-gray-900">{staff.full_name}</p>
-                                            <p className="text-xs text-gray-500">{staff.email}</p>
+                                            <p className="text-xs text-gray-500">{staff.email} · <span className="text-[#159DB3] font-medium">{staff.role || 'User'}</span></p>
                                         </div>
                                     </button>
                                 ))}
