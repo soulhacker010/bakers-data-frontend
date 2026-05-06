@@ -1,5 +1,10 @@
 /**
- * API Service - Axios instance with authentication and error handling
+ * API Service - Axios instance with authentication, token refresh, and error handling.
+ * 
+ * Key production features:
+ * - Silent token refresh every 30 minutes to prevent mid-session logout
+ * - Automatic retry on 401 (tries refresh before giving up)
+ * - Per-request retry on 429 (rate limit) with backoff
  */
 import axios from 'axios'
 
@@ -21,6 +26,91 @@ export const getToken = () => localStorage.getItem('access_token')
 export const setToken = (token) => localStorage.setItem('access_token', token)
 export const removeToken = () => localStorage.removeItem('access_token')
 
+// Token refresh state (prevent concurrent refresh calls)
+let isRefreshing = false
+let refreshPromise = null
+let refreshIntervalId = null
+
+/**
+ * Silently refresh the access token.
+ * Returns the new token or null if refresh failed.
+ */
+const silentRefresh = async () => {
+    const currentToken = getToken()
+    if (!currentToken) return null
+
+    // Deduplicate concurrent refresh calls
+    if (isRefreshing) return refreshPromise
+
+    isRefreshing = true
+    refreshPromise = (async () => {
+        try {
+            const response = await axios.post(
+                `${API_BASE_URL}/api/auth/refresh`,
+                {},
+                {
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    timeout: 10000,
+                }
+            )
+            const newToken = response.data.access_token
+            if (newToken) {
+                setToken(newToken)
+                // Update stored user data if provided
+                if (response.data.user) {
+                    localStorage.setItem('user', JSON.stringify(response.data.user))
+                }
+                return newToken
+            }
+            return null
+        } catch (err) {
+            if (isDev) {
+                console.warn('Token refresh failed:', err.response?.status)
+            }
+            return null
+        } finally {
+            isRefreshing = false
+            refreshPromise = null
+        }
+    })()
+
+    return refreshPromise
+}
+
+/**
+ * Start periodic token refresh (every 30 minutes).
+ * Call this after successful login.
+ */
+export const startTokenRefresh = () => {
+    stopTokenRefresh() // Clear any existing interval
+    
+    // Refresh every 30 minutes
+    refreshIntervalId = setInterval(() => {
+        if (getToken()) {
+            silentRefresh()
+        }
+    }, 30 * 60 * 1000)
+}
+
+/**
+ * Stop periodic token refresh.
+ * Call this on logout.
+ */
+export const stopTokenRefresh = () => {
+    if (refreshIntervalId) {
+        clearInterval(refreshIntervalId)
+        refreshIntervalId = null
+    }
+}
+
+// Auto-start refresh if token exists on page load
+if (getToken()) {
+    startTokenRefresh()
+}
+
 // Request interceptor - Add auth token to requests
 api.interceptors.request.use(
     (config) => {
@@ -35,51 +125,70 @@ api.interceptors.request.use(
     }
 )
 
-// Response interceptor - Handle errors globally
+// Response interceptor - Handle errors globally with retry logic
 api.interceptors.response.use(
     (response) => response,
-    (error) => {
-        const { response } = error
+    async (error) => {
+        const { response, config } = error
 
         if (response) {
-            // Handle specific status codes
             switch (response.status) {
-                case 401:
-                    // Token expired or invalid - redirect to login
-                    // Skip redirect for auth endpoints (login, register, verify)
-                    const isAuthEndpoint = response.config.url?.includes('/auth/login') ||
-                        response.config.url?.includes('/auth/register') ||
-                        response.config.url?.includes('/auth/verify');
+                case 401: {
+                    // Skip refresh for auth endpoints
+                    const isAuthEndpoint = config.url?.includes('/auth/login') ||
+                        config.url?.includes('/auth/register') ||
+                        config.url?.includes('/auth/verify') ||
+                        config.url?.includes('/auth/refresh');
 
+                    // Try silent refresh once before giving up (don't retry if already retried)
+                    if (!isAuthEndpoint && !config._retried401) {
+                        config._retried401 = true
+                        const newToken = await silentRefresh()
+                        if (newToken) {
+                            // Retry the original request with the new token
+                            config.headers.Authorization = `Bearer ${newToken}`
+                            return api(config)
+                        }
+                    }
+
+                    // Refresh failed or already retried - logout
                     if (!isAuthEndpoint) {
                         if (isDev) {
                             console.warn('401 Unauthorized - token expired, redirecting to login');
                         }
-                        // Clear tokens and session data
+                        stopTokenRefresh()
                         localStorage.removeItem('access_token');
                         localStorage.removeItem('user');
                         sessionStorage.removeItem('active_session');
                         localStorage.removeItem('session_lock');
 
-                        // Redirect to login (check if not already on login page to avoid loops)
                         if (!window.location.pathname.includes('/login')) {
                             window.location.href = '/login?expired=true';
                         }
                     }
                     break
+                }
+                case 429: {
+                    // Rate limited - retry once after delay for session data endpoints
+                    if (!config._retried429 && config.url?.includes('/sessions')) {
+                        config._retried429 = true
+                        const retryAfter = parseInt(response.headers['retry-after'] || '3', 10)
+                        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000))
+                        return api(config)
+                    }
+                    if (isDev) {
+                        console.error('Rate limit exceeded')
+                    }
+                    break
+                }
                 case 403:
                     if (isDev) {
-                        console.error('Access forbidden:', response.config.url)
+                        console.error('Access forbidden:', config.url)
                     }
                     break
                 case 404:
                     if (isDev) {
-                        console.error('Resource not found:', response.config.url)
-                    }
-                    break
-                case 429:
-                    if (isDev) {
-                        console.error('Rate limit exceeded')
+                        console.error('Resource not found:', config.url)
                     }
                     break
                 case 500:

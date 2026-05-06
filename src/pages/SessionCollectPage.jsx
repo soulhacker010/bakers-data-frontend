@@ -14,6 +14,12 @@ import {
     clearActiveSession,
     acquireSessionLock
 } from '../utils/sessionStorage'
+import {
+    recordWithRetry,
+    processRetryQueue,
+    getRetryQueueCount,
+    clearRetryQueue
+} from '../utils/sessionRetry'
 
 // Timer hook
 function useTimer() {
@@ -497,15 +503,18 @@ export default function SessionCollectPage() {
         }
         setSessionData(prev => [...prev, localEntry])
 
-        // Save to backend
+        // Save to backend with retry queue
         try {
             const { recordSessionData } = await import('../services/sessions')
-            await recordSessionData(sessionId, dataPoint)
+            const saved = await recordWithRetry(recordSessionData, sessionId, dataPoint)
+            if (!saved) {
+                // Queued for retry — don't alarm the user, data is safe locally
+                console.warn('Data point queued for retry')
+            }
         } catch (err) {
             console.error('Failed to record data:', err)
-            // Check if session was ended
-            if (err.response?.data?.detail?.includes('ended session') ||
-                err.message?.includes('ended session')) {
+            // Check if session was ended (permanent error, don't retry)
+            if (err.message?.includes('ended session')) {
                 toast.error('Session has been ended - redirecting...')
                 navigate('/sessions')
                 return
@@ -533,10 +542,10 @@ export default function SessionCollectPage() {
         }
         setSessionData(prev => [...prev, localEntry])
 
-        // Save to backend
+        // Save to backend with retry queue
         try {
             const { recordSessionData } = await import('../services/sessions')
-            await recordSessionData(sessionId, dataPoint)
+            await recordWithRetry(recordSessionData, sessionId, dataPoint)
         } catch (err) {
             console.error('Failed to subtract:', err)
         }
@@ -568,11 +577,11 @@ export default function SessionCollectPage() {
         // Mark as zero recorded for this program
         setZeroRecordedPrograms(prev => new Set([...prev, program.id]))
 
-        // Save to backend
+        // Save to backend with retry queue
         try {
             const { recordSessionData } = await import('../services/sessions')
-            await recordSessionData(sessionId, dataPoint)
-            toast.success('Zero recorded — no behaviors occurred')
+            const saved = await recordWithRetry(recordSessionData, sessionId, dataPoint)
+            toast.success(saved ? 'Zero recorded — no behaviors occurred' : 'Zero recorded locally — syncing...')
         } catch (err) {
             console.error('Failed to record zero:', err)
             toast.error(err.message || 'Failed to record zero')
@@ -615,6 +624,16 @@ export default function SessionCollectPage() {
 
         setSaving(true)
         try {
+            // Flush any pending data points from the retry queue first
+            const { recordSessionData } = await import('../services/sessions')
+            const retryResult = await processRetryQueue(recordSessionData)
+            if (retryResult.succeeded > 0) {
+                console.log(`Flushed ${retryResult.succeeded} queued data points before ending session`)
+            }
+            if (retryResult.failed > 0) {
+                console.error(`${retryResult.failed} data points permanently failed to save`)
+            }
+
             const { endSession } = await import('../services/sessions')
             await endSession(sessionId, notes)
 
@@ -626,8 +645,9 @@ export default function SessionCollectPage() {
 
             toast.success('Session saved successfully!')
 
-            // Clear session recovery data
+            // Clear session recovery data and retry queue
             clearActiveSession()
+            clearRetryQueue()
 
             navigate('/sessions')
         } catch (err) {

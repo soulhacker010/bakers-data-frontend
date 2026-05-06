@@ -1,7 +1,7 @@
 /**
  * Authentication Service - Login, Register, User management
  */
-import api, { setToken, removeToken } from './api'
+import api, { setToken, removeToken, startTokenRefresh, stopTokenRefresh } from './api'
 
 // Device token storage for OTP bypass
 const DEVICE_TOKEN_KEY = 'device_token'
@@ -42,6 +42,7 @@ export const login = async (credentials) => {
     const { access_token, user } = data
     if (access_token) {
         setToken(access_token)
+        startTokenRefresh()
         if (user) {
             localStorage.setItem('user', JSON.stringify(user))
         }
@@ -68,6 +69,7 @@ export const verifyLoginOTP = async (email, code, rememberDevice = false) => {
     // Set access token
     if (data.access_token) {
         setToken(data.access_token)
+        startTokenRefresh()
         if (data.user) {
             localStorage.setItem('user', JSON.stringify(data.user))
         }
@@ -127,6 +129,7 @@ export const removeAllTrustedDevices = async () => {
  * Logout user - clear stored data
  */
 export const logout = () => {
+    stopTokenRefresh()
     removeToken()
     localStorage.removeItem('user')
     // Don't remove device_token - keep trusted device status
