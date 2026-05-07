@@ -7,7 +7,7 @@ import { pauseSession, resumeSession } from '../services/sessions'
 import { useToast } from '../context/ToastContext'
 import { useNotifications, NOTIFICATION_TYPES } from '../context/NotificationContext'
 import { getUserSettings } from '../services/settings'
-import { Check, X, StopCircle, Plus, Minus, Play, Square, RotateCcw, ChevronLeft, ChevronRight, Target, FileText, ListChecks, Pause, CircleSlash } from 'lucide-react'
+import { Check, X, StopCircle, Plus, Minus, Play, Square, RotateCcw, ChevronLeft, ChevronRight, Target, FileText, ListChecks, Pause, CircleSlash, Timer } from 'lucide-react'
 import { TaskAnalysisCollector } from '../components/data'
 import {
     saveActiveSession,
@@ -207,20 +207,8 @@ function FrequencyDataCollector({ onRecord, onSubtract, onRecordZero, count, dis
 }
 
 // Duration Data Collection Component
-function DurationDataCollector({ onRecord, disabled = false }) {
-    const [durationSeconds, setDurationSeconds] = useState(0)
-    const [isTracking, setIsTracking] = useState(false)
-
-    useEffect(() => {
-        let interval = null
-        if (isTracking) {
-            interval = setInterval(() => {
-                setDurationSeconds(s => s + 1)
-            }, 1000)
-        }
-        return () => clearInterval(interval)
-    }, [isTracking])
-
+// Now receives timer state from parent so it persists across tab switches
+function DurationDataCollector({ onRecord, onStart, onStop, onReset, durationSeconds, isTracking, disabled = false }) {
     const formatDuration = (secs) => {
         const mins = Math.floor(secs / 60)
         const remainingSecs = secs % 60
@@ -228,13 +216,8 @@ function DurationDataCollector({ onRecord, disabled = false }) {
     }
 
     const handleStop = () => {
-        setIsTracking(false)
+        onStop()
         onRecord({ duration_seconds: durationSeconds })
-    }
-
-    const handleReset = () => {
-        setDurationSeconds(0)
-        setIsTracking(false)
     }
 
     return (
@@ -246,15 +229,18 @@ function DurationDataCollector({ onRecord, disabled = false }) {
 
             {/* Timer Display */}
             <div className="text-center mb-8 py-8">
-                <p className="font-heading text-8xl font-bold text-[#159DB3] font-mono tracking-tight">
+                <p className={`font-heading text-8xl font-bold font-mono tracking-tight ${isTracking ? 'text-red-500 animate-pulse' : 'text-[#159DB3]'}`}>
                     {formatDuration(durationSeconds)}
                 </p>
+                {isTracking && (
+                    <p className="text-red-400 text-sm mt-3 font-medium uppercase tracking-wider animate-pulse">● Recording...</p>
+                )}
             </div>
 
             {/* Start/Stop Buttons */}
             <div className="grid grid-cols-2 gap-4 mb-4">
                 <button
-                    onClick={() => setIsTracking(true)}
+                    onClick={onStart}
                     disabled={isTracking || disabled}
                     className={`bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-10 rounded-2xl text-xl font-heading font-bold transition-all flex items-center justify-center gap-3 shadow-lg`}
                 >
@@ -273,12 +259,57 @@ function DurationDataCollector({ onRecord, disabled = false }) {
 
             {/* Reset Button */}
             <button
-                onClick={handleReset}
-                className="w-full bg-gray-100 text-gray-600 py-4 rounded-xl font-semibold hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+                onClick={onReset}
+                disabled={isTracking}
+                className="w-full bg-gray-100 text-gray-600 py-4 rounded-xl font-semibold hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 <RotateCcw size={18} />
                 Reset Timer
             </button>
+        </div>
+    )
+}
+
+// Floating Duration Timer Pills — shows active timers from any tab
+function FloatingDurationPills({ durationTimers, programs, currentProgramId, onJumpToProgram, onStopTimer }) {
+    const activeTimers = Array.from(durationTimers.entries()).filter(([, t]) => t.isRunning)
+    if (activeTimers.length === 0) return null
+
+    const formatDuration = (secs) => {
+        const mins = Math.floor(secs / 60)
+        const remainingSecs = secs % 60
+        return `${mins.toString().padStart(2, '0')}:${remainingSecs.toString().padStart(2, '0')}`
+    }
+
+    // Don't show pill for the program currently being viewed
+    const otherTimers = activeTimers.filter(([pid]) => pid !== currentProgramId)
+    if (otherTimers.length === 0) return null
+
+    return (
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2">
+            {otherTimers.map(([programId, timer]) => {
+                const prog = programs.find(p => p.id === programId)
+                return (
+                    <div
+                        key={programId}
+                        className="flex items-center gap-3 bg-red-500 text-white px-4 py-3 rounded-2xl shadow-2xl cursor-pointer hover:bg-red-600 transition-all animate-pulse-subtle group"
+                        onClick={() => onJumpToProgram(prog)}
+                    >
+                        <Timer size={18} className="shrink-0" />
+                        <div className="min-w-0">
+                            <p className="text-xs font-medium opacity-80 truncate max-w-[140px]">{prog?.name || 'Duration'}</p>
+                            <p className="font-heading font-bold text-lg font-mono">{formatDuration(timer.seconds)}</p>
+                        </div>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onStopTimer(programId) }}
+                            className="ml-2 bg-white/20 hover:bg-white/30 rounded-lg p-1.5 transition-colors"
+                            title="Stop timer"
+                        >
+                            <Square size={14} />
+                        </button>
+                    </div>
+                )
+            })}
         </div>
     )
 }
@@ -304,6 +335,88 @@ export default function SessionCollectPage() {
     const [saving, setSaving] = useState(false)
     const [sidebarOpen, setSidebarOpen] = useState(true)
     const [isPaused, setIsPaused] = useState(false)
+
+    // Duration timer state — lifted up so timers persist across tab switches
+    // Map<programId, { seconds: number, isRunning: boolean }>
+    const [durationTimers, setDurationTimers] = useState(new Map())
+
+    // Tick all active duration timers every second
+    useEffect(() => {
+        const hasActive = Array.from(durationTimers.values()).some(t => t.isRunning)
+        if (!hasActive) return
+
+        const interval = setInterval(() => {
+            setDurationTimers(prev => {
+                const next = new Map(prev)
+                for (const [pid, timer] of next) {
+                    if (timer.isRunning) {
+                        next.set(pid, { ...timer, seconds: timer.seconds + 1 })
+                    }
+                }
+                return next
+            })
+        }, 1000)
+
+        return () => clearInterval(interval)
+    }, [durationTimers])
+
+    // Duration timer helpers
+    const startDurationTimer = useCallback((programId) => {
+        setDurationTimers(prev => {
+            const next = new Map(prev)
+            const existing = next.get(programId)
+            next.set(programId, { seconds: existing?.seconds || 0, isRunning: true })
+            return next
+        })
+    }, [])
+
+    const stopDurationTimer = useCallback((programId) => {
+        setDurationTimers(prev => {
+            const next = new Map(prev)
+            const existing = next.get(programId)
+            if (existing) {
+                next.set(programId, { ...existing, isRunning: false })
+            }
+            return next
+        })
+    }, [])
+
+    const resetDurationTimer = useCallback((programId) => {
+        setDurationTimers(prev => {
+            const next = new Map(prev)
+            next.set(programId, { seconds: 0, isRunning: false })
+            return next
+        })
+    }, [])
+
+    // Stop a timer from the floating pill and record the data
+    const stopAndRecordDurationTimer = useCallback(async (programId) => {
+        const timer = durationTimers.get(programId)
+        if (!timer || !sessionId) return
+
+        stopDurationTimer(programId)
+
+        const dataPoint = {
+            program_id: programId,
+            data_type: 'duration',
+            duration_seconds: timer.seconds,
+            target_id: null
+        }
+        const localEntry = {
+            id: Date.now(),
+            ...dataPoint,
+            timestamp: new Date().toISOString()
+        }
+        setSessionData(prev => [...prev, localEntry])
+
+        try {
+            const { recordSessionData } = await import('../services/sessions')
+            await recordWithRetry(recordSessionData, sessionId, dataPoint)
+        } catch (err) {
+            console.error('Failed to record duration from pill:', err)
+        }
+    }, [durationTimers, sessionId, stopDurationTimer])
+
     const [userSettings, setUserSettings] = useState({
         show_prompt_levels: true,
         auto_save_interval: 30,
@@ -748,48 +861,73 @@ export default function SessionCollectPage() {
                             </h3>
                         </div>
 
-                        {/* Programs List */}
-                        <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                            {programs.map(prog => (
-                                <div key={prog.id}>
-                                    <button
-                                        onClick={() => handleProgramSwitch(prog)}
-                                        className={`w-full text-left p-3 rounded-xl transition-all ${program?.id === prog.id
-                                            ? 'bg-[#159DB3] text-white'
-                                            : 'hover:bg-gray-100'
-                                            }`}
-                                    >
-                                        <p className={`font-semibold truncate ${program?.id === prog.id ? 'text-white' : 'text-gray-900'}`}>
-                                            {prog.name}
+                        {/* Programs List - Grouped by Type */}
+                        <div className="flex-1 overflow-y-auto p-3 space-y-1">
+                            {/* Render grouped programs: Behavior first, then Skill */}
+                            {[{ type: 'behavior', label: 'Behavior Reduction', color: 'text-red-600', bg: 'bg-red-50' },
+                              { type: 'skill', label: 'Skill Acquisition', color: 'text-blue-600', bg: 'bg-blue-50' }]
+                              .map(group => {
+                                const groupPrograms = programs.filter(p => p.program_type === group.type)
+                                if (groupPrograms.length === 0) return null
+                                return (
+                                    <div key={group.type} className="mb-3">
+                                        <p className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 ${group.color} ${group.bg} rounded-lg mb-1`}>
+                                            {group.label}
                                         </p>
-                                        <p className={`text-xs ${program?.id === prog.id ? 'text-white/70' : 'text-gray-500'}`}>
-                                            {prog.data_type} • {prog.program_type}
-                                        </p>
-                                    </button>
-
-                                    {/* Show targets for selected program */}
-                                    {program?.id === prog.id && targets.length > 0 && (
-                                        <div className="ml-3 mt-2 space-y-1">
-                                            {targets.map(target => (
+                                        {groupPrograms.map(prog => {
+                                            const activeTimer = durationTimers.get(prog.id)
+                                            const hasActiveTimer = activeTimer?.isRunning
+                                            return (
+                                            <div key={prog.id}>
                                                 <button
-                                                    key={target.id}
-                                                    onClick={() => setSelectedTarget(target)}
-                                                    className={`w-full flex items-center gap-2 p-2 rounded-lg text-left transition-all ${selectedTarget?.id === target.id
-                                                        ? 'bg-[#E0F4F7] text-[#159DB3]'
-                                                        : 'hover:bg-gray-50'
+                                                    onClick={() => handleProgramSwitch(prog)}
+                                                    className={`w-full text-left p-3 rounded-xl transition-all ${program?.id === prog.id
+                                                        ? 'bg-[#159DB3] text-white'
+                                                        : 'hover:bg-gray-100'
                                                         }`}
                                                 >
-                                                    <Target size={14} className={selectedTarget?.id === target.id ? 'text-[#159DB3]' : 'text-gray-400'} />
-                                                    <span className="truncate text-sm">{target.name}</span>
-                                                    <span className={`ml-auto text-xs ${target.status === 'mastered' ? 'text-green-600' : 'text-gray-400'}`}>
-                                                        {target.current_accuracy.toFixed(0)}%
-                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className={`font-semibold truncate flex-1 ${program?.id === prog.id ? 'text-white' : 'text-gray-900'}`}>
+                                                            {prog.name}
+                                                        </p>
+                                                        {hasActiveTimer && (
+                                                            <span className="flex items-center gap-1 text-xs bg-red-500 text-white px-2 py-0.5 rounded-full animate-pulse">
+                                                                <Timer size={10} /> REC
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className={`text-xs ${program?.id === prog.id ? 'text-white/70' : 'text-gray-500'}`}>
+                                                        {prog.data_type} • {prog.program_type}
+                                                    </p>
                                                 </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+
+                                                {/* Show targets for selected program */}
+                                                {program?.id === prog.id && targets.length > 0 && (
+                                                    <div className="ml-3 mt-2 space-y-1">
+                                                        {targets.map(target => (
+                                                            <button
+                                                                key={target.id}
+                                                                onClick={() => setSelectedTarget(target)}
+                                                                className={`w-full flex items-center gap-2 p-2 rounded-lg text-left transition-all ${selectedTarget?.id === target.id
+                                                                    ? 'bg-[#E0F4F7] text-[#159DB3]'
+                                                                    : 'hover:bg-gray-50'
+                                                                    }`}
+                                                            >
+                                                                <Target size={14} className={selectedTarget?.id === target.id ? 'text-[#159DB3]' : 'text-gray-400'} />
+                                                                <span className="truncate text-sm">{target.name}</span>
+                                                                <span className={`ml-auto text-xs ${target.status === 'mastered' ? 'text-green-600' : 'text-gray-400'}`}>
+                                                                    {target.current_accuracy.toFixed(0)}%
+                                                                </span>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            )
+                                        })}
+                                    </div>
+                                )
+                              })}
 
                             {programs.length === 0 && (
                                 <div className="text-center py-8 text-gray-500">
@@ -845,7 +983,15 @@ export default function SessionCollectPage() {
                             />
                         )}
                         {program.data_type === 'duration' && (
-                            <DurationDataCollector onRecord={handleRecord} disabled={isPaused} />
+                            <DurationDataCollector
+                                onRecord={handleRecord}
+                                onStart={() => startDurationTimer(program.id)}
+                                onStop={() => stopDurationTimer(program.id)}
+                                onReset={() => resetDurationTimer(program.id)}
+                                durationSeconds={durationTimers.get(program.id)?.seconds || 0}
+                                isTracking={durationTimers.get(program.id)?.isRunning || false}
+                                disabled={isPaused}
+                            />
                         )}
                         {program.data_type === 'task_analysis' && (
                             <TaskAnalysisCollector programId={program.id} onRecord={handleRecord} disabled={isPaused} />
@@ -874,6 +1020,15 @@ export default function SessionCollectPage() {
                         </button>
                     </div>
                 </main>
+
+                {/* Floating Duration Timer Pills */}
+                <FloatingDurationPills
+                    durationTimers={durationTimers}
+                    programs={programs}
+                    currentProgramId={program?.id}
+                    onJumpToProgram={handleProgramSwitch}
+                    onStopTimer={stopAndRecordDurationTimer}
+                />
             </div>
         </div>
     )

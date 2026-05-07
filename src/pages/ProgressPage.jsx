@@ -69,6 +69,13 @@ export default function ProgressPage() {
     // Extract targets for reference lines on graph
     const targets = analytics?.targets || []
 
+    // Extract phase changes for vertical markers
+    const phaseChanges = (analytics?.phase_changes || []).map(pc => ({
+        ...pc,
+        // Convert date to match chart format
+        dateLabel: format(parseISO(pc.date + 'T12:00:00'), 'MMM d')
+    }))
+
     const handleExport = async () => {
         try {
             window.open(`/api/analytics/export?program_id=${id}`, '_blank')
@@ -133,6 +140,23 @@ export default function ProgressPage() {
                             }}
                             formatter={(value) => [value, 'Count']}
                         />
+                        {/* Phase change vertical lines */}
+                        {phaseChanges.map((pc, idx) => (
+                            <ReferenceLine
+                                key={`pc-${idx}`}
+                                x={pc.dateLabel}
+                                stroke="#10B981"
+                                strokeDasharray="6 3"
+                                strokeWidth={2}
+                                label={{
+                                    value: `✓ ${pc.from_target}${pc.to_target ? ` → ${pc.to_target}` : ''}`,
+                                    position: 'top',
+                                    fontSize: 10,
+                                    fill: '#10B981',
+                                    fontWeight: 600,
+                                }}
+                            />
+                        ))}
                         <Line type="monotone" dataKey="frequency" stroke="#159DB3" strokeWidth={3} dot={{ fill: '#159DB3', r: 4 }} activeDot={{ r: 6 }} />
                     </LineChart>
                 </ResponsiveContainer>
@@ -161,6 +185,23 @@ export default function ProgressPage() {
                             }}
                             formatter={(value) => [`${value} min`, 'Duration']}
                         />
+                        {/* Phase change vertical lines */}
+                        {phaseChanges.map((pc, idx) => (
+                            <ReferenceLine
+                                key={`pc-${idx}`}
+                                x={pc.dateLabel}
+                                stroke="#10B981"
+                                strokeDasharray="6 3"
+                                strokeWidth={2}
+                                label={{
+                                    value: `✓ ${pc.from_target}${pc.to_target ? ` → ${pc.to_target}` : ''}`,
+                                    position: 'top',
+                                    fontSize: 10,
+                                    fill: '#10B981',
+                                    fontWeight: 600,
+                                }}
+                            />
+                        ))}
                         <Area type="monotone" dataKey="duration" stroke="#8B5CF6" strokeWidth={3} fill="url(#colorDuration)" dot={{ fill: '#8B5CF6', r: 4 }} />
                     </AreaChart>
                 </ResponsiveContainer>
@@ -241,6 +282,23 @@ export default function ProgressPage() {
                                 position: 'right',
                                 fontSize: 11,
                                 fill: target.status === 'mastered' ? '#10B981' : '#F59E0B',
+                                fontWeight: 600,
+                            }}
+                        />
+                    ))}
+                    {/* Phase change vertical lines */}
+                    {phaseChanges.map((pc, idx) => (
+                        <ReferenceLine
+                            key={`pc-${idx}`}
+                            x={pc.dateLabel}
+                            stroke="#10B981"
+                            strokeDasharray="6 3"
+                            strokeWidth={2}
+                            label={{
+                                value: `✓ ${pc.from_target}${pc.to_target ? ` → ${pc.to_target}` : ''}`,
+                                position: 'top',
+                                fontSize: 10,
+                                fill: '#10B981',
                                 fontWeight: 600,
                             }}
                         />

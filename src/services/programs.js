@@ -63,10 +63,23 @@ export const deleteProgram = async (programId) => {
     await api.delete(`/api/programs/${programId}`)
 }
 
+/**
+ * Reorder programs for a client
+ * @param {number} clientId
+ * @param {Array<number>} programIds - Ordered list of program IDs
+ */
+export const reorderPrograms = async (clientId, programIds) => {
+    const response = await api.put(`/api/programs/client/${clientId}/reorder`, {
+        program_ids: programIds
+    })
+    return response.data
+}
+
 export default {
     getPrograms,
     getProgram,
     createProgram,
     updateProgram,
     deleteProgram,
+    reorderPrograms,
 }

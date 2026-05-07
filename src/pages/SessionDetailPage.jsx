@@ -5,9 +5,9 @@ import { Button, Avatar } from '../components/ui'
 import { getSession } from '../services/sessions'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
-import { ArrowLeft, Calendar, Clock, FileText, Play, Download, Target, Activity, BarChart2, User, Trash2, CheckCircle, XCircle } from 'lucide-react'
+import { ArrowLeft, Calendar, Clock, FileText, Play, Download, Target, Activity, BarChart2, User, Trash2, CheckCircle, XCircle, Edit3 } from 'lucide-react'
 import { format } from 'date-fns'
-import { deleteSessionData } from '../services/sessions'
+import { deleteSessionData, editSessionTimes } from '../services/sessions'
 
 export default function SessionDetailPage() {
     const { id } = useParams()
@@ -18,6 +18,13 @@ export default function SessionDetailPage() {
     const [loading, setLoading] = useState(true)
     const [deleting, setDeleting] = useState(null) // Track which item is being deleted
     const [deleteConfirmId, setDeleteConfirmId] = useState(null) // For delete confirmation modal
+    const [showTimeEditModal, setShowTimeEditModal] = useState(false)
+    const [timeEditForm, setTimeEditForm] = useState({
+        start_time: '',
+        end_time: '',
+        edit_reason: ''
+    })
+    const [savingTimeEdit, setSavingTimeEdit] = useState(false)
 
     // Fetch session data
     useEffect(() => {
@@ -345,12 +352,42 @@ export default function SessionDetailPage() {
                                     <span className="text-gray-500">Start Time</span>
                                     <span className="text-gray-900">{format(new Date(session.start_time), 'h:mm a')}</span>
                                 </div>
+                                {session.end_time && (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">End Time</span>
+                                        <span className="text-gray-900">{format(new Date(session.end_time), 'h:mm a')}</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between">
                                     <span className="text-gray-500">Status</span>
                                     <span className={`font-medium ${session.status === 'completed' ? 'text-[#159DB3]' : 'text-yellow-600'}`}>
                                         {session.status === 'completed' ? 'Completed' : 'In Progress'}
                                     </span>
                                 </div>
+                                
+                                {/* Edit Times Button - BCBA/Admin only */}
+                                {(user?.role === 'bcba' || user?.role === 'admin' || user?.is_admin) && (
+                                    <button
+                                        onClick={() => {
+                                            // Pre-fill form with current times
+                                            const toLocalInput = (isoStr) => {
+                                                if (!isoStr) return ''
+                                                const d = new Date(isoStr)
+                                                return d.toISOString().slice(0, 16) // Format: YYYY-MM-DDTHH:mm
+                                            }
+                                            setTimeEditForm({
+                                                start_time: toLocalInput(session.start_time),
+                                                end_time: toLocalInput(session.end_time),
+                                                edit_reason: ''
+                                            })
+                                            setShowTimeEditModal(true)
+                                        }}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 mt-2 border-2 border-amber-300 text-amber-700 font-semibold rounded-xl hover:bg-amber-50 transition-colors text-sm"
+                                    >
+                                        <Edit3 size={16} />
+                                        Edit Times
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -404,6 +441,100 @@ export default function SessionDetailPage() {
                                     className="flex-1 px-4 py-3 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 transition-colors"
                                 >
                                     Remove
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* Edit Session Times Modal */}
+            {showTimeEditModal && (
+                <>
+                    <div
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+                        onClick={() => setShowTimeEditModal(false)}
+                    ></div>
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+                            <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+                                <Clock size={24} className="text-amber-600" />
+                            </div>
+                            <h3 className="font-heading text-xl font-bold text-gray-900 text-center mb-2">
+                                Edit Session Times
+                            </h3>
+                            <p className="text-gray-500 text-center text-sm mb-6">
+                                Adjust session start/end times for accurate billing. This will be logged in the audit trail.
+                            </p>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                                    <input
+                                        type="datetime-local"
+                                        value={timeEditForm.start_time}
+                                        onChange={(e) => setTimeEditForm(prev => ({ ...prev, start_time: e.target.value }))}
+                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#159DB3] focus:ring-4 focus:ring-[#159DB3]/10"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                                    <input
+                                        type="datetime-local"
+                                        value={timeEditForm.end_time}
+                                        onChange={(e) => setTimeEditForm(prev => ({ ...prev, end_time: e.target.value }))}
+                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#159DB3] focus:ring-4 focus:ring-[#159DB3]/10"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Reason for Edit *</label>
+                                    <textarea
+                                        value={timeEditForm.edit_reason}
+                                        onChange={(e) => setTimeEditForm(prev => ({ ...prev, edit_reason: e.target.value }))}
+                                        placeholder="e.g., Therapist forgot to start timer, adjusting for actual session time"
+                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#159DB3] focus:ring-4 focus:ring-[#159DB3]/10 min-h-[80px] resize-y"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 mt-6">
+                                <button
+                                    onClick={() => setShowTimeEditModal(false)}
+                                    className="flex-1 px-4 py-3 border-2 border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    disabled={!timeEditForm.edit_reason || timeEditForm.edit_reason.length < 5 || savingTimeEdit}
+                                    onClick={async () => {
+                                        setSavingTimeEdit(true)
+                                        try {
+                                            const payload = { edit_reason: timeEditForm.edit_reason }
+                                            if (timeEditForm.start_time) {
+                                                payload.start_time = new Date(timeEditForm.start_time).toISOString()
+                                            }
+                                            if (timeEditForm.end_time) {
+                                                payload.end_time = new Date(timeEditForm.end_time).toISOString()
+                                            }
+                                            const result = await editSessionTimes(session.id, payload)
+                                            // Refresh session data
+                                            setSession(prev => ({
+                                                ...prev,
+                                                start_time: result.start_time,
+                                                end_time: result.end_time,
+                                                duration_minutes: result.duration_minutes,
+                                            }))
+                                            toast.success('Session times updated')
+                                            setShowTimeEditModal(false)
+                                        } catch (err) {
+                                            toast.error(err.response?.data?.detail || 'Failed to update session times')
+                                        } finally {
+                                            setSavingTimeEdit(false)
+                                        }
+                                    }}
+                                    className="flex-1 px-4 py-3 bg-[#159DB3] text-white font-semibold rounded-xl hover:bg-[#0E8499] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {savingTimeEdit ? 'Saving...' : 'Save Changes'}
                                 </button>
                             </div>
                         </div>

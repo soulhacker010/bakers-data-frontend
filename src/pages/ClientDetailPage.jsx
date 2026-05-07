@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
 import { getClient, deleteClient } from '../services/clients'
 import { getPrograms } from '../services/programs'
+import { reorderPrograms } from '../services/programs'
 import { getSessions } from '../services/sessions'
 import { getMasteryProgress } from '../services/analytics'
 import {
@@ -18,7 +19,8 @@ import {
     Users,
     Award,
     Target,
-    Star
+    Star,
+    GripVertical
 } from 'lucide-react'
 import { format } from 'date-fns'
 import StaffAssignmentModal from '../components/staff/StaffAssignmentModal'
@@ -156,6 +158,8 @@ export default function ClientDetailPage() {
     const [clientSessions, setClientSessions] = useState([])
     const [masteryData, setMasteryData] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [programTypeFilter, setProgramTypeFilter] = useState('all') // 'all', 'skill', 'behavior'
+    const [draggedProgramId, setDraggedProgramId] = useState(null)
 
     // Fetch client data on mount
     useEffect(() => {
@@ -320,14 +324,82 @@ export default function ClientDetailPage() {
                             </div>
                         ) : (
                             <>
-                                {clientPrograms.map(program => (
-                                    <ProgramCard
+                                {/* Program Type Filter Tabs */}
+                                <div className="flex items-center gap-2 mb-4">
+                                    {[{ key: 'all', label: 'All Programs' },
+                                      { key: 'behavior', label: 'Behavior Reduction' },
+                                      { key: 'skill', label: 'Skill Acquisition' }].map(tab => (
+                                        <button
+                                            key={tab.key}
+                                            onClick={() => setProgramTypeFilter(tab.key)}
+                                            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${programTypeFilter === tab.key
+                                                ? 'bg-[#159DB3] text-white shadow-md'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                            }`}
+                                        >
+                                            {tab.label} ({tab.key === 'all'
+                                                ? clientPrograms.length
+                                                : clientPrograms.filter(p => p.program_type === tab.key).length})
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Programs List with Drag Reorder */}
+                                {clientPrograms
+                                    .filter(p => programTypeFilter === 'all' || p.program_type === programTypeFilter)
+                                    .map(program => (
+                                    <div
                                         key={program.id}
-                                        program={program}
-                                        onStartSession={() => handleStartSession(program.id)}
-                                        onViewProgress={() => navigate(`/programs/${program.id}/progress`)}
-                                        onEdit={() => navigate(`/programs/${program.id}/edit`)}
-                                    />
+                                        draggable
+                                        onDragStart={(e) => {
+                                            setDraggedProgramId(program.id)
+                                            e.dataTransfer.effectAllowed = 'move'
+                                        }}
+                                        onDragOver={(e) => {
+                                            e.preventDefault()
+                                            e.dataTransfer.dropEffect = 'move'
+                                        }}
+                                        onDrop={async (e) => {
+                                            e.preventDefault()
+                                            if (draggedProgramId === program.id) return
+                                            
+                                            // Reorder in state
+                                            const filtered = programTypeFilter === 'all'
+                                                ? [...clientPrograms]
+                                                : [...clientPrograms]
+                                            const fromIndex = filtered.findIndex(p => p.id === draggedProgramId)
+                                            const toIndex = filtered.findIndex(p => p.id === program.id)
+                                            if (fromIndex === -1 || toIndex === -1) return
+                                            
+                                            const reordered = [...clientPrograms]
+                                            const [moved] = reordered.splice(fromIndex, 1)
+                                            reordered.splice(toIndex, 0, moved)
+                                            setClientPrograms(reordered)
+                                            setDraggedProgramId(null)
+                                            
+                                            // Persist to server
+                                            try {
+                                                await reorderPrograms(client.id, reordered.map(p => p.id))
+                                            } catch (err) {
+                                                console.error('Failed to reorder:', err)
+                                            }
+                                        }}
+                                        onDragEnd={() => setDraggedProgramId(null)}
+                                        className={`flex items-start gap-3 transition-all ${draggedProgramId === program.id ? 'opacity-50' : ''}`}
+                                    >
+                                        {/* Drag Handle */}
+                                        <div className="pt-6 cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 transition-colors">
+                                            <GripVertical size={20} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <ProgramCard
+                                                program={program}
+                                                onStartSession={() => handleStartSession(program.id)}
+                                                onViewProgress={() => navigate(`/programs/${program.id}/progress`)}
+                                                onEdit={() => navigate(`/programs/${program.id}/edit`)}
+                                            />
+                                        </div>
+                                    </div>
                                 ))}
 
                                 {/* Add Program Button */}

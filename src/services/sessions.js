@@ -122,6 +122,16 @@ export const resumeSession = async (sessionId) => {
     return response.data
 }
 
+/**
+ * Edit session start/end times (BCBA/admin only)
+ * @param {number} sessionId
+ * @param {Object} timeData - { start_time?, end_time?, edit_reason }
+ */
+export const editSessionTimes = async (sessionId, timeData) => {
+    const response = await api.put(`/api/sessions/${sessionId}/edit-times`, timeData)
+    return response.data
+}
+
 export default {
     getSessions,
     getSession,
@@ -133,5 +143,6 @@ export default {
     deleteSessionData,
     pauseSession,
     resumeSession,
+    editSessionTimes,
 }
 
