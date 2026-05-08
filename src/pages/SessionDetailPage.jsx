@@ -365,9 +365,8 @@ export default function SessionDetailPage() {
                                     </span>
                                 </div>
                                 
-                                {/* Edit Times Button - BCBA/Admin only */}
-                                {(user?.role === 'bcba' || user?.role === 'admin' || user?.is_admin) && (
-                                    <button
+                                {/* Edit Times Button - Available to all therapists */}
+                                <button
                                         onClick={() => {
                                             // Pre-fill form with current times
                                             const toLocalInput = (isoStr) => {
@@ -387,7 +386,6 @@ export default function SessionDetailPage() {
                                         <Edit3 size={16} />
                                         Edit Times
                                     </button>
-                                )}
                             </div>
                         </div>
                     </div>
