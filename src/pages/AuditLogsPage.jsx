@@ -19,7 +19,7 @@ import {
     RefreshCw,
     X
 } from 'lucide-react'
-import { format, subDays, subWeeks, subMonths, isAfter } from 'date-fns'
+import { format } from 'date-fns'
 
 // Simple action badge colors
 const ACTION_STYLES = {
@@ -41,6 +41,17 @@ const QUICK_FILTERS = [
     { key: 'phi', label: 'PHI Access', icon: Eye },
 ]
 
+// Map quick filter to API params
+const FILTER_TO_PARAMS = {
+    'all': {},
+    'logins': { action: 'LOGIN' },
+    'failed': { action: 'LOGIN_FAILED' },
+    'sessions': { resource_type: 'session' },
+    'phi': { action: 'READ', resource_type: 'client' },
+}
+
+const PAGE_SIZE = 100
+
 export default function AuditLogsPage() {
     const { toast } = useToast()
     const [logs, setLogs] = useState([])
@@ -48,17 +59,32 @@ export default function AuditLogsPage() {
     const [searchEmail, setSearchEmail] = useState('')
     const [quickFilter, setQuickFilter] = useState('all')
     const [page, setPage] = useState(0)
-    const limit = 100
+    const [totalCount, setTotalCount] = useState(0)
+    const [stats, setStats] = useState({ total: 0, logins: 0, failed: 0, sessions: 0, phi: 0 })
 
-    // Fetch logs
+    // Fetch logs from server with pagination
     useEffect(() => {
         const fetchLogs = async () => {
             try {
                 setLoading(true)
-                const params = { limit: 500 }
+                const params = {
+                    limit: PAGE_SIZE,
+                    offset: page * PAGE_SIZE,
+                    ...FILTER_TO_PARAMS[quickFilter] || {},
+                }
                 if (searchEmail) params.user_email = searchEmail
                 const data = await getAuditLogs(params)
-                setLogs(data)
+                
+                // New response shape: { logs, total_count, stats }
+                if (data.logs) {
+                    setLogs(data.logs)
+                    setTotalCount(data.total_count || 0)
+                    if (data.stats) setStats(data.stats)
+                } else {
+                    // Backwards compat: old API returns array directly
+                    setLogs(Array.isArray(data) ? data : [])
+                    setTotalCount(Array.isArray(data) ? data.length : 0)
+                }
             } catch (err) {
                 toast.error(err.message || 'Failed to load audit logs')
             } finally {
@@ -66,52 +92,19 @@ export default function AuditLogsPage() {
             }
         }
         fetchLogs()
-    }, [searchEmail, toast])
+    }, [searchEmail, quickFilter, page, toast])
 
-    // Calculate stats
-    const stats = useMemo(() => {
-        return {
-            total: logs.length,
-            logins: logs.filter(l => l.action === 'LOGIN').length,
-            failed: logs.filter(l => l.action === 'LOGIN_FAILED').length,
-            sessions: logs.filter(l => l.resource_type === 'session').length,
-            phi: logs.filter(l => l.action === 'READ' && l.resource_type === 'client').length,
-        }
-    }, [logs])
+    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
 
-    // Apply quick filter
-    const filteredLogs = useMemo(() => {
-        let result = logs
-
-        switch (quickFilter) {
-            case 'logins':
-                result = logs.filter(l => l.action === 'LOGIN')
-                break
-            case 'failed':
-                result = logs.filter(l => l.action === 'LOGIN_FAILED')
-                break
-            case 'sessions':
-                result = logs.filter(l => l.resource_type === 'session')
-                break
-            case 'phi':
-                result = logs.filter(l => l.action === 'READ' && l.resource_type === 'client')
-                break
-            default:
-                break
-        }
-
-        // Paginate
-        return result.slice(page * limit, (page + 1) * limit)
-    }, [logs, quickFilter, page])
-
-    // Export with audit logging
+    // Export ALL logs with audit logging
     const exportToCSV = async () => {
         try {
-            // Fetch with export flag to log the export action
-            const exportData = await getAuditLogs({ limit: 500, export: true })
+            // Fetch ALL logs (up to 10000) with export flag to log the export action
+            const exportData = await getAuditLogs({ limit: 10000, export: true })
+            const exportLogs = exportData.logs || exportData
 
             const headers = ['Time', 'User', 'Action', 'Resource', 'Details', 'IP', 'Browser']
-            const rows = exportData.map(log => [
+            const rows = exportLogs.map(log => [
                 format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss'),
                 log.user_email || 'Unknown',
                 log.action,
@@ -126,7 +119,7 @@ export default function AuditLogsPage() {
             a.href = URL.createObjectURL(blob)
             a.download = `audit-logs-${format(new Date(), 'yyyy-MM-dd')}.csv`
             a.click()
-            toast.success('Exported! (This export was logged)')
+            toast.success(`Exported ${exportLogs.length} logs! (This export was logged)`)
         } catch (err) {
             toast.error('Export failed')
         }
@@ -156,28 +149,28 @@ export default function AuditLogsPage() {
                 </div>
             </div>
 
-            {/* Stats Bar */}
+            {/* Stats Bar — real totals from server */}
             <div className="bg-white border-b px-6 py-4">
                 <div className="max-w-screen-xl mx-auto flex items-center gap-6">
                     <div className="text-center">
-                        <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                        <p className="text-2xl font-bold text-gray-900">{stats.total.toLocaleString()}</p>
                         <p className="text-xs text-gray-500 uppercase">Total</p>
                     </div>
                     <div className="h-8 w-px bg-gray-200" />
                     <div className="text-center">
-                        <p className="text-2xl font-bold text-green-600">{stats.logins}</p>
+                        <p className="text-2xl font-bold text-green-600">{stats.logins.toLocaleString()}</p>
                         <p className="text-xs text-gray-500 uppercase">Logins</p>
                     </div>
                     <div className="text-center">
-                        <p className="text-2xl font-bold text-red-600">{stats.failed}</p>
+                        <p className="text-2xl font-bold text-red-600">{stats.failed.toLocaleString()}</p>
                         <p className="text-xs text-gray-500 uppercase">Failed</p>
                     </div>
                     <div className="text-center">
-                        <p className="text-2xl font-bold text-blue-600">{stats.sessions}</p>
+                        <p className="text-2xl font-bold text-blue-600">{stats.sessions.toLocaleString()}</p>
                         <p className="text-xs text-gray-500 uppercase">Sessions</p>
                     </div>
                     <div className="text-center">
-                        <p className="text-2xl font-bold text-purple-600">{stats.phi}</p>
+                        <p className="text-2xl font-bold text-purple-600">{stats.phi.toLocaleString()}</p>
                         <p className="text-xs text-gray-500 uppercase">PHI Access</p>
                     </div>
                 </div>
@@ -237,7 +230,7 @@ export default function AuditLogsPage() {
                             <div className="w-8 h-8 border-4 border-[#159DB3] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
                             <p className="text-gray-500 text-sm">Loading...</p>
                         </div>
-                    ) : filteredLogs.length === 0 ? (
+                    ) : logs.length === 0 ? (
                         <div className="p-12 text-center">
                             <Shield size={48} className="mx-auto text-gray-300 mb-3" />
                             <p className="text-gray-500">No logs found</p>
@@ -263,7 +256,7 @@ export default function AuditLogsPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredLogs.map((log, i) => {
+                                    {logs.map((log, i) => {
                                         const style = ACTION_STYLES[log.action] || ACTION_STYLES['UPDATE']
                                         const Icon = style.icon
                                         return (
@@ -293,12 +286,12 @@ export default function AuditLogsPage() {
                                 </tbody>
                             </table>
 
-                            {/* Pagination */}
+                            {/* Pagination — server-side */}
                             <div className="px-4 py-3 border-t flex items-center justify-between bg-gray-50">
                                 <p className="text-sm text-gray-500">
-                                    Page {page + 1} • {filteredLogs.length} logs
+                                    Showing {(page * PAGE_SIZE) + 1}–{Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount.toLocaleString()} logs
                                 </p>
-                                <div className="flex gap-2">
+                                <div className="flex items-center gap-2">
                                     <button
                                         onClick={() => setPage(p => Math.max(0, p - 1))}
                                         disabled={page === 0}
@@ -306,9 +299,12 @@ export default function AuditLogsPage() {
                                     >
                                         <ChevronLeft size={16} />
                                     </button>
+                                    <span className="text-sm text-gray-600 font-medium px-2">
+                                        Page {page + 1} of {totalPages}
+                                    </span>
                                     <button
                                         onClick={() => setPage(p => p + 1)}
-                                        disabled={filteredLogs.length < limit}
+                                        disabled={page + 1 >= totalPages}
                                         className="p-2 rounded border bg-white hover:bg-gray-50 disabled:opacity-50"
                                     >
                                         <ChevronRight size={16} />
