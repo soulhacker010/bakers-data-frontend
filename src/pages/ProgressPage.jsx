@@ -127,7 +127,7 @@ export default function ProgressPage() {
         if (program?.data_type === 'frequency') {
             return (
                 <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
+                    <LineChart data={chartData} margin={{ top: 36, right: 36, left: 0, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                         <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
@@ -140,20 +140,24 @@ export default function ProgressPage() {
                             }}
                             formatter={(value) => [value, 'Count']}
                         />
-                        {/* Phase change vertical lines */}
+                        {/* Phase change vertical lines — drawn at the date a target
+                            was mastered, with a label showing the next target taking over.
+                            Tall stroke + readable label so the transition is obvious on
+                            the graph (per client request from Dena/ABA team). */}
                         {phaseChanges.map((pc, idx) => (
                             <ReferenceLine
                                 key={`pc-${idx}`}
                                 x={pc.dateLabel}
                                 stroke="#10B981"
                                 strokeDasharray="6 3"
-                                strokeWidth={2}
+                                strokeWidth={2.5}
+                                ifOverflow="extendDomain"
                                 label={{
                                     value: `✓ ${pc.from_target}${pc.to_target ? ` → ${pc.to_target}` : ''}`,
                                     position: 'top',
-                                    fontSize: 10,
-                                    fill: '#10B981',
-                                    fontWeight: 600,
+                                    fontSize: 11,
+                                    fill: '#0E8C6B',
+                                    fontWeight: 700,
                                 }}
                             />
                         ))}
@@ -167,7 +171,7 @@ export default function ProgressPage() {
         if (program?.data_type === 'duration') {
             return (
                 <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData}>
+                    <AreaChart data={chartData} margin={{ top: 36, right: 36, left: 0, bottom: 0 }}>
                         <defs>
                             <linearGradient id="colorDuration" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.2} />
@@ -185,20 +189,24 @@ export default function ProgressPage() {
                             }}
                             formatter={(value) => [`${value} min`, 'Duration']}
                         />
-                        {/* Phase change vertical lines */}
+                        {/* Phase change vertical lines — drawn at the date a target
+                            was mastered, with a label showing the next target taking over.
+                            Tall stroke + readable label so the transition is obvious on
+                            the graph (per client request from Dena/ABA team). */}
                         {phaseChanges.map((pc, idx) => (
                             <ReferenceLine
                                 key={`pc-${idx}`}
                                 x={pc.dateLabel}
                                 stroke="#10B981"
                                 strokeDasharray="6 3"
-                                strokeWidth={2}
+                                strokeWidth={2.5}
+                                ifOverflow="extendDomain"
                                 label={{
                                     value: `✓ ${pc.from_target}${pc.to_target ? ` → ${pc.to_target}` : ''}`,
                                     position: 'top',
-                                    fontSize: 10,
-                                    fill: '#10B981',
-                                    fontWeight: 600,
+                                    fontSize: 11,
+                                    fill: '#0E8C6B',
+                                    fontWeight: 700,
                                 }}
                             />
                         ))}
@@ -212,7 +220,7 @@ export default function ProgressPage() {
         if (program?.data_type === 'task_analysis') {
             return (
                 <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
+                    <LineChart data={chartData} margin={{ top: 36, right: 36, left: 0, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                         <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
@@ -250,7 +258,7 @@ export default function ProgressPage() {
         // Default: Trial-based accuracy chart
         return (
             <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
+                <AreaChart data={chartData} margin={{ top: 36, right: 36, left: 0, bottom: 0 }}>
                     <defs>
                         <linearGradient id="colorAccuracy" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#159DB3" stopOpacity={0.2} />

@@ -5,9 +5,9 @@ import { Button, Avatar } from '../components/ui'
 import { getSession } from '../services/sessions'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
-import { ArrowLeft, Calendar, Clock, FileText, Play, Download, Target, Activity, BarChart2, User, Trash2, CheckCircle, XCircle, Edit3 } from 'lucide-react'
+import { ArrowLeft, Calendar, Clock, FileText, Play, Download, Target, Activity, BarChart2, User, Trash2, CheckCircle, XCircle, Edit3, StopCircle } from 'lucide-react'
 import { format } from 'date-fns'
-import { deleteSessionData, editSessionTimes } from '../services/sessions'
+import { deleteSessionData, editSessionTimes, endSession } from '../services/sessions'
 
 export default function SessionDetailPage() {
     const { id } = useParams()
@@ -25,6 +25,22 @@ export default function SessionDetailPage() {
         edit_reason: ''
     })
     const [savingTimeEdit, setSavingTimeEdit] = useState(false)
+    const [showEndConfirm, setShowEndConfirm] = useState(false)
+    const [endingSession, setEndingSession] = useState(false)
+
+    // Whether the current user is allowed to end this session.
+    // Matches backend permission: session owner, admin/superadmin, or BCBA role.
+    // Used to expose an End Session button when a therapist forgot to close their session
+    // so a BCBA/admin can close it (per Dena/Joe's request).
+    const role = (user?.role || '').toLowerCase()
+    const canEndSession =
+        session?.status !== 'completed' && (
+            (session?.user_id != null && session.user_id === user?.id) ||
+            user?.is_admin ||
+            user?.is_superadmin ||
+            role === 'bcba'
+        )
+    const isSessionOwner = session?.user_id != null && session.user_id === user?.id
 
     // Fetch session data
     useEffect(() => {
@@ -287,13 +303,28 @@ export default function SessionDetailPage() {
                             <h3 className="font-heading text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
                             <div className="space-y-3">
                                 {session.status !== 'completed' ? (
-                                    <button
-                                        onClick={() => navigate(`/sessions/${id}/collect`)}
-                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#159DB3] text-white font-semibold rounded-xl hover:bg-[#0E8499] transition-colors shadow-md"
-                                    >
-                                        <Play size={18} />
-                                        Continue Session
-                                    </button>
+                                    <>
+                                        {isSessionOwner && (
+                                            <button
+                                                onClick={() => navigate(`/sessions/${id}/collect`)}
+                                                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#159DB3] text-white font-semibold rounded-xl hover:bg-[#0E8499] transition-colors shadow-md"
+                                            >
+                                                <Play size={18} />
+                                                Continue Session
+                                            </button>
+                                        )}
+                                        {canEndSession && (
+                                            <button
+                                                onClick={() => setShowEndConfirm(true)}
+                                                disabled={endingSession}
+                                                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                                                title={isSessionOwner ? 'End this session' : 'End this session on behalf of the therapist'}
+                                            >
+                                                <StopCircle size={18} />
+                                                {endingSession ? 'Ending…' : 'End Session'}
+                                            </button>
+                                        )}
+                                    </>
                                 ) : (
                                     <button
                                         disabled
@@ -439,6 +470,63 @@ export default function SessionDetailPage() {
                                     className="flex-1 px-4 py-3 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 transition-colors"
                                 >
                                     Remove
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* End Session Confirmation Modal */}
+            {showEndConfirm && (
+                <>
+                    <div
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+                        onClick={() => !endingSession && setShowEndConfirm(false)}
+                    ></div>
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+                            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+                                <StopCircle size={24} className="text-red-600" />
+                            </div>
+                            <h3 className="font-heading text-xl font-bold text-gray-900 text-center mb-2">
+                                End This Session?
+                            </h3>
+                            <p className="text-gray-500 text-center mb-6">
+                                {isSessionOwner
+                                    ? 'This will mark the session as completed and lock its duration. You can still review the data afterward.'
+                                    : `This session was started by another therapist and is still open. Ending it will close it on their behalf and the action will be recorded in the audit log.`}
+                            </p>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setShowEndConfirm(false)}
+                                    disabled={endingSession}
+                                    className="flex-1 px-4 py-3 border-2 border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    disabled={endingSession}
+                                    onClick={async () => {
+                                        setEndingSession(true)
+                                        try {
+                                            const updated = await endSession(session.id, '')
+                                            setSession(prev => ({
+                                                ...prev,
+                                                ...updated,
+                                                status: 'completed',
+                                            }))
+                                            toast.success('Session ended')
+                                            setShowEndConfirm(false)
+                                        } catch (err) {
+                                            toast.error(err.response?.data?.detail || 'Failed to end session')
+                                        } finally {
+                                            setEndingSession(false)
+                                        }
+                                    }}
+                                    className="flex-1 px-4 py-3 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {endingSession ? 'Ending…' : 'End Session'}
                                 </button>
                             </div>
                         </div>
