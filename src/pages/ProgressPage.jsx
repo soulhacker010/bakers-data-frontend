@@ -21,6 +21,7 @@ export default function ProgressPage() {
     const navigate = useNavigate()
     const { toast } = useToast()
     const [dateRange, setDateRange] = useState('30')
+    const [targetFilter, setTargetFilter] = useState('all')  // 'all' or a target id
     const [program, setProgram] = useState(null)
     const [analytics, setAnalytics] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -40,7 +41,10 @@ export default function ProgressPage() {
                     dateFrom = format(subDays(new Date(), days), 'yyyy-MM-dd')
                 }
 
-                const analyticsData = await getProgramProgress(id, { dateFrom })
+                const analyticsData = await getProgramProgress(id, {
+                    dateFrom,
+                    targetId: targetFilter === 'all' ? null : targetFilter,
+                })
                 setAnalytics(analyticsData)
             } catch (err) {
                 console.error('Failed to load progress:', err)
@@ -50,7 +54,7 @@ export default function ProgressPage() {
             }
         }
         fetchData()
-    }, [id, dateRange, toast])
+    }, [id, dateRange, targetFilter, toast])
 
     // Format chart data from analytics
     // Use parseISO with noon time to avoid timezone date shift
@@ -69,12 +73,26 @@ export default function ProgressPage() {
     // Extract targets for reference lines on graph
     const targets = analytics?.targets || []
 
-    // Extract phase changes for vertical markers
-    const phaseChanges = (analytics?.phase_changes || []).map(pc => ({
-        ...pc,
-        // Convert date to match chart format
-        dateLabel: format(parseISO(pc.date + 'T12:00:00'), 'MMM d')
-    }))
+    // Truncate long target names so labels don't overflow the chart edge.
+    const truncate = (name, max = 18) => {
+        if (!name) return ''
+        return name.length > max ? name.slice(0, max - 1) + '…' : name
+    }
+
+    // Extract phase changes for vertical markers.
+    // Build a label that includes the introduction date so therapists can
+    // see WHEN each target transitioned without having to read the X-axis.
+    const phaseChanges = (analytics?.phase_changes || []).map(pc => {
+        const dateLabel = format(parseISO(pc.date + 'T12:00:00'), 'MMM d')
+        const transition = pc.to_target
+            ? `${truncate(pc.from_target)} → ${truncate(pc.to_target)}`
+            : `${truncate(pc.from_target)} mastered`
+        return {
+            ...pc,
+            dateLabel,
+            chartLabel: `✓ ${dateLabel} · ${transition}`,
+        }
+    })
 
     const handleExport = async () => {
         try {
@@ -127,7 +145,7 @@ export default function ProgressPage() {
         if (program?.data_type === 'frequency') {
             return (
                 <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 36, right: 36, left: 0, bottom: 0 }}>
+                    <LineChart data={chartData} margin={{ top: 36, right: 80, left: 0, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                         <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
@@ -153,7 +171,7 @@ export default function ProgressPage() {
                                 strokeWidth={2.5}
                                 ifOverflow="extendDomain"
                                 label={{
-                                    value: `✓ ${pc.from_target}${pc.to_target ? ` → ${pc.to_target}` : ''}`,
+                                    value: pc.chartLabel,
                                     position: 'top',
                                     fontSize: 11,
                                     fill: '#0E8C6B',
@@ -171,7 +189,7 @@ export default function ProgressPage() {
         if (program?.data_type === 'duration') {
             return (
                 <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData} margin={{ top: 36, right: 36, left: 0, bottom: 0 }}>
+                    <AreaChart data={chartData} margin={{ top: 36, right: 80, left: 0, bottom: 0 }}>
                         <defs>
                             <linearGradient id="colorDuration" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.2} />
@@ -202,7 +220,7 @@ export default function ProgressPage() {
                                 strokeWidth={2.5}
                                 ifOverflow="extendDomain"
                                 label={{
-                                    value: `✓ ${pc.from_target}${pc.to_target ? ` → ${pc.to_target}` : ''}`,
+                                    value: pc.chartLabel,
                                     position: 'top',
                                     fontSize: 11,
                                     fill: '#0E8C6B',
@@ -220,7 +238,7 @@ export default function ProgressPage() {
         if (program?.data_type === 'task_analysis') {
             return (
                 <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 36, right: 36, left: 0, bottom: 0 }}>
+                    <LineChart data={chartData} margin={{ top: 36, right: 80, left: 0, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                         <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
@@ -258,7 +276,7 @@ export default function ProgressPage() {
         // Default: Trial-based accuracy chart
         return (
             <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 36, right: 36, left: 0, bottom: 0 }}>
+                <AreaChart data={chartData} margin={{ top: 36, right: 80, left: 0, bottom: 0 }}>
                     <defs>
                         <linearGradient id="colorAccuracy" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#159DB3" stopOpacity={0.2} />
@@ -286,8 +304,8 @@ export default function ProgressPage() {
                             strokeDasharray={target.status === 'mastered' ? '4 4' : '8 4'}
                             strokeWidth={2}
                             label={{
-                                value: `${target.name} (${target.mastery_threshold}%)`,
-                                position: 'right',
+                                value: `${truncate(target.name)} (${target.mastery_threshold}%)`,
+                                position: 'insideTopLeft',
                                 fontSize: 11,
                                 fill: target.status === 'mastered' ? '#10B981' : '#F59E0B',
                                 fontWeight: 600,
@@ -303,11 +321,11 @@ export default function ProgressPage() {
                             strokeDasharray="6 3"
                             strokeWidth={2}
                             label={{
-                                value: `✓ ${pc.from_target}${pc.to_target ? ` → ${pc.to_target}` : ''}`,
+                                value: pc.chartLabel,
                                 position: 'top',
-                                fontSize: 10,
-                                fill: '#10B981',
-                                fontWeight: 600,
+                                fontSize: 11,
+                                fill: '#0E8C6B',
+                                fontWeight: 700,
                             }}
                         />
                     ))}
@@ -458,7 +476,7 @@ export default function ProgressPage() {
 
             {/* Controls */}
             <div className="px-6 py-6 max-w-screen-xl mx-auto">
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                     <select
                         value={dateRange}
                         onChange={(e) => setDateRange(e.target.value)}
@@ -468,6 +486,24 @@ export default function ProgressPage() {
                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                     </select>
+                    {/* Per-target filter — lets therapists drill into a single
+                        target's history (including mastered ones) so they can
+                        review the data behind a phase change. */}
+                    {targets.length > 0 && (
+                        <select
+                            value={targetFilter}
+                            onChange={(e) => setTargetFilter(e.target.value)}
+                            className="bg-white border border-gray-200 rounded-full px-5 py-2.5 text-sm text-gray-700 min-w-[200px] cursor-pointer focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                            title="View data for a specific target"
+                        >
+                            <option value="all">All Targets</option>
+                            {targets.map(t => (
+                                <option key={t.id} value={t.id}>
+                                    {t.name}{t.status === 'mastered' ? ' ✓ Mastered' : t.status === 'on-hold' ? ' · On Hold' : ''}
+                                </option>
+                            ))}
+                        </select>
+                    )}
                 </div>
             </div>
 

@@ -54,8 +54,8 @@ export const getClientProgress = async (clientId, options = {}) => {
 
 /**
  * Get program progress
- * @param {number} programId 
- * @param {Object} options - { dateFrom, dateTo }
+ * @param {number} programId
+ * @param {Object} options - { dateFrom, dateTo, targetId }
  * @returns {Object} - Program analytics data
  */
 export const getProgramProgress = async (programId, options = {}) => {
@@ -66,6 +66,9 @@ export const getProgramProgress = async (programId, options = {}) => {
     }
     if (options.dateTo) {
         params.append('date_to', options.dateTo)
+    }
+    if (options.targetId != null && options.targetId !== '') {
+        params.append('target_id', options.targetId)
     }
 
     const response = await api.get(`/api/analytics/programs/${programId}?${params.toString()}`)
