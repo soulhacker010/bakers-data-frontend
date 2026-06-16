@@ -171,7 +171,10 @@ export default function TargetsList({ programId, onTargetSelect, selectedTargetI
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [editingTarget, setEditingTarget] = useState(null)
-    const [editForm, setEditForm] = useState({ name: '', description: '' })
+    const [editForm, setEditForm] = useState({
+        name: '', description: '',
+        measurement_type: '', interval_seconds: 30, observation_minutes: 10,
+    })
 
     useEffect(() => {
         const fetchTargets = async () => {
@@ -213,13 +216,32 @@ export default function TargetsList({ programId, onTargetSelect, selectedTargetI
 
     const handleEdit = (target) => {
         setEditingTarget(target)
-        setEditForm({ name: target.name, description: target.description || '' })
+        const secs = target.interval_seconds || 30
+        const count = target.interval_count || 20
+        setEditForm({
+            name: target.name,
+            description: target.description || '',
+            measurement_type: target.measurement_type || '',
+            interval_seconds: secs,
+            observation_minutes: Math.max(1, Math.round((count * secs) / 60)),
+        })
     }
 
     const handleSaveEdit = async () => {
         if (!editingTarget) return
+        const isInterval = ['partial_interval', 'whole_interval', 'momentary_time_sampling'].includes(editForm.measurement_type)
+        const payload = {
+            name: editForm.name,
+            description: editForm.description,
+            // empty string => clear the override (send null)
+            measurement_type: editForm.measurement_type || null,
+        }
+        if (isInterval) {
+            payload.interval_seconds = Number(editForm.interval_seconds)
+            payload.interval_count = Math.max(1, Math.round((Number(editForm.observation_minutes) * 60) / Number(editForm.interval_seconds)))
+        }
         try {
-            await handleUpdate(editingTarget.id, editForm)
+            await handleUpdate(editingTarget.id, payload)
             setEditingTarget(null)
         } catch (err) {
             console.error('Failed to save target:', err)
@@ -315,6 +337,39 @@ export default function TargetsList({ programId, onTargetSelect, selectedTargetI
                                     className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3]"
                                 />
                             </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Measurement method</label>
+                                <select
+                                    value={editForm.measurement_type}
+                                    onChange={(e) => setEditForm({ ...editForm, measurement_type: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3]"
+                                >
+                                    <option value="">Inherit program default</option>
+                                    <option value="partial_interval">Partial Interval</option>
+                                    <option value="whole_interval">Whole Interval</option>
+                                    <option value="momentary_time_sampling">Momentary Time Sampling</option>
+                                    <option value="latency">Latency</option>
+                                </select>
+                            </div>
+                            {['partial_interval', 'whole_interval', 'momentary_time_sampling'].includes(editForm.measurement_type) && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Interval length (sec)</label>
+                                        <input type="number" min="1" value={editForm.interval_seconds}
+                                            onChange={(e) => setEditForm({ ...editForm, interval_seconds: e.target.value })}
+                                            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3]" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Observation (min)</label>
+                                        <input type="number" min="1" value={editForm.observation_minutes}
+                                            onChange={(e) => setEditForm({ ...editForm, observation_minutes: e.target.value })}
+                                            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3]" />
+                                    </div>
+                                    <p className="col-span-2 text-xs text-gray-400">
+                                        = {Math.max(1, Math.round((Number(editForm.observation_minutes) * 60) / Number(editForm.interval_seconds || 1)))} intervals
+                                    </p>
+                                </div>
+                            )}
                         </div>
                         <div className="flex gap-3 mt-6">
                             <button
