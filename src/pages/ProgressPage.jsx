@@ -63,7 +63,14 @@ export default function ProgressPage() {
         accuracy: session.accuracy || 0,
         frequency: session.frequency_count || 0,
         duration: Math.round((session.total_duration_seconds || 0) / 60), // Convert to minutes
+        interval: session.interval_percentage ?? null,        // % present (interval recording)
+        latency: session.latency_average_seconds ?? null,     // avg seconds-to-onset (latency)
     })) || []
+
+    // When a target with an interval/latency measurement method is selected, the
+    // analytics rows carry these fields and we switch the chart accordingly.
+    const hasInterval = chartData.some(d => d.interval != null)
+    const hasLatency = chartData.some(d => d.latency != null)
 
     // Calculate stats from real data
     const totalSessions = analytics?.overall_stats?.total_sessions || 0
@@ -105,6 +112,8 @@ export default function ProgressPage() {
 
     // Get chart title and info based on data type
     const getChartInfo = () => {
+        if (hasInterval) return { title: '% Interval Over Time', yLabel: '% Interval', unit: '%' }
+        if (hasLatency) return { title: 'Latency Over Time', yLabel: 'Seconds', unit: 's' }
         switch (program?.data_type) {
             case 'frequency':
                 return { title: 'Frequency Over Time', yLabel: 'Count', unit: '' }
@@ -138,6 +147,70 @@ export default function ProgressPage() {
                         Start a Session
                     </button>
                 </div>
+            )
+        }
+
+        // Interval recording: % present over time (0–100% axis, like accuracy)
+        if (hasInterval) {
+            return (
+                <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData} margin={{ top: 36, right: 80, left: 0, bottom: 0 }}>
+                        <defs>
+                            <linearGradient id="colorInterval" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#159DB3" stopOpacity={0.2} />
+                                <stop offset="95%" stopColor="#159DB3" stopOpacity={0} />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                        <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis domain={[0, 100]} stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+                        <Tooltip
+                            contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' }}
+                            formatter={(value) => [`${value}%`, '% Interval']}
+                        />
+                        {targets.map((target) => (
+                            <ReferenceLine
+                                key={target.id}
+                                y={target.mastery_threshold}
+                                stroke={target.status === 'mastered' ? '#10B981' : '#F59E0B'}
+                                strokeDasharray={target.status === 'mastered' ? '4 4' : '8 4'}
+                                strokeWidth={2}
+                                label={{
+                                    value: `${truncate(target.name)} (${target.mastery_threshold}%)`,
+                                    position: 'insideTopLeft', fontSize: 11,
+                                    fill: target.status === 'mastered' ? '#10B981' : '#F59E0B', fontWeight: 600,
+                                }}
+                            />
+                        ))}
+                        {phaseChanges.map((pc, idx) => (
+                            <ReferenceLine key={`pc-${idx}`} x={pc.dateLabel} stroke="#10B981" strokeDasharray="6 3" strokeWidth={2}
+                                label={{ value: pc.chartLabel, position: 'top', fontSize: 11, fill: '#0E8C6B', fontWeight: 700 }} />
+                        ))}
+                        <Area type="monotone" dataKey="interval" stroke="#159DB3" strokeWidth={3} fill="url(#colorInterval)" dot={{ fill: '#159DB3', r: 4 }} activeDot={{ r: 6 }} connectNulls />
+                    </AreaChart>
+                </ResponsiveContainer>
+            )
+        }
+
+        // Latency: Line chart in seconds
+        if (hasLatency) {
+            return (
+                <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData} margin={{ top: 36, right: 80, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                        <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}s`} />
+                        <Tooltip
+                            contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' }}
+                            formatter={(value) => [`${value}s`, 'Avg latency']}
+                        />
+                        {phaseChanges.map((pc, idx) => (
+                            <ReferenceLine key={`pc-${idx}`} x={pc.dateLabel} stroke="#10B981" strokeDasharray="6 3" strokeWidth={2}
+                                label={{ value: pc.chartLabel, position: 'top', fontSize: 11, fill: '#0E8C6B', fontWeight: 700 }} />
+                        ))}
+                        <Line type="monotone" dataKey="latency" stroke="#8B5CF6" strokeWidth={3} dot={{ fill: '#8B5CF6', r: 4 }} activeDot={{ r: 6 }} connectNulls />
+                    </LineChart>
+                </ResponsiveContainer>
             )
         }
 
@@ -340,6 +413,50 @@ export default function ProgressPage() {
         const totalFrequency = chartData.reduce((sum, d) => sum + (d.frequency || 0), 0)
         const totalDuration = chartData.reduce((sum, d) => sum + (d.duration || 0), 0)
         const avgDuration = chartData.length > 0 ? Math.round(totalDuration / chartData.length) : 0
+
+        if (hasInterval) {
+            const vals = chartData.filter(d => d.interval != null).map(d => d.interval)
+            const avgInterval = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0
+            const latestInterval = vals.length ? vals[vals.length - 1] : 0
+            return (
+                <>
+                    <div className="text-center p-4 bg-gray-50 rounded-xl">
+                        <p className="font-heading text-3xl font-bold text-primary">{latestInterval}%</p>
+                        <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Latest % Interval</p>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-xl">
+                        <p className="font-heading text-3xl font-bold text-gray-900">{totalSessions}</p>
+                        <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Total Sessions</p>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-xl">
+                        <p className="font-heading text-3xl font-bold text-orange-500">{avgInterval}%</p>
+                        <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Avg % Interval</p>
+                    </div>
+                </>
+            )
+        }
+
+        if (hasLatency) {
+            const vals = chartData.filter(d => d.latency != null).map(d => d.latency)
+            const avgLatency = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0
+            const latestLatency = vals.length ? vals[vals.length - 1] : 0
+            return (
+                <>
+                    <div className="text-center p-4 bg-gray-50 rounded-xl">
+                        <p className="font-heading text-3xl font-bold text-purple-600">{latestLatency}s</p>
+                        <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Latest Latency</p>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-xl">
+                        <p className="font-heading text-3xl font-bold text-gray-900">{totalSessions}</p>
+                        <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Total Sessions</p>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-xl">
+                        <p className="font-heading text-3xl font-bold text-purple-500">{avgLatency}s</p>
+                        <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Avg Latency</p>
+                    </div>
+                </>
+            )
+        }
 
         switch (program?.data_type) {
             case 'frequency':
