@@ -26,7 +26,7 @@ export const getTarget = async (targetId) => {
 /**
  * Create a new target for a program
  * @param {number} programId - Program ID
- * @param {Object} targetData - Target data { name, description, mastery_criteria, mastery_threshold, mastery_consecutive_sessions }
+ * @param {Object} targetData - Target data { name, description, mastery_criteria, mastery_threshold, mastery_consecutive_sessions, measurement_type, interval_seconds, interval_count }
  * @returns {Object} - Created target
  */
 export const createTarget = async (programId, targetData) => {

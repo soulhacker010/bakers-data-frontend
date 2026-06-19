@@ -8,7 +8,7 @@ import { useToast } from '../context/ToastContext'
 import { useNotifications, NOTIFICATION_TYPES } from '../context/NotificationContext'
 import { getUserSettings } from '../services/settings'
 import { Check, X, StopCircle, Plus, Minus, Play, Square, RotateCcw, ChevronLeft, ChevronRight, Target, FileText, ListChecks, Pause, CircleSlash, Timer } from 'lucide-react'
-import { TaskAnalysisCollector } from '../components/data'
+import { TaskAnalysisCollector, IntervalCollector, LatencyCollector } from '../components/data'
 import {
     saveActiveSession,
     clearActiveSession,
@@ -603,7 +603,7 @@ export default function SessionCollectPage() {
 
         const dataPoint = {
             program_id: program.id,
-            data_type: program.data_type,
+            data_type: data.data_type || program.data_type,
             target_id: selectedTarget?.id || null,  // Include target for progress tracking
             ...data
         }
@@ -964,7 +964,36 @@ export default function SessionCollectPage() {
                         )}
 
                         {/* Data Collection */}
-                        {program.data_type === 'trial' && (
+
+                        {/* A target may override the program's data type with an interval/latency method. */}
+                        {(() => {
+                            const effectiveType = selectedTarget?.measurement_type || program.data_type
+                            const isInterval = ['partial_interval', 'whole_interval', 'momentary_time_sampling'].includes(effectiveType)
+                            const isLatency = effectiveType === 'latency'
+                            if (isInterval) {
+                                return (
+                                    <IntervalCollector
+                                        key={selectedTarget?.id}
+                                        target={selectedTarget}
+                                        onRecord={(d) => handleRecord({ ...d, data_type: effectiveType })}
+                                        disabled={isPaused}
+                                    />
+                                )
+                            }
+                            if (isLatency) {
+                                return (
+                                    <LatencyCollector
+                                        key={selectedTarget?.id}
+                                        onRecord={(d) => handleRecord({ ...d, data_type: 'latency' })}
+                                        disabled={isPaused}
+                                    />
+                                )
+                            }
+                            return null
+                        })()}
+
+                        {/* Existing collectors render only when the target has NO measurement override. */}
+                        {!selectedTarget?.measurement_type && program.data_type === 'trial' && (
                             <TrialDataCollector
                                 onRecord={handleRecord}
                                 stats={trialStats}
@@ -972,7 +1001,7 @@ export default function SessionCollectPage() {
                                 disabled={isPaused}
                             />
                         )}
-                        {program.data_type === 'frequency' && (
+                        {!selectedTarget?.measurement_type && program.data_type === 'frequency' && (
                             <FrequencyDataCollector
                                 onRecord={handleRecord}
                                 onSubtract={handleFrequencySubtract}
@@ -982,7 +1011,7 @@ export default function SessionCollectPage() {
                                 zeroRecorded={isZeroRecorded}
                             />
                         )}
-                        {program.data_type === 'duration' && (
+                        {!selectedTarget?.measurement_type && program.data_type === 'duration' && (
                             <DurationDataCollector
                                 onRecord={handleRecord}
                                 onStart={() => startDurationTimer(program.id)}
@@ -993,7 +1022,7 @@ export default function SessionCollectPage() {
                                 disabled={isPaused}
                             />
                         )}
-                        {program.data_type === 'task_analysis' && (
+                        {!selectedTarget?.measurement_type && program.data_type === 'task_analysis' && (
                             <TaskAnalysisCollector programId={program.id} onRecord={handleRecord} disabled={isPaused} />
                         )}
 
