@@ -7,6 +7,7 @@ import { createProgram } from '../services/programs'
 import { createTarget } from '../services/targets'
 import { createTaskStep } from '../services/taskSteps'
 import { getUserSettings } from '../services/settings'
+import { measurementBadgeLabel } from '../utils/measurement'
 import { ArrowLeft, Plus, Trash2, Target, ListChecks, Edit3 } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 
@@ -456,6 +457,11 @@ export default function AddProgramPage() {
                                                 <p className="text-xs text-gray-500">
                                                     {target.mastery_threshold}% over {target.mastery_consecutive_sessions} sessions
                                                 </p>
+                                                {measurementBadgeLabel(target) && (
+                                                    <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full bg-[#E0F4F7] text-[#0E7C8F] text-xs font-medium">
+                                                        {measurementBadgeLabel(target)}
+                                                    </span>
+                                                )}
                                             </div>
                                             <div className="flex items-center gap-1">
                                                 <button

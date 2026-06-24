@@ -26,7 +26,7 @@ vi.mock('../../context/ToastContext', () => ({
 }))
 
 import TargetsManager from './TargetsManager'
-import { createTarget } from '../../services/targets'
+import { createTarget, getTargets } from '../../services/targets'
 
 describe('TargetsManager — measurement method setup', () => {
     beforeEach(() => {
@@ -80,5 +80,13 @@ describe('TargetsManager — measurement method setup', () => {
         const [, payload] = createTarget.mock.calls[0]
         expect(payload.measurement_type).toBeNull()
         expect(payload).not.toHaveProperty('interval_count')
+    })
+
+    it('shows a measurement-method badge on a target with an interval method', async () => {
+        getTargets.mockResolvedValueOnce([
+            { id: 1, name: 'On Task', status: 'active', measurement_type: 'whole_interval', interval_seconds: 30 },
+        ])
+        render(<TargetsManager programId={1} dataType="trial" />)
+        expect(await screen.findByText('Whole Interval · 30s')).toBeInTheDocument()
     })
 })

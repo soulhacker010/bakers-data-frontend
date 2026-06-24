@@ -3,6 +3,7 @@
  */
 import { useState, useEffect } from 'react'
 import { getTargets, updateTarget, deleteTarget } from '../../services/targets'
+import { measurementBadgeLabel } from '../../utils/measurement'
 import { Target, CheckCircle2, Clock, Pause, MoreVertical, Trash2, Edit2 } from 'lucide-react'
 
 // Status badge component
@@ -59,6 +60,7 @@ function ProgressBar({ accuracy, threshold }) {
 // Single Target Item
 function TargetItem({ target, onUpdate, onDelete, onEdit, showActions = true }) {
     const [showMenu, setShowMenu] = useState(false)
+    const methodLabel = measurementBadgeLabel(target)
 
     const handleStatusChange = async (newStatus) => {
         await onUpdate(target.id, { status: newStatus })
@@ -88,8 +90,13 @@ function TargetItem({ target, onUpdate, onDelete, onEdit, showActions = true }) 
                     <h4 className="font-semibold text-gray-900 truncate">{target.name}</h4>
                     <StatusBadge status={target.status} />
                 </div>
-                <div className="flex items-center gap-4 text-xs text-gray-500">
+                <div className="flex items-center gap-3 text-xs text-gray-500">
                     <span>{target.mastery_threshold}% × {target.mastery_consecutive_sessions} sessions</span>
+                    {methodLabel && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#E0F4F7] text-[#0E7C8F] font-medium">
+                            {methodLabel}
+                        </span>
+                    )}
                 </div>
             </div>
 

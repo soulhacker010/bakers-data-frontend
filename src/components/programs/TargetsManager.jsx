@@ -7,12 +7,14 @@ import { getTargets, createTarget, updateTarget, deleteTarget } from '../../serv
 import { getTaskSteps, createTaskStep, updateTaskStep, deleteTaskStep } from '../../services/taskSteps'
 import { Plus, Edit3, Trash2, Target, ListChecks, Check, X, GripVertical } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
+import { measurementBadgeLabel } from '../../utils/measurement'
 
 // Interval-style measurement methods (need an interval length + count).
 const INTERVAL_METHODS = ['partial_interval', 'whole_interval', 'momentary_time_sampling']
 
 // Single Target Row Component
 function TargetRow({ target, onEdit, onDelete }) {
+    const methodLabel = measurementBadgeLabel(target)
     return (
         <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl group hover:bg-gray-100 transition-colors">
             <GripVertical size={16} className="text-gray-300 cursor-grab" />
@@ -21,6 +23,11 @@ function TargetRow({ target, onEdit, onDelete }) {
                 <p className="font-medium text-gray-900 truncate">{target.name}</p>
                 {target.description && (
                     <p className="text-sm text-gray-500 truncate">{target.description}</p>
+                )}
+                {methodLabel && (
+                    <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full bg-[#E0F4F7] text-[#0E7C8F] text-xs font-medium">
+                        {methodLabel}
+                    </span>
                 )}
             </div>
             <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
