@@ -145,12 +145,23 @@ export default function AddProgramPage() {
 
             // Then create all targets for this program
             for (const target of targets) {
-                await createTarget(program.id, {
+                const targetPayload = {
                     name: target.name,
                     mastery_threshold: target.mastery_threshold,
                     mastery_consecutive_sessions: target.mastery_consecutive_sessions,
                     mastery_criteria: `${target.mastery_threshold}% accuracy over ${target.mastery_consecutive_sessions} consecutive sessions`
-                })
+                }
+                // Carry the per-target measurement method when the BCBA set one.
+                if (target.measurement_type) {
+                    targetPayload.measurement_type = target.measurement_type
+                    if (['partial_interval', 'whole_interval', 'momentary_time_sampling'].includes(target.measurement_type)) {
+                        const secs = Number(target.interval_seconds) || 30
+                        const mins = Number(target.observation_minutes) || 10
+                        targetPayload.interval_seconds = secs
+                        targetPayload.interval_count = Math.max(1, Math.round((mins * 60) / secs))
+                    }
+                }
+                await createTarget(program.id, targetPayload)
             }
 
             // Create task analysis steps if program is task_analysis type
@@ -251,6 +262,44 @@ export default function AddProgramPage() {
                                     />
                                 </div>
                             </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Measurement method</label>
+                                <select
+                                    value={editingTarget.measurement_type || ''}
+                                    onChange={(e) => setEditingTarget({ ...editingTarget, measurement_type: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3]"
+                                >
+                                    <option value="">Inherit program default</option>
+                                    <option value="partial_interval">Partial Interval</option>
+                                    <option value="whole_interval">Whole Interval</option>
+                                    <option value="momentary_time_sampling">Momentary Time Sampling</option>
+                                    <option value="latency">Latency</option>
+                                </select>
+                            </div>
+                            {['partial_interval', 'whole_interval', 'momentary_time_sampling'].includes(editingTarget.measurement_type) && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Interval length (sec)</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={editingTarget.interval_seconds ?? 30}
+                                            onChange={(e) => setEditingTarget({ ...editingTarget, interval_seconds: e.target.value })}
+                                            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3]"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Observation (min)</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={editingTarget.observation_minutes ?? 10}
+                                            onChange={(e) => setEditingTarget({ ...editingTarget, observation_minutes: e.target.value })}
+                                            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3]/20 focus:border-[#159DB3]"
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         <div className="flex gap-3 mt-6">
                             <button

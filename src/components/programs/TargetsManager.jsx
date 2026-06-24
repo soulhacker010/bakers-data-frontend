@@ -8,6 +8,9 @@ import { getTaskSteps, createTaskStep, updateTaskStep, deleteTaskStep } from '..
 import { Plus, Edit3, Trash2, Target, ListChecks, Check, X, GripVertical } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 
+// Interval-style measurement methods (need an interval length + count).
+const INTERVAL_METHODS = ['partial_interval', 'whole_interval', 'momentary_time_sampling']
+
 // Single Target Row Component
 function TargetRow({ target, onEdit, onDelete }) {
     return (
@@ -74,6 +77,9 @@ function ItemModal({ isOpen, onClose, onSave, item, type }) {
     const [name, setName] = useState('')
     const [description, setDescription] = useState('')
     const [status, setStatus] = useState('active')
+    const [measurementType, setMeasurementType] = useState('')
+    const [intervalSeconds, setIntervalSeconds] = useState(30)
+    const [observationMinutes, setObservationMinutes] = useState(10)
     const [saving, setSaving] = useState(false)
 
     useEffect(() => {
@@ -81,10 +87,18 @@ function ItemModal({ isOpen, onClose, onSave, item, type }) {
             setName(item.name || '')
             setDescription(item.description || '')
             setStatus(item.status || 'active')
+            const secs = item.interval_seconds || 30
+            const count = item.interval_count || 20
+            setMeasurementType(item.measurement_type || '')
+            setIntervalSeconds(secs)
+            setObservationMinutes(Math.max(1, Math.round((count * secs) / 60)))
         } else {
             setName('')
             setDescription('')
             setStatus('active')
+            setMeasurementType('')
+            setIntervalSeconds(30)
+            setObservationMinutes(10)
         }
     }, [item])
 
@@ -96,10 +110,23 @@ function ItemModal({ isOpen, onClose, onSave, item, type }) {
 
         setSaving(true)
         try {
-            // Include status only for targets (not task analysis steps)
-            const data = type === 'Target'
-                ? { name: name.trim(), description: description.trim(), status }
-                : { name: name.trim(), description: description.trim() }
+            // Steps (task analysis) only carry name + description.
+            let data
+            if (type === 'Target') {
+                data = {
+                    name: name.trim(),
+                    description: description.trim(),
+                    status,
+                    // empty string => clear the override (inherit program default)
+                    measurement_type: measurementType || null,
+                }
+                if (INTERVAL_METHODS.includes(measurementType)) {
+                    data.interval_seconds = Number(intervalSeconds)
+                    data.interval_count = Math.max(1, Math.round((Number(observationMinutes) * 60) / Number(intervalSeconds || 1)))
+                }
+            } else {
+                data = { name: name.trim(), description: description.trim() }
+            }
             await onSave(data)
             onClose()
         } finally {
@@ -160,6 +187,65 @@ function ItemModal({ isOpen, onClose, onSave, item, type }) {
                                     </select>
                                     <p className="text-xs text-gray-400 mt-1">
                                         "On Hold" targets won't appear during sessions until activated
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Measurement method - only for Targets */}
+                            {type === 'Target' && (
+                                <div>
+                                    <label htmlFor="target-measurement-method" className="block text-sm font-medium text-gray-700 mb-2">
+                                        Measurement method
+                                    </label>
+                                    <select
+                                        id="target-measurement-method"
+                                        value={measurementType}
+                                        onChange={(e) => setMeasurementType(e.target.value)}
+                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3] focus:border-transparent"
+                                    >
+                                        <option value="">Inherit program default</option>
+                                        <option value="partial_interval">Partial Interval</option>
+                                        <option value="whole_interval">Whole Interval</option>
+                                        <option value="momentary_time_sampling">Momentary Time Sampling</option>
+                                        <option value="latency">Latency</option>
+                                    </select>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        Leave on "Inherit program default" to use the program's data type.
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Interval settings - only when an interval method is chosen */}
+                            {type === 'Target' && INTERVAL_METHODS.includes(measurementType) && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label htmlFor="target-interval-seconds" className="block text-sm font-medium text-gray-700 mb-2">
+                                            Interval length (sec)
+                                        </label>
+                                        <input
+                                            id="target-interval-seconds"
+                                            type="number"
+                                            min="1"
+                                            value={intervalSeconds}
+                                            onChange={(e) => setIntervalSeconds(e.target.value)}
+                                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3] focus:border-transparent"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="target-observation-minutes" className="block text-sm font-medium text-gray-700 mb-2">
+                                            Observation (min)
+                                        </label>
+                                        <input
+                                            id="target-observation-minutes"
+                                            type="number"
+                                            min="1"
+                                            value={observationMinutes}
+                                            onChange={(e) => setObservationMinutes(e.target.value)}
+                                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3] focus:border-transparent"
+                                        />
+                                    </div>
+                                    <p className="col-span-2 text-xs text-gray-400">
+                                        = {Math.max(1, Math.round((Number(observationMinutes) * 60) / Number(intervalSeconds || 1)))} intervals per session
                                     </p>
                                 </div>
                             )}
