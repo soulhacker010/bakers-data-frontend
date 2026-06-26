@@ -254,6 +254,13 @@ export default function SessionDetailPage() {
                                                         <Clock size={16} className="text-purple-600" />
                                                     </div>
                                                 )}
+                                                {dataPoint.data_type === 'task_analysis' && (
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${dataPoint.prompt_level === 'independent' ? 'bg-green-100' : 'bg-amber-100'}`}>
+                                                        <span className={`text-[10px] font-bold ${dataPoint.prompt_level === 'independent' ? 'text-green-600' : 'text-amber-600'}`}>
+                                                            {dataPoint.prompt_level === 'independent' ? 'IND' : 'P'}
+                                                        </span>
+                                                    </div>
+                                                )}
 
                                                 <div>
                                                     <p className="text-sm font-medium text-gray-900">
