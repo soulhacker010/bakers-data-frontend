@@ -20,6 +20,13 @@ const dataTypeOptions = [
     { value: 'task_analysis', label: 'Task Analysis' },
 ]
 
+const statusOptions = [
+    { value: 'active', label: 'Active' },
+    { value: 'maintenance', label: 'Maintenance (keep probing)' },
+    { value: 'mastered', label: 'Mastered (met goal)' },
+    { value: 'archived', label: 'Archived (removed)' },
+]
+
 export default function EditProgramPage() {
     const { id } = useParams()
     const navigate = useNavigate()
@@ -34,7 +41,7 @@ export default function EditProgramPage() {
         data_type: 'trial',
         description: '',
         mastery_criteria: '',
-        is_active: true
+        status: 'active'
     })
     const [saving, setSaving] = useState(false)
     const [saved, setSaved] = useState(false)
@@ -53,7 +60,7 @@ export default function EditProgramPage() {
                     data_type: programData.data_type || 'trial',
                     description: programData.description || '',
                     mastery_criteria: programData.mastery_criteria || '',
-                    is_active: programData.is_active ?? true
+                    status: programData.status || 'active'
                 })
 
                 if (programData.client_id) {
@@ -196,18 +203,19 @@ export default function EditProgramPage() {
                             placeholder="e.g., 80% accuracy across 3 consecutive sessions"
                         />
 
-                        <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
-                            <input
-                                type="checkbox"
-                                name="is_active"
-                                checked={formData.is_active}
+                        <div className="p-4 bg-gray-50 rounded-xl space-y-3">
+                            <Select
+                                label="Program Status"
+                                name="status"
+                                value={formData.status}
                                 onChange={handleChange}
-                                className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
+                                options={statusOptions}
+                                placeholder=""
                             />
-                            <div>
-                                <p className="font-medium text-gray-900">Active Program</p>
-                                <p className="text-sm text-gray-500">Inactive programs are hidden from session collection but kept safe — you can find and restore them from the Archived tab on the client's profile.</p>
-                            </div>
+                            <p className="text-sm text-gray-500">
+                                <b>Active</b> and <b>Maintenance</b> stay available for data collection.
+                                <b> Mastered</b> and <b>Archived</b> are removed from daily collection but keep their data and graph — find them under the Archived tab on the client's profile.
+                            </p>
                         </div>
 
                         <div className="flex items-center justify-between pt-4 border-t border-gray-100">

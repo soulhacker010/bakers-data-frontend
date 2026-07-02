@@ -39,6 +39,11 @@ function ProgramCard({ program, onStartSession, onViewProgress, onEdit }) {
                     <span className={`badge-pill mb-3 ${isSkill ? 'badge-skill' : 'badge-behavior'}`}>
                         {isSkill ? 'Skill Acquisition' : 'Behavior Reduction'}
                     </span>
+                    {program.status === 'maintenance' && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide bg-purple-100 text-purple-700 ml-2">
+                            Maintenance
+                        </span>
+                    )}
                     <h3 className="font-heading text-xl font-bold text-gray-900 group-hover:text-primary transition-colors">
                         {program.name}
                     </h3>
@@ -200,10 +205,10 @@ export default function ClientDetailPage() {
     // Archived list into the active list locally so the change is immediate.
     const handleRestoreProgram = async (program) => {
         try {
-            await updateProgram(program.id, { is_active: true })
+            await updateProgram(program.id, { is_active: true, status: 'active' })
             toast.success(`"${program.name}" restored`)
             setArchivedPrograms(prev => prev.filter(p => p.id !== program.id))
-            setClientPrograms(prev => [...prev, { ...program, is_active: true }])
+            setClientPrograms(prev => [...prev, { ...program, is_active: true, status: 'active' }])
             setProgramTypeFilter('all')
         } catch (err) {
             toast.error(err.message || 'Failed to restore program')
@@ -371,7 +376,7 @@ export default function ClientDetailPage() {
                                             }`}
                                         >
                                             <Archive size={15} />
-                                            Archived ({archivedPrograms.length})
+                                            Archived / Mastered ({archivedPrograms.length})
                                         </button>
                                     )}
                                 </div>
@@ -390,9 +395,15 @@ export default function ClientDetailPage() {
                                                         <span className={`badge-pill ${program.program_type === 'skill' ? 'badge-skill' : 'badge-behavior'}`}>
                                                             {program.program_type === 'skill' ? 'Skill Acquisition' : 'Behavior Reduction'}
                                                         </span>
-                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide bg-gray-100 text-gray-500">
-                                                            <Archive size={12} /> Archived
-                                                        </span>
+                                                        {program.status === 'mastered' ? (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide bg-green-100 text-green-700">
+                                                                <Star size={12} /> Mastered
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide bg-gray-100 text-gray-500">
+                                                                <Archive size={12} /> Archived
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <h3 className="font-heading text-lg font-bold text-gray-900 truncate">{program.name}</h3>
                                                     {program.description && (

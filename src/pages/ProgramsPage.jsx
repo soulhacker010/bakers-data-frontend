@@ -5,7 +5,7 @@ import { Button } from '../components/ui'
 import { getPrograms, updateProgram } from '../services/programs'
 import { getClients } from '../services/clients'
 import { useToast } from '../context/ToastContext'
-import { TrendingUp, TrendingDown, BarChart2, Target, Activity, Plus, Search, Filter, X, Archive, RotateCcw } from 'lucide-react'
+import { TrendingUp, TrendingDown, BarChart2, Target, Activity, Plus, Search, Filter, X, Archive, RotateCcw, Star } from 'lucide-react'
 
 export default function ProgramsPage() {
     const navigate = useNavigate()
@@ -47,10 +47,10 @@ export default function ProgramsPage() {
     const handleRestore = async (e, program) => {
         e.stopPropagation()
         try {
-            await updateProgram(program.id, { is_active: true })
+            await updateProgram(program.id, { is_active: true, status: 'active' })
             toast.success(`"${program.name}" restored`)
             setArchivedPrograms(prev => prev.filter(p => p.id !== program.id))
-            setPrograms(prev => [{ ...program, is_active: true }, ...prev])
+            setPrograms(prev => [{ ...program, is_active: true, status: 'active' }, ...prev])
             setFilterType('all')
         } catch (err) {
             toast.error(err.message || 'Failed to restore program')
@@ -227,10 +227,21 @@ export default function ProgramsPage() {
                                                         }`}>
                                                         {isSkill ? 'Skill' : 'Behavior'}
                                                     </span>
-                                                    {program.is_active === false && (
-                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide bg-gray-100 text-gray-500">
-                                                            <Archive size={12} /> Archived
+                                                    {program.status === 'maintenance' && (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide bg-purple-100 text-purple-700">
+                                                            Maintenance
                                                         </span>
+                                                    )}
+                                                    {program.is_active === false && (
+                                                        program.status === 'mastered' ? (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide bg-green-100 text-green-700">
+                                                                <Star size={12} /> Mastered
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide bg-gray-100 text-gray-500">
+                                                                <Archive size={12} /> Archived
+                                                            </span>
+                                                        )
                                                     )}
                                                     <span className="text-sm text-gray-500 truncate">
                                                         {getClientName(program.client_id)}
