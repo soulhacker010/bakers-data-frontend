@@ -5,21 +5,24 @@ import api from './api'
 
 /**
  * Get all programs, optionally filtered by client
- * @param {Object} options - { clientId or client_id, isActive }
+ * @param {Object} options - { clientId or client_id, includeInactive }
+ *   includeInactive: when true, archived (inactive) programs are returned too.
  * @returns {Array} - List of programs
  */
 export const getPrograms = async (options = {}) => {
     // Support both clientId and client_id
     const clientId = options.clientId || options.client_id
+    const includeInactive = options.includeInactive || options.include_inactive
+    const params = includeInactive ? { include_inactive: true } : {}
 
     // If client ID is specified, use the client-specific endpoint
     if (clientId) {
-        const response = await api.get(`/api/programs/client/${clientId}`)
+        const response = await api.get(`/api/programs/client/${clientId}`, { params })
         return response.data
     }
 
     // Otherwise get all programs
-    const response = await api.get('/api/programs')
+    const response = await api.get('/api/programs', { params })
     return response.data
 }
 

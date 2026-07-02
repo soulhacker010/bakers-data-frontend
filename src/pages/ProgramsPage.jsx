@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
 import { Button } from '../components/ui'
-import { getPrograms } from '../services/programs'
+import { getPrograms, updateProgram } from '../services/programs'
 import { getClients } from '../services/clients'
 import { useToast } from '../context/ToastContext'
-import { TrendingUp, TrendingDown, BarChart2, Target, Activity, Plus, Search, Filter, X } from 'lucide-react'
+import { TrendingUp, TrendingDown, BarChart2, Target, Activity, Plus, Search, Filter, X, Archive, RotateCcw } from 'lucide-react'
 
 export default function ProgramsPage() {
     const navigate = useNavigate()
@@ -16,6 +16,7 @@ export default function ProgramsPage() {
 
     // State for API data
     const [programs, setPrograms] = useState([])
+    const [archivedPrograms, setArchivedPrograms] = useState([])
     const [clients, setClients] = useState([])
     const [loading, setLoading] = useState(true)
 
@@ -25,10 +26,13 @@ export default function ProgramsPage() {
             try {
                 setLoading(true)
                 const [programsData, clientsData] = await Promise.all([
-                    getPrograms(),
+                    getPrograms({ includeInactive: true }),
                     getClients()
                 ])
-                setPrograms(programsData)
+                // Keep active and archived (inactive) programs separate so the
+                // default view stays clean while archived ones remain findable.
+                setPrograms(programsData.filter(p => p.is_active !== false))
+                setArchivedPrograms(programsData.filter(p => p.is_active === false))
                 setClients(clientsData)
             } catch (err) {
                 toast.error('Failed to load programs')
@@ -39,17 +43,33 @@ export default function ProgramsPage() {
         fetchData()
     }, [toast])
 
+    // Restore an archived program back to active.
+    const handleRestore = async (e, program) => {
+        e.stopPropagation()
+        try {
+            await updateProgram(program.id, { is_active: true })
+            toast.success(`"${program.name}" restored`)
+            setArchivedPrograms(prev => prev.filter(p => p.id !== program.id))
+            setPrograms(prev => [{ ...program, is_active: true }, ...prev])
+            setFilterType('all')
+        } catch (err) {
+            toast.error(err.message || 'Failed to restore program')
+        }
+    }
+
     // Get client name by ID
     const getClientName = (clientId) => {
         const client = clients.find(c => c.id === clientId)
         return client ? `${client.first_name} ${client.last_name}` : 'Unknown'
     }
 
-    // Filter programs
-    const filteredPrograms = programs.filter(program => {
+    // Filter programs. The "archived" tab draws from the inactive list; every
+    // other tab draws from active programs.
+    const source = filterType === 'archived' ? archivedPrograms : programs
+    const filteredPrograms = source.filter(program => {
         const matchesSearch = program.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             getClientName(program.client_id).toLowerCase().includes(searchTerm.toLowerCase())
-        const matchesType = filterType === 'all' || program.program_type === filterType
+        const matchesType = filterType === 'all' || filterType === 'archived' || program.program_type === filterType
         return matchesSearch && matchesType
     })
 
@@ -147,6 +167,7 @@ export default function ProgramsPage() {
                             { key: 'all', label: 'All' },
                             { key: 'skill', label: 'Skills' },
                             { key: 'behavior', label: 'Behaviors' },
+                            ...(archivedPrograms.length > 0 ? [{ key: 'archived', label: 'Archived' }] : []),
                         ].map((tab) => (
                             <button
                                 key={tab.key}
@@ -206,6 +227,11 @@ export default function ProgramsPage() {
                                                         }`}>
                                                         {isSkill ? 'Skill' : 'Behavior'}
                                                     </span>
+                                                    {program.is_active === false && (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide bg-gray-100 text-gray-500">
+                                                            <Archive size={12} /> Archived
+                                                        </span>
+                                                    )}
                                                     <span className="text-sm text-gray-500 truncate">
                                                         {getClientName(program.client_id)}
                                                     </span>
@@ -262,6 +288,15 @@ export default function ProgramsPage() {
                                                 <BarChart2 size={14} />
                                                 <span className="hidden xs:inline">View</span> Graph
                                             </button>
+                                            {program.is_active === false && (
+                                                <button
+                                                    onClick={(e) => handleRestore(e, program)}
+                                                    className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 bg-[#159DB3] text-white rounded-xl font-semibold text-xs sm:text-sm hover:bg-[#0E8499] transition-colors whitespace-nowrap"
+                                                >
+                                                    <RotateCcw size={14} />
+                                                    Restore
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

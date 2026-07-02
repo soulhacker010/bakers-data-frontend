@@ -4,7 +4,7 @@ import { DashboardLayout } from '../components/layout'
 import { Button, Input, Select, Card, ConfirmModal } from '../components/ui'
 import { getProgram, updateProgram, deleteProgram } from '../services/programs'
 import { getClient } from '../services/clients'
-import { ArrowLeft, Check, Trash2 } from 'lucide-react'
+import { ArrowLeft, Check, Archive } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import TargetsManager from '../components/programs/TargetsManager'
 
@@ -98,10 +98,10 @@ export default function EditProgramPage() {
     const handleDelete = async () => {
         try {
             await deleteProgram(id)
-            toast.success(`Program "${program?.name}" deleted successfully`)
+            toast.success(`Program "${program?.name}" archived`)
             navigate(`/clients/${program?.client_id}`)
         } catch (err) {
-            toast.error(err.message || 'Failed to delete program')
+            toast.error(err.message || 'Failed to archive program')
         }
     }
 
@@ -206,7 +206,7 @@ export default function EditProgramPage() {
                             />
                             <div>
                                 <p className="font-medium text-gray-900">Active Program</p>
-                                <p className="text-sm text-gray-500">Inactive programs won't appear in session collection</p>
+                                <p className="text-sm text-gray-500">Inactive programs are hidden from session collection but kept safe — you can find and restore them from the Archived tab on the client's profile.</p>
                             </div>
                         </div>
 
@@ -215,10 +215,10 @@ export default function EditProgramPage() {
                                 type="button"
                                 variant="ghost"
                                 onClick={() => setShowDeleteModal(true)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                icon={<Trash2 size={18} />}
+                                className="text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+                                icon={<Archive size={18} />}
                             >
-                                Delete Program
+                                Archive Program
                             </Button>
 
                             <div className="flex items-center gap-3">
@@ -257,10 +257,10 @@ export default function EditProgramPage() {
                 isOpen={showDeleteModal}
                 onClose={() => setShowDeleteModal(false)}
                 onConfirm={handleDelete}
-                title="Delete Program?"
-                message={`Are you sure you want to delete "${program.name}"? All associated session data will be lost. This action cannot be undone.`}
-                confirmText="Delete Program"
-                type="danger"
+                title="Archive this program?"
+                message={`"${program.name}" will be moved to the Archived tab. Its session data and graph are kept, and you can restore it anytime — it just won't show up in data collection.`}
+                confirmText="Archive Program"
+                type="warning"
             />
         </DashboardLayout>
     )

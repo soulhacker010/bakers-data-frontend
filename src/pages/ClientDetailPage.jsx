@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
 import { getClient, deleteClient } from '../services/clients'
-import { getPrograms } from '../services/programs'
-import { reorderPrograms } from '../services/programs'
+import { getPrograms, reorderPrograms, updateProgram } from '../services/programs'
 import { getSessions } from '../services/sessions'
 import { getMasteryProgress } from '../services/analytics'
 import {
@@ -20,7 +19,9 @@ import {
     Award,
     Target,
     Star,
-    GripVertical
+    GripVertical,
+    Archive,
+    RotateCcw
 } from 'lucide-react'
 import { format } from 'date-fns'
 import StaffAssignmentModal from '../components/staff/StaffAssignmentModal'
@@ -155,6 +156,7 @@ export default function ClientDetailPage() {
     // State for data from API
     const [client, setClient] = useState(null)
     const [clientPrograms, setClientPrograms] = useState([])
+    const [archivedPrograms, setArchivedPrograms] = useState([])
     const [clientSessions, setClientSessions] = useState([])
     const [masteryData, setMasteryData] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -168,12 +170,16 @@ export default function ClientDetailPage() {
                 setLoading(true)
                 const [clientData, programsData, sessionsData, masteryRes] = await Promise.all([
                     getClient(id),
-                    getPrograms({ client_id: id }),
+                    getPrograms({ client_id: id, includeInactive: true }),
                     getSessions({ client_id: id }),
                     getMasteryProgress(id).catch(() => null)
                 ])
                 setClient(clientData)
-                setClientPrograms(programsData)
+                // Split active vs. archived so the normal workflow only shows
+                // active programs, while archived (mastered-out) ones remain
+                // reachable under the Archived filter.
+                setClientPrograms(programsData.filter(p => p.is_active !== false))
+                setArchivedPrograms(programsData.filter(p => p.is_active === false))
                 setClientSessions(sessionsData)
                 setMasteryData(masteryRes)
             } catch (err) {
@@ -188,6 +194,20 @@ export default function ClientDetailPage() {
 
     const handleStartSession = (programId) => {
         navigate(`/sessions/new/collect?client=${client.id}&program=${programId}`)
+    }
+
+    // Restore an archived (inactive) program back to active. Moves it from the
+    // Archived list into the active list locally so the change is immediate.
+    const handleRestoreProgram = async (program) => {
+        try {
+            await updateProgram(program.id, { is_active: true })
+            toast.success(`"${program.name}" restored`)
+            setArchivedPrograms(prev => prev.filter(p => p.id !== program.id))
+            setClientPrograms(prev => [...prev, { ...program, is_active: true }])
+            setProgramTypeFilter('all')
+        } catch (err) {
+            toast.error(err.message || 'Failed to restore program')
+        }
     }
 
     const handleDeleteClient = async () => {
@@ -311,7 +331,7 @@ export default function ClientDetailPage() {
             <div className="px-6 py-8 max-w-screen-xl mx-auto">
                 {activeTab === 'programs' && (
                     <div className="space-y-4">
-                        {clientPrograms.length === 0 ? (
+                        {clientPrograms.length === 0 && archivedPrograms.length === 0 ? (
                             <div className="text-center py-12">
                                 <p className="text-gray-500 mb-4">No programs yet. Create one to start tracking.</p>
                                 <button
@@ -342,7 +362,61 @@ export default function ClientDetailPage() {
                                                 : clientPrograms.filter(p => p.program_type === tab.key).length})
                                         </button>
                                     ))}
+                                    {archivedPrograms.length > 0 && (
+                                        <button
+                                            onClick={() => setProgramTypeFilter('archived')}
+                                            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all inline-flex items-center gap-1.5 ${programTypeFilter === 'archived'
+                                                ? 'bg-gray-700 text-white shadow-md'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                            }`}
+                                        >
+                                            <Archive size={15} />
+                                            Archived ({archivedPrograms.length})
+                                        </button>
+                                    )}
                                 </div>
+
+                                {/* Archived programs — mastered-out / inactive programs kept
+                                    reachable so their data and graphs aren't lost. */}
+                                {programTypeFilter === 'archived' && (
+                                    <div className="space-y-4">
+                                        <p className="text-sm text-gray-500">
+                                            These programs were archived (for example, mastered out). Their data and graphs are kept — open a graph to review it, or restore a program to make it active again.
+                                        </p>
+                                        {archivedPrograms.map(program => (
+                                            <div key={program.id} className="card-premium p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                                <div className="min-w-0">
+                                                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                        <span className={`badge-pill ${program.program_type === 'skill' ? 'badge-skill' : 'badge-behavior'}`}>
+                                                            {program.program_type === 'skill' ? 'Skill Acquisition' : 'Behavior Reduction'}
+                                                        </span>
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide bg-gray-100 text-gray-500">
+                                                            <Archive size={12} /> Archived
+                                                        </span>
+                                                    </div>
+                                                    <h3 className="font-heading text-lg font-bold text-gray-900 truncate">{program.name}</h3>
+                                                    {program.description && (
+                                                        <p className="text-gray-500 text-sm mt-1 line-clamp-1">{program.description}</p>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-2 flex-shrink-0">
+                                                    <button
+                                                        onClick={() => navigate(`/programs/${program.id}/progress`)}
+                                                        className="flex items-center gap-1 px-4 py-2 border-2 border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:border-[#159DB3] hover:text-[#159DB3] transition-colors"
+                                                    >
+                                                        <ChevronRight size={14} /> View Graph
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleRestoreProgram(program)}
+                                                        className="flex items-center gap-1 px-4 py-2 bg-[#159DB3] text-white rounded-xl text-sm font-semibold hover:bg-[#0E8499] transition-colors"
+                                                    >
+                                                        <RotateCcw size={14} /> Restore
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
 
                                 {/* Programs List with Drag Reorder */}
                                 {clientPrograms
@@ -403,13 +477,15 @@ export default function ClientDetailPage() {
                                 ))}
 
                                 {/* Add Program Button */}
-                                <button
-                                    onClick={() => navigate(`/clients/${client.id}/programs/new`)}
-                                    className="w-full p-6 border-2 border-dashed border-gray-300 rounded-2xl text-gray-500 font-medium hover:border-primary hover:text-primary hover:bg-primary-light transition-all flex items-center justify-center gap-2"
-                                >
-                                    <Plus size={20} />
-                                    Add New Program
-                                </button>
+                                {programTypeFilter !== 'archived' && (
+                                    <button
+                                        onClick={() => navigate(`/clients/${client.id}/programs/new`)}
+                                        className="w-full p-6 border-2 border-dashed border-gray-300 rounded-2xl text-gray-500 font-medium hover:border-primary hover:text-primary hover:bg-primary-light transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <Plus size={20} />
+                                        Add New Program
+                                    </button>
+                                )}
                             </>
                         )}
                     </div>

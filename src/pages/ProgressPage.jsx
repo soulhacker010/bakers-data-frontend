@@ -16,6 +16,31 @@ const dateRangeOptions = [
     { value: 'all', label: 'All Time' },
 ]
 
+// Phase-change ReferenceLine label rendered VERTICALLY along the marker line.
+// The label (date + target transition) used to be horizontal and ran off the
+// right edge of the chart on longer transitions, confusing staff. Drawing it
+// rotated 90° so it reads top-to-bottom next to the line keeps it on-chart
+// and legible (per Dr. Joe's request, 2026-07).
+const phaseChangeLabel = (value) => ({ viewBox } = {}) => {
+    if (!viewBox) return null
+    const x = viewBox.x
+    const y = viewBox.y + 6
+    return (
+        <text
+            x={x}
+            y={y}
+            transform={`rotate(90, ${x}, ${y})`}
+            textAnchor="start"
+            dy={-4}
+            fill="#0E8C6B"
+            fontSize={11}
+            fontWeight={700}
+        >
+            {value}
+        </text>
+    )
+}
+
 export default function ProgressPage() {
     const { id } = useParams()
     const navigate = useNavigate()
@@ -184,7 +209,7 @@ export default function ProgressPage() {
                         ))}
                         {phaseChanges.map((pc, idx) => (
                             <ReferenceLine key={`pc-${idx}`} x={pc.dateLabel} stroke="#10B981" strokeDasharray="6 3" strokeWidth={2}
-                                label={{ value: pc.chartLabel, position: 'top', fontSize: 11, fill: '#0E8C6B', fontWeight: 700 }} />
+                                label={phaseChangeLabel(pc.chartLabel)} />
                         ))}
                         <Area type="monotone" dataKey="interval" stroke="#159DB3" strokeWidth={3} fill="url(#colorInterval)" dot={{ fill: '#159DB3', r: 4 }} activeDot={{ r: 6 }} connectNulls />
                     </AreaChart>
@@ -206,7 +231,7 @@ export default function ProgressPage() {
                         />
                         {phaseChanges.map((pc, idx) => (
                             <ReferenceLine key={`pc-${idx}`} x={pc.dateLabel} stroke="#10B981" strokeDasharray="6 3" strokeWidth={2}
-                                label={{ value: pc.chartLabel, position: 'top', fontSize: 11, fill: '#0E8C6B', fontWeight: 700 }} />
+                                label={phaseChangeLabel(pc.chartLabel)} />
                         ))}
                         <Line type="monotone" dataKey="latency" stroke="#8B5CF6" strokeWidth={3} dot={{ fill: '#8B5CF6', r: 4 }} activeDot={{ r: 6 }} connectNulls />
                     </LineChart>
@@ -243,13 +268,7 @@ export default function ProgressPage() {
                                 strokeDasharray="6 3"
                                 strokeWidth={2.5}
                                 ifOverflow="extendDomain"
-                                label={{
-                                    value: pc.chartLabel,
-                                    position: 'top',
-                                    fontSize: 11,
-                                    fill: '#0E8C6B',
-                                    fontWeight: 700,
-                                }}
+                                label={phaseChangeLabel(pc.chartLabel)}
                             />
                         ))}
                         <Line type="monotone" dataKey="frequency" stroke="#159DB3" strokeWidth={3} dot={{ fill: '#159DB3', r: 4 }} activeDot={{ r: 6 }} />
@@ -292,13 +311,7 @@ export default function ProgressPage() {
                                 strokeDasharray="6 3"
                                 strokeWidth={2.5}
                                 ifOverflow="extendDomain"
-                                label={{
-                                    value: pc.chartLabel,
-                                    position: 'top',
-                                    fontSize: 11,
-                                    fill: '#0E8C6B',
-                                    fontWeight: 700,
-                                }}
+                                label={phaseChangeLabel(pc.chartLabel)}
                             />
                         ))}
                         <Area type="monotone" dataKey="duration" stroke="#8B5CF6" strokeWidth={3} fill="url(#colorDuration)" dot={{ fill: '#8B5CF6', r: 4 }} />
@@ -393,13 +406,7 @@ export default function ProgressPage() {
                             stroke="#10B981"
                             strokeDasharray="6 3"
                             strokeWidth={2}
-                            label={{
-                                value: pc.chartLabel,
-                                position: 'top',
-                                fontSize: 11,
-                                fill: '#0E8C6B',
-                                fontWeight: 700,
-                            }}
+                            label={phaseChangeLabel(pc.chartLabel)}
                         />
                     ))}
                     <Area type="monotone" dataKey="accuracy" stroke="#159DB3" strokeWidth={3} fill="url(#colorAccuracy)" dot={{ fill: '#159DB3', r: 4 }} activeDot={{ r: 6, fill: '#159DB3', stroke: '#fff', strokeWidth: 2 }} />
