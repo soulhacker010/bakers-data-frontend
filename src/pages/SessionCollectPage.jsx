@@ -20,6 +20,16 @@ import {
     getRetryQueueCount,
     clearRetryQueue
 } from '../utils/sessionRetry'
+import {
+    createTimer,
+    elapsedSeconds,
+    start as startTimerState,
+    stop as stopTimerState,
+    reset as resetTimerState,
+    adjust as adjustTimerState,
+    hydrate as hydrateTimerState
+} from '../utils/durationTimer'
+import { saveTimers, loadTimers, clearTimers } from '../utils/durationTimerStore'
 
 // Timer hook
 function useTimer() {
@@ -208,7 +218,7 @@ function FrequencyDataCollector({ onRecord, onSubtract, onRecordZero, count, dis
 
 // Duration Data Collection Component
 // Now receives timer state from parent so it persists across tab switches
-function DurationDataCollector({ onRecord, onStart, onStop, onReset, durationSeconds, isTracking, disabled = false }) {
+export function DurationDataCollector({ onRecord, onStart, onStop, onReset, onAdjust, durationSeconds, isTracking, disabled = false }) {
     const formatDuration = (secs) => {
         const mins = Math.floor(secs / 60)
         const remainingSecs = secs % 60
@@ -235,6 +245,26 @@ function DurationDataCollector({ onRecord, onStart, onStop, onReset, durationSec
                 {isTracking && (
                     <p className="text-red-400 text-sm mt-3 font-medium uppercase tracking-wider animate-pulse">● Recording...</p>
                 )}
+            </div>
+
+            {/* Manual +/- Adjustment — correct the count without stopping the timer */}
+            <div className="mb-6">
+                <p className="text-center text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Adjust</p>
+                <div className="grid grid-cols-4 gap-2">
+                    {[-5, -1, 1, 5].map((delta) => (
+                        <button
+                            key={delta}
+                            onClick={() => onAdjust(delta)}
+                            disabled={disabled}
+                            className={`flex items-center justify-center gap-1 py-3 rounded-xl font-heading font-bold text-base border-2 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${delta < 0
+                                ? 'border-gray-200 text-gray-600 hover:bg-gray-100'
+                                : 'border-[#159DB3]/30 text-[#159DB3] hover:bg-[#159DB3]/10'}`}
+                        >
+                            {delta < 0 ? <Minus size={16} /> : <Plus size={16} />}
+                            {Math.abs(delta)}s
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {/* Start/Stop Buttons */}
@@ -271,7 +301,7 @@ function DurationDataCollector({ onRecord, onStart, onStop, onReset, durationSec
 }
 
 // Floating Duration Timer Pills — shows active timers from any tab
-function FloatingDurationPills({ durationTimers, programs, currentProgramId, onJumpToProgram, onStopTimer }) {
+function FloatingDurationPills({ durationTimers, programs, currentProgramId, onJumpToProgram, onStopTimer, now }) {
     const activeTimers = Array.from(durationTimers.entries()).filter(([, t]) => t.isRunning)
     if (activeTimers.length === 0) return null
 
@@ -298,7 +328,7 @@ function FloatingDurationPills({ durationTimers, programs, currentProgramId, onJ
                         <Timer size={18} className="shrink-0" />
                         <div className="min-w-0">
                             <p className="text-xs font-medium opacity-80 truncate max-w-[140px]">{prog?.name || 'Duration'}</p>
-                            <p className="font-heading font-bold text-lg font-mono">{formatDuration(timer.seconds)}</p>
+                            <p className="font-heading font-bold text-lg font-mono">{formatDuration(elapsedSeconds(timer, now))}</p>
                         </div>
                         <button
                             onClick={(e) => { e.stopPropagation(); onStopTimer(programId) }}
@@ -336,24 +366,72 @@ export default function SessionCollectPage() {
     const [sidebarOpen, setSidebarOpen] = useState(true)
     const [isPaused, setIsPaused] = useState(false)
 
-    // Duration timer state — lifted up so timers persist across tab switches
-    // Map<programId, { seconds: number, isRunning: boolean }>
+    // Duration timer state — wall-clock based so a running timer survives a
+    // page close / refresh / crash and stays accurate across tab throttling.
+    // Map<programId, timerState> (shape defined in utils/durationTimer.js)
     const [durationTimers, setDurationTimers] = useState(new Map())
+    // Current clock, refreshed each tick so running timers re-render.
+    const [now, setNow] = useState(() => Date.now())
+    // Latest sessionId reachable inside callbacks without stale closures.
+    const sessionIdRef = useRef(null)
+    useEffect(() => { sessionIdRef.current = sessionId }, [sessionId])
 
-    // Tick all active duration timers every second
+    // Apply a change to the timer map and persist it in the same step.
+    const updateTimers = useCallback((mutator) => {
+        setDurationTimers(prev => {
+            const next = mutator(new Map(prev))
+            saveTimers(sessionIdRef.current, next)
+            return next
+        })
+    }, [])
+
+    // Restore saved timers once the session id is known.
+    useEffect(() => {
+        if (!sessionId) return
+        const loaded = loadTimers(sessionId)
+        if (loaded.size === 0) return
+        const t = Date.now()
+        let anyFlagged = false
+        const restored = new Map()
+        for (const [pid, state] of loaded) {
+            const { timer: restoredTimer, flagged } = hydrateTimerState(state, t)
+            restored.set(pid, restoredTimer)
+            if (flagged) anyFlagged = true
+        }
+        // Don't clobber a timer the user may have already started this render.
+        setDurationTimers(prev => (prev.size > 0 ? prev : restored))
+        setNow(t)
+        saveTimers(sessionId, restored)
+        if (anyFlagged) {
+            toast.info('A duration timer was left running for a while — please check its time before recording.')
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sessionId])
+
+    // While any timer runs: refresh the clock (so the display advances) and
+    // heartbeat lastTickAt (this is what lets us separate real run-time from
+    // closed-gap time when restoring after a crash).
     useEffect(() => {
         const hasActive = Array.from(durationTimers.values()).some(t => t.isRunning)
         if (!hasActive) return
 
         const interval = setInterval(() => {
+            const t = Date.now()
+            setNow(t)
             setDurationTimers(prev => {
+                let changed = false
                 const next = new Map(prev)
-                for (const [pid, timer] of next) {
-                    if (timer.isRunning) {
-                        next.set(pid, { ...timer, seconds: timer.seconds + 1 })
+                for (const [pid, tm] of next) {
+                    if (tm.isRunning) {
+                        next.set(pid, { ...tm, lastTickAt: t })
+                        changed = true
                     }
                 }
-                return next
+                if (changed) {
+                    saveTimers(sessionIdRef.current, next)
+                    return next
+                }
+                return prev
             })
         }, 1000)
 
@@ -362,44 +440,50 @@ export default function SessionCollectPage() {
 
     // Duration timer helpers
     const startDurationTimer = useCallback((programId) => {
-        setDurationTimers(prev => {
-            const next = new Map(prev)
-            const existing = next.get(programId)
-            next.set(programId, { seconds: existing?.seconds || 0, isRunning: true })
+        updateTimers(next => {
+            const existing = next.get(programId) || createTimer()
+            next.set(programId, startTimerState(existing, Date.now()))
             return next
         })
-    }, [])
+        setNow(Date.now())
+    }, [updateTimers])
 
     const stopDurationTimer = useCallback((programId) => {
-        setDurationTimers(prev => {
-            const next = new Map(prev)
+        updateTimers(next => {
             const existing = next.get(programId)
-            if (existing) {
-                next.set(programId, { ...existing, isRunning: false })
-            }
+            if (existing) next.set(programId, stopTimerState(existing, Date.now()))
             return next
         })
-    }, [])
+    }, [updateTimers])
 
     const resetDurationTimer = useCallback((programId) => {
-        setDurationTimers(prev => {
-            const next = new Map(prev)
-            next.set(programId, { seconds: 0, isRunning: false })
+        updateTimers(next => {
+            next.set(programId, resetTimerState())
             return next
         })
-    }, [])
+    }, [updateTimers])
+
+    const adjustDurationTimer = useCallback((programId, deltaSeconds) => {
+        updateTimers(next => {
+            const existing = next.get(programId) || createTimer()
+            next.set(programId, adjustTimerState(existing, deltaSeconds, Date.now()))
+            return next
+        })
+        setNow(Date.now())
+    }, [updateTimers])
 
     // Stop a timer from the floating pill and record the data
     const stopAndRecordDurationTimer = useCallback(async (programId) => {
-        const timer = durationTimers.get(programId)
-        if (!timer || !sessionId) return
+        const timerState = durationTimers.get(programId)
+        if (!timerState || !sessionId) return
 
+        const seconds = elapsedSeconds(timerState, Date.now())
         stopDurationTimer(programId)
 
         const dataPoint = {
             program_id: programId,
             data_type: 'duration',
-            duration_seconds: timer.seconds,
+            duration_seconds: seconds,
             target_id: null
         }
         const localEntry = {
@@ -761,6 +845,7 @@ export default function SessionCollectPage() {
             // Clear session recovery data and retry queue
             clearActiveSession()
             clearRetryQueue()
+            clearTimers(sessionId)
 
             navigate('/sessions')
         } catch (err) {
@@ -1017,7 +1102,8 @@ export default function SessionCollectPage() {
                                 onStart={() => startDurationTimer(program.id)}
                                 onStop={() => stopDurationTimer(program.id)}
                                 onReset={() => resetDurationTimer(program.id)}
-                                durationSeconds={durationTimers.get(program.id)?.seconds || 0}
+                                onAdjust={(delta) => adjustDurationTimer(program.id, delta)}
+                                durationSeconds={elapsedSeconds(durationTimers.get(program.id) || createTimer(), now)}
                                 isTracking={durationTimers.get(program.id)?.isRunning || false}
                                 disabled={isPaused}
                             />
@@ -1057,6 +1143,7 @@ export default function SessionCollectPage() {
                     currentProgramId={program?.id}
                     onJumpToProgram={handleProgramSwitch}
                     onStopTimer={stopAndRecordDurationTimer}
+                    now={now}
                 />
             </div>
         </div>
