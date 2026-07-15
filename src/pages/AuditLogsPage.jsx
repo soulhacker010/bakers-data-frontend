@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { DashboardLayout } from '../components/layout'
 import { getAuditLogs } from '../services/admin'
 import { useToast } from '../context/ToastContext'
+import DetailDrawer from '../components/admin/DetailDrawer'
+import AuditLogDetailPanel from '../components/admin/AuditLogDetailPanel'
 import {
     Shield,
     Search,
@@ -61,6 +63,7 @@ export default function AuditLogsPage() {
     const [page, setPage] = useState(0)
     const [totalCount, setTotalCount] = useState(0)
     const [stats, setStats] = useState({ total: 0, logins: 0, failed: 0, sessions: 0, phi: 0 })
+    const [selectedLog, setSelectedLog] = useState(null)
 
     // Fetch logs from server with pagination
     useEffect(() => {
@@ -253,6 +256,7 @@ export default function AuditLogsPage() {
                                         <th className="text-left px-4 py-3 font-semibold text-gray-600">Action</th>
                                         <th className="text-left px-4 py-3 font-semibold text-gray-600">What</th>
                                         <th className="text-left px-4 py-3 font-semibold text-gray-600">Details</th>
+                                        <th className="px-4 py-3"></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -260,7 +264,11 @@ export default function AuditLogsPage() {
                                         const style = ACTION_STYLES[log.action] || ACTION_STYLES['UPDATE']
                                         const Icon = style.icon
                                         return (
-                                            <tr key={log.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                            <tr
+                                                key={log.id}
+                                                onClick={() => setSelectedLog(log)}
+                                                className={`group cursor-pointer hover:bg-[#159DB3]/5 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                                            >
                                                 <td className="px-4 py-3 text-gray-500">
                                                     {format(new Date(log.created_at), 'MMM d, HH:mm')}
                                                 </td>
@@ -279,6 +287,9 @@ export default function AuditLogsPage() {
                                                 </td>
                                                 <td className="px-4 py-3 text-gray-500 max-w-xs truncate">
                                                     {log.description || '-'}
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <ChevronRight size={16} className="text-gray-300 group-hover:text-[#159DB3] transition-colors" />
                                                 </td>
                                             </tr>
                                         )
@@ -315,6 +326,16 @@ export default function AuditLogsPage() {
                     )}
                 </div>
             </div>
+
+            {/* Audit log detail drawer */}
+            <DetailDrawer
+                isOpen={selectedLog != null}
+                onClose={() => setSelectedLog(null)}
+                title="Log detail"
+                subtitle={selectedLog ? `${selectedLog.user_email || 'System'} · ${format(new Date(selectedLog.created_at), 'MMM d, HH:mm')}` : ''}
+            >
+                {selectedLog && <AuditLogDetailPanel logId={selectedLog.id} />}
+            </DetailDrawer>
         </DashboardLayout>
     )
 }

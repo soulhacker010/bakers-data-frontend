@@ -10,7 +10,7 @@ vi.mock('./api', () => ({
 }))
 
 import api from './api'
-import { getProgramDetail, getUserDetail, getClientDetail } from './admin'
+import { getProgramDetail, getUserDetail, getClientDetail, getAuditLogDetail } from './admin'
 
 // Locks the contracts for the admin detail endpoints that power the drawers.
 describe('admin detail endpoint contracts', () => {
@@ -37,5 +37,12 @@ describe('admin detail endpoint contracts', () => {
         const result = await getClientDetail(9)
         expect(api.get).toHaveBeenCalledWith('/api/admin/clients/9/detail')
         expect(result).toEqual({ id: 9, name: 'Sam' })
+    })
+
+    it('getAuditLogDetail requests the audit-log detail endpoint', async () => {
+        api.get.mockResolvedValueOnce({ data: { id: 5, action: 'READ' } })
+        const result = await getAuditLogDetail(5)
+        expect(api.get).toHaveBeenCalledWith('/api/admin/audit-logs/5')
+        expect(result).toEqual({ id: 5, action: 'READ' })
     })
 })

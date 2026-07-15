@@ -80,6 +80,11 @@ export const getAuditLogs = async (params = {}) => {
     return response.data;
 };
 
+export const getAuditLogDetail = async (logId) => {
+    const response = await api.get(`/api/admin/audit-logs/${logId}`);
+    return response.data;
+};
+
 export default {
     getAdminStats,
     getDetailedStats,
@@ -95,5 +100,6 @@ export default {
     deleteUser,
     getAllClients,
     getAuditLogs,
+    getAuditLogDetail,
     toggleAdmin,
 };
