@@ -23,7 +23,9 @@ import {
     FileText,
     TrendingUp,
     Play,
-    ArrowRight
+    ArrowRight,
+    Search,
+    ChevronRight
 } from 'lucide-react';
 import {
     getDetailedStats,
@@ -35,6 +37,11 @@ import {
     deleteUser,
     toggleAdmin
 } from '../services/admin';
+import DetailDrawer from '../components/admin/DetailDrawer';
+import ProgramDetailPanel from '../components/admin/ProgramDetailPanel';
+import TherapistDetailPanel from '../components/admin/TherapistDetailPanel';
+import ClientDetailPanel from '../components/admin/ClientDetailPanel';
+import { ProgramTypeBadge, ProgramStatusBadge, DataTypeBadge } from '../components/admin/programBadges';
 
 // Clickable stat card - always white bg for visibility on gradient header
 function StatCard({ title, value, subtitle, icon: Icon, active, onClick, accent }) {
@@ -162,6 +169,16 @@ export default function AdminDashboardPage() {
         programs: []
     });
     const [pendingUsers, setPendingUsers] = useState([]);
+
+    // Detail drawers + list filtering (client-side over already-loaded data)
+    const [selectedProgram, setSelectedProgram] = useState(null);
+    const [programSearch, setProgramSearch] = useState('');
+    const [programType, setProgramType] = useState('');
+    const [programStatus, setProgramStatus] = useState('');
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [userSearch, setUserSearch] = useState('');
+    const [selectedClient, setSelectedClient] = useState(null);
+    const [clientSearch, setClientSearch] = useState('');
 
     // Confirm modal state
     const [confirmModal, setConfirmModal] = useState({
@@ -291,6 +308,25 @@ export default function AdminDashboardPage() {
     }
 
     const { summary, users, clients, sessions, programs } = data;
+
+    const filteredPrograms = programs.filter(p => {
+        const matchesSearch = !programSearch || p.name?.toLowerCase().includes(programSearch.toLowerCase());
+        const matchesType = !programType || p.type === programType;
+        const matchesStatus = !programStatus || p.status === programStatus;
+        return matchesSearch && matchesType && matchesStatus;
+    });
+
+    const filteredUsers = users.filter(u => {
+        if (!userSearch) return true;
+        const q = userSearch.toLowerCase();
+        return u.full_name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
+    });
+
+    const filteredClients = clients.filter(c => {
+        if (!clientSearch) return true;
+        const q = clientSearch.toLowerCase();
+        return c.name?.toLowerCase().includes(q) || c.therapist_name?.toLowerCase().includes(q);
+    });
 
     return (
         <DashboardLayout>
@@ -428,7 +464,20 @@ export default function AdminDashboardPage() {
 
                 {/* Therapists View */}
                 {activeView === 'users' && (
-                    <DataTable title="All Therapists" count={users.length}>
+                    <>
+                        <div className="mb-4">
+                            <div className="relative sm:max-w-sm">
+                                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                <input
+                                    type="text"
+                                    value={userSearch}
+                                    onChange={(e) => setUserSearch(e.target.value)}
+                                    placeholder="Search therapists by name or email..."
+                                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#159DB3]/30 focus:border-[#159DB3]"
+                                />
+                            </div>
+                        </div>
+                    <DataTable title="All Therapists" count={filteredUsers.length}>
                         <table className="min-w-full">
                             <thead className="bg-gray-50 border-b">
                                 <tr>
@@ -443,8 +492,8 @@ export default function AdminDashboardPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {users.map(u => (
-                                    <tr key={u.id} className="hover:bg-gray-50 transition-colors">
+                                {filteredUsers.map(u => (
+                                    <tr key={u.id} onClick={() => setSelectedUser(u)} className="hover:bg-gray-50 transition-colors cursor-pointer">
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-gray-600 text-sm font-semibold">
@@ -469,7 +518,7 @@ export default function AdminDashboardPage() {
                                         <td className="px-4 py-3"><StatusBadge isActive={u.is_active} isApproved={u.is_approved} /></td>
                                         <td className="px-4 py-3 text-sm text-gray-500">{u.last_session ? new Date(u.last_session).toLocaleDateString() : 'Never'}</td>
                                         <td className="px-4 py-3 text-right">
-                                            <div className="flex justify-end gap-1">
+                                            <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                                                 {u.id !== user.id && !u.is_superadmin && (user.is_superadmin || !u.is_admin) && (
                                                     <button
                                                         onClick={() => handleToggleAdmin(u.id, u.is_admin)}
@@ -498,14 +547,31 @@ export default function AdminDashboardPage() {
                                         </td>
                                     </tr>
                                 ))}
+                                {filteredUsers.length === 0 && (
+                                    <tr><td colSpan="8" className="px-4 py-12 text-center text-gray-500">No therapists match your search</td></tr>
+                                )}
                             </tbody>
                         </table>
                     </DataTable>
+                    </>
                 )}
 
                 {/* Clients View */}
                 {activeView === 'clients' && (
-                    <DataTable title="All Clients" count={clients.length}>
+                    <>
+                        <div className="mb-4">
+                            <div className="relative sm:max-w-sm">
+                                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                <input
+                                    type="text"
+                                    value={clientSearch}
+                                    onChange={(e) => setClientSearch(e.target.value)}
+                                    placeholder="Search clients by name or therapist..."
+                                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#159DB3]/30 focus:border-[#159DB3]"
+                                />
+                            </div>
+                        </div>
+                    <DataTable title="All Clients" count={filteredClients.length}>
                         <table className="min-w-full">
                             <thead className="bg-gray-50 border-b">
                                 <tr>
@@ -515,11 +581,12 @@ export default function AdminDashboardPage() {
                                     <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Sessions</th>
                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Last Session</th>
                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Added</th>
+                                    <th className="px-4 py-3"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {clients.map(c => (
-                                    <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                                {filteredClients.map(c => (
+                                    <tr key={c.id} onClick={() => setSelectedClient(c)} className="group hover:bg-gray-50 transition-colors cursor-pointer">
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center text-white text-sm font-semibold shadow">
@@ -536,11 +603,18 @@ export default function AdminDashboardPage() {
                                         <td className="px-4 py-3 text-center font-semibold text-gray-700">{c.session_count}</td>
                                         <td className="px-4 py-3 text-sm text-gray-500">{c.last_session ? new Date(c.last_session).toLocaleDateString() : 'Never'}</td>
                                         <td className="px-4 py-3 text-sm text-gray-500">{new Date(c.created_at).toLocaleDateString()}</td>
+                                        <td className="px-4 py-3 text-right">
+                                            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#159DB3] transition-colors" />
+                                        </td>
                                     </tr>
                                 ))}
+                                {filteredClients.length === 0 && (
+                                    <tr><td colSpan="7" className="px-4 py-12 text-center text-gray-500">No clients match your search</td></tr>
+                                )}
                             </tbody>
                         </table>
                     </DataTable>
+                    </>
                 )}
 
                 {/* Sessions View */}
@@ -593,47 +667,104 @@ export default function AdminDashboardPage() {
 
                 {/* Programs View */}
                 {activeView === 'programs' && (
-                    <DataTable title="All Programs" count={programs.length}>
-                        <table className="min-w-full">
-                            <thead className="bg-gray-50 border-b">
-                                <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Program</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Client</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Therapist</th>
-                                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Sessions</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Created</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                                {programs.map(p => (
-                                    <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2">
-                                                <FileText className="w-4 h-4 text-purple-500" />
-                                                <span className="font-medium text-gray-900">{p.name}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${p.type === 'behavior' ? 'bg-red-50 text-red-700' : 'bg-purple-50 text-purple-700'}`}>
-                                                {p.type}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-gray-900">{p.client_name}</td>
-                                        <td className="px-4 py-3">
-                                            <p className="text-sm text-gray-900">{p.therapist_name}</p>
-                                            <p className="text-xs text-gray-500">{p.therapist_email}</p>
-                                        </td>
-                                        <td className="px-4 py-3 text-center font-semibold text-gray-700">{p.session_count}</td>
-                                        <td className="px-4 py-3 text-sm text-gray-500">{new Date(p.created_at).toLocaleDateString()}</td>
+                    <>
+                        {/* Search + filters (client-side over the loaded list) */}
+                        <div className="mb-4 flex flex-col sm:flex-row gap-3">
+                            <div className="relative flex-1">
+                                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                <input
+                                    type="text"
+                                    value={programSearch}
+                                    onChange={(e) => setProgramSearch(e.target.value)}
+                                    placeholder="Search programs by name..."
+                                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#159DB3]/30 focus:border-[#159DB3]"
+                                />
+                            </div>
+                            <select
+                                value={programType}
+                                onChange={(e) => setProgramType(e.target.value)}
+                                className="px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#159DB3]/30 focus:border-[#159DB3]"
+                            >
+                                <option value="">All types</option>
+                                <option value="skill">Skill</option>
+                                <option value="behavior">Behavior</option>
+                            </select>
+                            <select
+                                value={programStatus}
+                                onChange={(e) => setProgramStatus(e.target.value)}
+                                className="px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#159DB3]/30 focus:border-[#159DB3]"
+                            >
+                                <option value="">All statuses</option>
+                                <option value="active">Active</option>
+                                <option value="maintenance">Maintenance</option>
+                                <option value="mastered">Mastered</option>
+                                <option value="archived">Archived</option>
+                            </select>
+                        </div>
+
+                        <DataTable title="All Programs" count={filteredPrograms.length}>
+                            <table className="min-w-full">
+                                <thead className="bg-gray-50 border-b">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Program</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Client</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Therapist</th>
+                                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Sessions</th>
+                                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Targets</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Created</th>
+                                        <th className="px-4 py-3"></th>
                                     </tr>
-                                ))}
-                                {programs.length === 0 && (
-                                    <tr><td colSpan="6" className="px-4 py-12 text-center text-gray-500">No programs yet</td></tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </DataTable>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {filteredPrograms.map(p => (
+                                        <tr
+                                            key={p.id}
+                                            onClick={() => setSelectedProgram(p)}
+                                            className="group hover:bg-gray-50 transition-colors cursor-pointer"
+                                        >
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-start gap-2">
+                                                    <FileText className="w-4 h-4 text-purple-500 mt-0.5 shrink-0" />
+                                                    <div className="min-w-0">
+                                                        <span className="font-medium text-gray-900">{p.name}</span>
+                                                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                                            <ProgramTypeBadge type={p.type} />
+                                                            <DataTypeBadge dataType={p.data_type} />
+                                                            <ProgramStatusBadge status={p.status} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-900">{p.client_name}</td>
+                                            <td className="px-4 py-3">
+                                                <p className="text-sm text-gray-900">{p.therapist_name}</p>
+                                                <p className="text-xs text-gray-500">{p.therapist_email}</p>
+                                            </td>
+                                            <td className="px-4 py-3 text-center font-semibold text-gray-700">{p.session_count}</td>
+                                            <td className="px-4 py-3 text-center">
+                                                {p.target_count > 0 ? (
+                                                    <span className="text-sm font-semibold text-gray-700">
+                                                        {p.mastered_count}<span className="text-gray-400">/{p.target_count}</span>
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-400">—</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-gray-500">{new Date(p.created_at).toLocaleDateString()}</td>
+                                            <td className="px-4 py-3 text-right">
+                                                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#159DB3] transition-colors" />
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {filteredPrograms.length === 0 && (
+                                        <tr><td colSpan="7" className="px-4 py-12 text-center text-gray-500">
+                                            {programs.length === 0 ? 'No programs yet' : 'No programs match your search'}
+                                        </td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </DataTable>
+                    </>
                 )}
             </div>
 
@@ -647,6 +778,36 @@ export default function AdminDashboardPage() {
                 confirmText={confirmModal.confirmText}
                 type={confirmModal.type}
             />
+
+            {/* Program detail drawer */}
+            <DetailDrawer
+                isOpen={selectedProgram != null}
+                onClose={() => setSelectedProgram(null)}
+                title={selectedProgram?.name}
+                subtitle={selectedProgram ? `${selectedProgram.client_name} · ${selectedProgram.therapist_name}` : ''}
+            >
+                {selectedProgram && <ProgramDetailPanel programId={selectedProgram.id} />}
+            </DetailDrawer>
+
+            {/* Therapist detail drawer */}
+            <DetailDrawer
+                isOpen={selectedUser != null}
+                onClose={() => setSelectedUser(null)}
+                title={selectedUser?.full_name}
+                subtitle={selectedUser?.email || ''}
+            >
+                {selectedUser && <TherapistDetailPanel userId={selectedUser.id} />}
+            </DetailDrawer>
+
+            {/* Client detail drawer */}
+            <DetailDrawer
+                isOpen={selectedClient != null}
+                onClose={() => setSelectedClient(null)}
+                title={selectedClient?.name}
+                subtitle={selectedClient ? `${selectedClient.therapist_name}` : ''}
+            >
+                {selectedClient && <ClientDetailPanel clientId={selectedClient.id} />}
+            </DetailDrawer>
         </DashboardLayout>
     );
 }

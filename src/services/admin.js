@@ -14,6 +14,21 @@ export const getDetailedStats = async () => {
     return response.data;
 };
 
+export const getProgramDetail = async (programId) => {
+    const response = await api.get(`/api/admin/programs/${programId}`);
+    return response.data;
+};
+
+export const getUserDetail = async (userId) => {
+    const response = await api.get(`/api/admin/users/${userId}/detail`);
+    return response.data;
+};
+
+export const getClientDetail = async (clientId) => {
+    const response = await api.get(`/api/admin/clients/${clientId}/detail`);
+    return response.data;
+};
+
 export const getAllUsers = async (statusFilter = null) => {
     const params = statusFilter ? { status_filter: statusFilter } : {};
     const response = await api.get('/api/admin/users', { params });
@@ -67,6 +82,10 @@ export const getAuditLogs = async (params = {}) => {
 
 export default {
     getAdminStats,
+    getDetailedStats,
+    getProgramDetail,
+    getUserDetail,
+    getClientDetail,
     getAllUsers,
     getPendingUsers,
     approveUser,
