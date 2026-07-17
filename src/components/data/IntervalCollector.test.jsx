@@ -20,6 +20,16 @@ const TARGET = {
 
 describe('IntervalCollector', () => {
     beforeEach(() => {
+        // The shared test setup replaces sessionStorage with no-op stubs.
+        // Run persistence across unmounts is under test here, so install a
+        // faithful in-memory Storage.
+        const store = new Map()
+        global.sessionStorage = {
+            getItem: (k) => (store.has(k) ? store.get(k) : null),
+            setItem: (k, v) => { store.set(k, String(v)) },
+            removeItem: (k) => { store.delete(k) },
+            clear: () => { store.clear() },
+        }
         vi.useFakeTimers()
         vi.setSystemTime(new Date('2026-07-17T10:00:00Z'))
     })
@@ -91,6 +101,66 @@ describe('IntervalCollector', () => {
         expect(onRecord).toHaveBeenCalledTimes(3)
         expect(screen.getByText(/Block complete/i)).toBeInTheDocument()
         expect(screen.getByText(/33% present/i)).toBeInTheDocument()
+    })
+
+    it('keeps the block alive when the therapist switches programs and back (unmount/remount)', () => {
+        // The field-reported bug: mid-block, staff click another program in the
+        // session sidebar to record other data; the collector unmounts. On
+        // return the block must resume, not reset ("once you click out it
+        // times out").
+        const onRecord = vi.fn()
+        const { unmount } = render(<IntervalCollector target={TARGET} onRecord={onRecord} />)
+        start()
+        act(() => {
+            vi.advanceTimersByTime(31_000)
+        })
+        act(() => {
+            screen.getByText(/YES/).click()
+        })
+        expect(screen.getByText(/Interval 2 of 3/i)).toBeInTheDocument()
+
+        unmount() // switched to another program
+
+        act(() => {
+            vi.advanceTimersByTime(10_000)
+        })
+        render(<IntervalCollector target={TARGET} onRecord={onRecord} />)
+
+        // Back on interval 2 with the first result intact — not reset to 1.
+        expect(screen.getByText(/Interval 2 of 3/i)).toBeInTheDocument()
+    })
+
+    it('prompts for scoring on return when the interval elapsed while unmounted', () => {
+        const onRecord = vi.fn()
+        const { unmount } = render(<IntervalCollector target={TARGET} onRecord={onRecord} />)
+        start()
+        unmount() // switched away right after starting
+
+        act(() => {
+            vi.setSystemTime(new Date('2026-07-17T10:01:00Z')) // 60s later
+        })
+        render(<IntervalCollector target={TARGET} onRecord={onRecord} />)
+
+        expect(screen.getByText(/Did the behavior occur at ANY point/i)).toBeInTheDocument()
+    })
+
+    it('starting a new block after completion starts clean', () => {
+        const onRecord = vi.fn()
+        render(<IntervalCollector target={TARGET} onRecord={onRecord} />)
+        start()
+        for (let i = 0; i < 3; i++) {
+            act(() => {
+                vi.advanceTimersByTime(31_000)
+            })
+            act(() => {
+                screen.getByText(/YES/).click()
+            })
+        }
+        act(() => {
+            screen.getByText(/Start New Block/i).click()
+        })
+        expect(screen.getByText(/Interval 1 of 3/i)).toBeInTheDocument()
+        expect(screen.getByText(/Start Intervals/i)).toBeInTheDocument()
     })
 
     it('banks the remaining time while the session is paused instead of letting it run out', () => {

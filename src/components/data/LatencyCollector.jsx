@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Play, Square, RotateCcw } from 'lucide-react'
+import { loadRun, saveRun, clearRun } from '../../utils/collectorRunStore'
 
 /**
  * Latency recording: time from cue/SD to behavior onset.
@@ -13,14 +14,31 @@ import { Play, Square, RotateCcw } from 'lucide-react'
  * Props:
  *  - onRecord({ duration_seconds }): persist one latency observation
  *  - disabled: boolean (session paused)
+ *  - persistKey: identifies this collector's run (target id) so an
+ *    in-progress observation survives switching program/target and back
  */
-export default function LatencyCollector({ onRecord, disabled = false }) {
-    const [cueAt, setCueAt] = useState(null) // epoch ms when the cue was presented
-    const [elapsed, setElapsed] = useState(0)
-    const [lastRecorded, setLastRecorded] = useState(null)
-    const pausedMsRef = useRef(null) // elapsed ms banked while the session is paused
+export default function LatencyCollector({ onRecord, disabled = false, persistKey = null }) {
+    const runKey = persistKey != null ? `latency:${persistKey}` : null
+
+    // Hydrate a run that was in progress when this collector last unmounted.
+    const savedRef = useRef()
+    if (savedRef.current === undefined) savedRef.current = loadRun(runKey)
+    const saved = savedRef.current
+
+    const [cueAt, setCueAt] = useState(saved?.cueAt ?? null) // epoch ms when the cue was presented
+    const [elapsed, setElapsed] = useState(() => (
+        saved?.cueAt != null ? Math.max(0, Math.floor((Date.now() - saved.cueAt) / 1000)) : 0
+    ))
+    const [lastRecorded, setLastRecorded] = useState(saved?.lastRecorded ?? null)
+    const pausedMsRef = useRef(saved?.pausedMs ?? null) // elapsed ms banked while the session is paused
 
     const running = cueAt != null
+
+    // Persist the run so it survives program switches and reloads.
+    useEffect(() => {
+        if (!runKey) return
+        saveRun(runKey, { cueAt, lastRecorded, pausedMs: pausedMsRef.current })
+    }, [runKey, cueAt, lastRecorded, disabled])
 
     // Wall-clock elapsed + catch-up when the page becomes visible again.
     useEffect(() => {
@@ -72,6 +90,7 @@ export default function LatencyCollector({ onRecord, disabled = false }) {
     }
 
     const reset = () => {
+        clearRun(runKey)
         setCueAt(null)
         pausedMsRef.current = null
         setElapsed(0)

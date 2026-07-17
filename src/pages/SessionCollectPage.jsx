@@ -1069,6 +1069,7 @@ export default function SessionCollectPage() {
                                 return (
                                     <LatencyCollector
                                         key={selectedTarget?.id}
+                                        persistKey={selectedTarget?.id}
                                         onRecord={(d) => handleRecord({ ...d, data_type: 'latency' })}
                                         disabled={isPaused}
                                     />

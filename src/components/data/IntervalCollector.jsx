@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Check, X, RotateCcw, Play } from 'lucide-react'
+import { loadRun, saveRun, clearRun } from '../../utils/collectorRunStore'
 
 /**
  * Interval recording runner (partial/whole/momentary time sampling).
@@ -37,16 +38,37 @@ const PROMPT = {
 export default function IntervalCollector({ target, onRecord, disabled = false }) {
     const intervalSeconds = target?.interval_seconds || 30
     const totalIntervals = target?.interval_count || 20
+    const runKey = target?.id != null ? `interval:${target.id}` : null
 
-    const [currentInterval, setCurrentInterval] = useState(1)
-    const [endsAt, setEndsAt] = useState(null) // epoch ms deadline of the running interval
-    const [remaining, setRemaining] = useState(intervalSeconds)
-    const [running, setRunning] = useState(false)
-    const [awaitingScore, setAwaitingScore] = useState(false)
-    const [results, setResults] = useState([]) // 'present' | 'absent'
-    const pausedMsRef = useRef(null) // time left when the session was paused
+    // An in-progress block must survive this component unmounting — switching
+    // program/target in the session sidebar happens constantly mid-block — so
+    // initial state is hydrated from the per-tab run store.
+    const savedRef = useRef()
+    if (savedRef.current === undefined) savedRef.current = loadRun(runKey)
+    const saved = savedRef.current
+
+    const [currentInterval, setCurrentInterval] = useState(saved?.currentInterval ?? 1)
+    const [endsAt, setEndsAt] = useState(saved?.endsAt ?? null) // epoch ms deadline of the running interval
+    const [remaining, setRemaining] = useState(() => (
+        saved?.endsAt != null
+            ? Math.max(0, Math.ceil((saved.endsAt - Date.now()) / 1000))
+            : intervalSeconds
+    ))
+    const [running, setRunning] = useState(saved?.running ?? false)
+    const [awaitingScore, setAwaitingScore] = useState(saved?.awaitingScore ?? false)
+    const [results, setResults] = useState(saved?.results ?? []) // 'present' | 'absent'
+    const pausedMsRef = useRef(saved?.pausedMs ?? null) // time left when the session was paused
     const audioRef = useRef(null)
     const wakeLockRef = useRef(null)
+
+    // Persist the run so it survives program switches and reloads.
+    useEffect(() => {
+        if (!runKey) return
+        saveRun(runKey, {
+            currentInterval, endsAt, running, awaitingScore, results,
+            pausedMs: pausedMsRef.current,
+        })
+    }, [runKey, currentInterval, endsAt, running, awaitingScore, results, disabled])
 
     // Beep + vibrate so the therapist doesn't need eyes on the screen.
     const cueIntervalEnd = useCallback(() => {
@@ -184,6 +206,7 @@ export default function IntervalCollector({ target, onRecord, disabled = false }
     }
 
     const resetBlock = () => {
+        clearRun(runKey)
         setRunning(false)
         setEndsAt(null)
         pausedMsRef.current = null

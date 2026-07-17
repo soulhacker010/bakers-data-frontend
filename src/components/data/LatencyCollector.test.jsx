@@ -9,6 +9,16 @@ import LatencyCollector from './LatencyCollector'
 
 describe('LatencyCollector', () => {
     beforeEach(() => {
+        // The shared test setup replaces sessionStorage with no-op stubs.
+        // Run persistence across unmounts is under test here, so install a
+        // faithful in-memory Storage.
+        const store = new Map()
+        global.sessionStorage = {
+            getItem: (k) => (store.has(k) ? store.get(k) : null),
+            setItem: (k, v) => { store.set(k, String(v)) },
+            removeItem: (k) => { store.delete(k) },
+            clear: () => { store.clear() },
+        }
         vi.useFakeTimers()
         vi.setSystemTime(new Date('2026-07-17T10:00:00Z'))
     })
@@ -46,5 +56,25 @@ describe('LatencyCollector', () => {
             screen.getByText(/Behavior Began/i).click()
         })
         expect(onRecord).toHaveBeenCalledWith({ duration_seconds: 40 })
+    })
+
+    it('keeps timing across a program switch (unmount/remount)', () => {
+        const onRecord = vi.fn()
+        const { unmount } = render(<LatencyCollector onRecord={onRecord} persistKey={7} />)
+        act(() => {
+            screen.getByText(/Present Cue/i).click()
+        })
+        unmount() // switched to another program mid-observation
+
+        act(() => {
+            vi.setSystemTime(new Date('2026-07-17T10:00:25Z'))
+        })
+        render(<LatencyCollector onRecord={onRecord} persistKey={7} />)
+
+        expect(screen.getByText('00:25')).toBeInTheDocument()
+        act(() => {
+            screen.getByText(/Behavior Began/i).click()
+        })
+        expect(onRecord).toHaveBeenCalledWith({ duration_seconds: 25 })
     })
 })
