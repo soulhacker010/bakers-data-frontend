@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
 import { getProgram } from '../services/programs'
 import { getProgramProgress, exportProgramData } from '../services/analytics'
+import { downloadChartPng } from '../utils/chartExport'
 import { useToast } from '../context/ToastContext'
-import { Download, TrendingUp, TrendingDown, Minus, ArrowLeft, Target, Clock, Hash, ListChecks } from 'lucide-react'
+import { Download, Image as ImageIcon, TrendingUp, TrendingDown, Minus, ArrowLeft, Target, Clock, Hash, ListChecks } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, BarChart, Bar, ReferenceLine } from 'recharts'
 import { format, subDays, parseISO } from 'date-fns'
 import { TargetsList } from '../components/targets'
@@ -50,6 +51,7 @@ export default function ProgressPage() {
     const [program, setProgram] = useState(null)
     const [analytics, setAnalytics] = useState(null)
     const [loading, setLoading] = useState(true)
+    const chartRef = useRef(null)
 
     // Fetch program and analytics data
     useEffect(() => {
@@ -132,6 +134,22 @@ export default function ProgressPage() {
             toast.success('Export downloaded!')
         } catch (err) {
             toast.error(err.message || 'Export failed')
+        }
+    }
+
+    // Download the on-screen chart as a PNG (with a header) — the artifact
+    // clinics actually attach to insurance submissions.
+    const handleDownloadGraph = async () => {
+        try {
+            const svg = chartRef.current?.querySelector('svg')
+            const rangeLabel = dateRangeOptions.find(o => o.value === dateRange)?.label || ''
+            await downloadChartPng(svg, {
+                title: program?.name || 'Program',
+                subtitle: `${chartInfo.title} · ${rangeLabel} · exported ${format(new Date(), 'MMM d, yyyy')}`,
+            })
+            toast.success('Graph downloaded!')
+        } catch (err) {
+            toast.error(err.message || 'Could not download the graph')
         }
     }
 
@@ -587,13 +605,22 @@ export default function ProgressPage() {
                             </p>
                         </div>
 
-                        <button
-                            onClick={handleExport}
-                            className="btn-outline-premium bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center gap-2"
-                        >
-                            <Download size={18} />
-                            Export CSV
-                        </button>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <button
+                                onClick={handleDownloadGraph}
+                                className="btn-outline-premium bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center gap-2"
+                            >
+                                <ImageIcon size={18} />
+                                Download Graph
+                            </button>
+                            <button
+                                onClick={handleExport}
+                                className="btn-outline-premium bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center gap-2"
+                            >
+                                <Download size={18} />
+                                Export CSV
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -636,7 +663,7 @@ export default function ProgressPage() {
                 <div className="card-premium p-8">
                     <h2 className="font-heading text-xl font-bold text-gray-900 mb-6">{chartInfo.title}</h2>
 
-                    <div className="h-80">
+                    <div className="h-80" ref={chartRef}>
                         {renderChart()}
                     </div>
                 </div>
