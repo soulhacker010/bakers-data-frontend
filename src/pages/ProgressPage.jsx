@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
 import { getProgram } from '../services/programs'
-import { getProgramProgress } from '../services/analytics'
+import { getProgramProgress, exportProgramData } from '../services/analytics'
 import { useToast } from '../context/ToastContext'
 import { Download, TrendingUp, TrendingDown, Minus, ArrowLeft, Target, Clock, Hash, ListChecks } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, BarChart, Bar, ReferenceLine } from 'recharts'
@@ -128,10 +128,10 @@ export default function ProgressPage() {
 
     const handleExport = async () => {
         try {
-            window.open(`/api/analytics/export?program_id=${id}`, '_blank')
-            toast.success('Export started!')
+            await exportProgramData(id, program?.name)
+            toast.success('Export downloaded!')
         } catch (err) {
-            toast.error('Export failed')
+            toast.error(err.message || 'Export failed')
         }
     }
 

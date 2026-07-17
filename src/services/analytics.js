@@ -85,9 +85,34 @@ export const getMasteryProgress = async (clientId) => {
     return response.data
 }
 
+/**
+ * Download a program's session data as CSV (the Progress page's Export).
+ * Goes through the authenticated api client — a plain window.open() cannot
+ * send the auth token and, on Vercel, a relative /api URL is swallowed by
+ * the SPA rewrite and renders the app's 404 page instead.
+ * @param {number|string} programId
+ * @param {string} [programName] - used to build a readable filename
+ */
+export const exportProgramData = async (programId, programName = 'program') => {
+    const response = await api.get(`/api/analytics/export?program_id=${programId}`, {
+        responseType: 'blob',
+    })
+
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    const slug = String(programName).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'program'
+    link.setAttribute('download', `${slug}_data_${new Date().toISOString().slice(0, 10)}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+}
+
 export default {
     getDashboardStats,
     getClientProgress,
     getProgramProgress,
     getMasteryProgress,
+    exportProgramData,
 }
