@@ -1,8 +1,21 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Check, X, RotateCcw, Play } from 'lucide-react'
 
 /**
  * Interval recording runner (partial/whole/momentary time sampling).
+ *
+ * Timing is wall-clock based: the countdown is derived from a deadline
+ * timestamp, never from counting ticks. Mobile browsers suspend JS timers
+ * when the screen locks or the tab is backgrounded — exactly what happens
+ * mid-session while a therapist is watching the client — so a tick-counting
+ * timer freezes. Here the next tick or visibility/focus event recomputes the
+ * true remaining time and, if the interval already elapsed, prompts for
+ * scoring immediately. (Same principle as utils/durationTimer.js.)
+ *
+ * While an interval is running we also request a screen Wake Lock (where
+ * supported) so the device doesn't sleep mid-observation, and play a short
+ * beep + vibration when the interval ends so staff can keep their eyes on
+ * the client instead of the screen.
  *
  * Props:
  *  - target: { measurement_type, interval_seconds, interval_count, name }
@@ -26,32 +39,120 @@ export default function IntervalCollector({ target, onRecord, disabled = false }
     const totalIntervals = target?.interval_count || 20
 
     const [currentInterval, setCurrentInterval] = useState(1)
+    const [endsAt, setEndsAt] = useState(null) // epoch ms deadline of the running interval
     const [remaining, setRemaining] = useState(intervalSeconds)
     const [running, setRunning] = useState(false)
     const [awaitingScore, setAwaitingScore] = useState(false)
     const [results, setResults] = useState([]) // 'present' | 'absent'
-    const tickRef = useRef(null)
+    const pausedMsRef = useRef(null) // time left when the session was paused
+    const audioRef = useRef(null)
+    const wakeLockRef = useRef(null)
 
-    // Countdown
+    // Beep + vibrate so the therapist doesn't need eyes on the screen.
+    const cueIntervalEnd = useCallback(() => {
+        try {
+            navigator.vibrate?.([200, 100, 200])
+        } catch { /* unsupported */ }
+        const ctx = audioRef.current
+        if (!ctx || ctx.state === 'closed') return
+        try {
+            if (ctx.state === 'suspended') ctx.resume()
+            const beep = (at) => {
+                const osc = ctx.createOscillator()
+                const gain = ctx.createGain()
+                osc.connect(gain)
+                gain.connect(ctx.destination)
+                osc.frequency.value = 880
+                gain.gain.setValueAtTime(0.25, at)
+                osc.start(at)
+                osc.stop(at + 0.18)
+            }
+            beep(ctx.currentTime)
+            beep(ctx.currentTime + 0.3)
+        } catch { /* audio unavailable */ }
+    }, [])
+
+    // Wall-clock countdown + catch-up when the page becomes visible again.
     useEffect(() => {
-        if (!running || disabled) return
-        tickRef.current = setInterval(() => {
-            setRemaining(r => {
-                if (r <= 1) {
-                    setRunning(false)
-                    setAwaitingScore(true)
-                    return 0
+        if (!running || endsAt == null) return
+        const check = () => {
+            const left = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000))
+            setRemaining(left)
+            if (left <= 0) {
+                setRunning(false)
+                setAwaitingScore(true)
+                cueIntervalEnd()
+            }
+        }
+        check()
+        const tick = setInterval(check, 500)
+        const onVisible = () => {
+            if (!document.hidden) check()
+        }
+        document.addEventListener('visibilitychange', onVisible)
+        window.addEventListener('focus', onVisible)
+        window.addEventListener('pageshow', onVisible)
+        return () => {
+            clearInterval(tick)
+            document.removeEventListener('visibilitychange', onVisible)
+            window.removeEventListener('focus', onVisible)
+            window.removeEventListener('pageshow', onVisible)
+        }
+    }, [running, endsAt, cueIntervalEnd])
+
+    // Session pause: bank the time left on the current interval; re-arm on resume.
+    useEffect(() => {
+        if (disabled && running && endsAt != null) {
+            pausedMsRef.current = Math.max(0, endsAt - Date.now())
+            setRunning(false)
+            setEndsAt(null)
+        } else if (!disabled && pausedMsRef.current != null) {
+            setEndsAt(Date.now() + pausedMsRef.current)
+            pausedMsRef.current = null
+            setRunning(true)
+        }
+    }, [disabled, running, endsAt])
+
+    // Keep the screen awake while observing (best effort — the wall-clock
+    // countdown stays correct even where Wake Lock is unsupported/denied).
+    useEffect(() => {
+        if (!running) return
+        let cancelled = false
+        const acquire = async () => {
+            try {
+                if (navigator.wakeLock?.request) {
+                    const lock = await navigator.wakeLock.request('screen')
+                    if (cancelled) lock.release()
+                    else wakeLockRef.current = lock
                 }
-                return r - 1
-            })
-        }, 1000)
-        return () => clearInterval(tickRef.current)
-    }, [running, disabled])
+            } catch { /* denied/unsupported */ }
+        }
+        acquire()
+        const reacquire = () => {
+            if (!document.hidden) acquire()
+        }
+        document.addEventListener('visibilitychange', reacquire)
+        return () => {
+            cancelled = true
+            document.removeEventListener('visibilitychange', reacquire)
+            try {
+                wakeLockRef.current?.release?.()
+            } catch { /* already released */ }
+            wakeLockRef.current = null
+        }
+    }, [running])
 
     const formatTime = (secs) => {
         const m = Math.floor(secs / 60)
         const s = secs % 60
         return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+    }
+
+    const armInterval = () => {
+        setRemaining(intervalSeconds)
+        setEndsAt(Date.now() + intervalSeconds * 1000)
+        setAwaitingScore(false)
+        setRunning(true)
     }
 
     const score = (result) => {
@@ -63,21 +164,29 @@ export default function IntervalCollector({ target, onRecord, disabled = false }
             // Block complete
             setCurrentInterval(totalIntervals)
             setRunning(false)
+            setEndsAt(null)
         } else {
             setCurrentInterval(n => n + 1)
-            setRemaining(intervalSeconds)
-            setRunning(true) // auto-advance to next interval
+            armInterval() // auto-advance to next interval
         }
     }
 
     const startBlock = () => {
-        setRemaining(intervalSeconds)
-        setRunning(true)
-        setAwaitingScore(false)
+        // Create the AudioContext inside the user gesture — iOS refuses to
+        // play the end-of-interval beep from a context created elsewhere.
+        if (!audioRef.current) {
+            try {
+                const Ctx = window.AudioContext || window.webkitAudioContext
+                if (Ctx) audioRef.current = new Ctx()
+            } catch { /* no audio */ }
+        }
+        armInterval()
     }
 
     const resetBlock = () => {
         setRunning(false)
+        setEndsAt(null)
+        pausedMsRef.current = null
         setAwaitingScore(false)
         setCurrentInterval(1)
         setRemaining(intervalSeconds)

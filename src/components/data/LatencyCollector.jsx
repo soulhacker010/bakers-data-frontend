@@ -4,31 +4,78 @@ import { Play, Square, RotateCcw } from 'lucide-react'
 /**
  * Latency recording: time from cue/SD to behavior onset.
  *
+ * Elapsed time is derived from the cue's wall-clock timestamp, never from
+ * counting ticks, so a locked screen or throttled tab can't shrink the
+ * recorded latency — the display catches up on the next tick or
+ * visibility/focus event, and the recorded value is computed from the
+ * timestamps at the moment the behavior begins.
+ *
  * Props:
  *  - onRecord({ duration_seconds }): persist one latency observation
- *  - disabled: boolean
+ *  - disabled: boolean (session paused)
  */
 export default function LatencyCollector({ onRecord, disabled = false }) {
+    const [cueAt, setCueAt] = useState(null) // epoch ms when the cue was presented
     const [elapsed, setElapsed] = useState(0)
-    const [running, setRunning] = useState(false)
     const [lastRecorded, setLastRecorded] = useState(null)
-    const tickRef = useRef(null)
+    const pausedMsRef = useRef(null) // elapsed ms banked while the session is paused
 
+    const running = cueAt != null
+
+    // Wall-clock elapsed + catch-up when the page becomes visible again.
     useEffect(() => {
-        if (!running || disabled) return
-        tickRef.current = setInterval(() => setElapsed(e => e + 1), 1000)
-        return () => clearInterval(tickRef.current)
-    }, [running, disabled])
+        if (cueAt == null) return
+        const check = () => setElapsed(Math.max(0, Math.floor((Date.now() - cueAt) / 1000)))
+        check()
+        const tick = setInterval(check, 500)
+        const onVisible = () => {
+            if (!document.hidden) check()
+        }
+        document.addEventListener('visibilitychange', onVisible)
+        window.addEventListener('focus', onVisible)
+        window.addEventListener('pageshow', onVisible)
+        return () => {
+            clearInterval(tick)
+            document.removeEventListener('visibilitychange', onVisible)
+            window.removeEventListener('focus', onVisible)
+            window.removeEventListener('pageshow', onVisible)
+        }
+    }, [cueAt])
+
+    // Session pause: bank the elapsed time; re-anchor the cue on resume.
+    useEffect(() => {
+        if (disabled && cueAt != null) {
+            pausedMsRef.current = Math.max(0, Date.now() - cueAt)
+            setCueAt(null)
+        } else if (!disabled && pausedMsRef.current != null) {
+            setCueAt(Date.now() - pausedMsRef.current)
+            pausedMsRef.current = null
+        }
+    }, [disabled, cueAt])
 
     const format = (s) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`
 
-    const presentCue = () => { setElapsed(0); setRunning(true) }
-    const behaviorStarted = () => {
-        setRunning(false)
-        onRecord({ duration_seconds: elapsed })
-        setLastRecorded(elapsed)
+    const presentCue = () => {
+        setLastRecorded(null)
+        setElapsed(0)
+        setCueAt(Date.now())
     }
-    const reset = () => { setRunning(false); setElapsed(0) }
+
+    const behaviorStarted = () => {
+        if (cueAt == null) return
+        // Compute from timestamps at the moment of the tap — not the display.
+        const seconds = Math.max(0, Math.floor((Date.now() - cueAt) / 1000))
+        setCueAt(null)
+        onRecord({ duration_seconds: seconds })
+        setLastRecorded(seconds)
+        setElapsed(seconds)
+    }
+
+    const reset = () => {
+        setCueAt(null)
+        pausedMsRef.current = null
+        setElapsed(0)
+    }
 
     return (
         <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-8">
