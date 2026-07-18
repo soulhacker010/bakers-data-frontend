@@ -4,6 +4,7 @@
  */
 import { useState, useEffect } from 'react'
 import { getTaskSteps } from '../../services/taskSteps'
+import { loadRun, saveRun, clearRun } from '../../utils/collectorRunStore'
 import { CheckCircle2, Loader2 } from 'lucide-react'
 
 // Prompt levels for Task Analysis
@@ -57,6 +58,8 @@ export default function TaskAnalysisCollector({ programId, onRecord, disabled = 
     const [saving, setSaving] = useState(false)
 
     // Load steps
+    const runKey = programId != null ? `task:${programId}` : null
+
     useEffect(() => {
         const loadSteps = async () => {
             if (!programId) return
@@ -65,9 +68,12 @@ export default function TaskAnalysisCollector({ programId, onRecord, disabled = 
                 setLoading(true)
                 const data = await getTaskSteps(programId)
                 setSteps(data)
-                // Initialize all steps with no selection
+                // Initialize selections, restoring any half-scored task that
+                // was in progress when the therapist switched programs —
+                // otherwise a 12-step task must be re-observed from memory.
+                const saved = loadRun(runKey)?.stepData || {}
                 const initial = {}
-                data.forEach(s => { initial[s.id] = null })
+                data.forEach(s => { initial[s.id] = saved[s.id] ?? null })
                 setStepData(initial)
             } catch (err) {
                 console.error('Failed to load steps:', err)
@@ -76,7 +82,14 @@ export default function TaskAnalysisCollector({ programId, onRecord, disabled = 
             }
         }
         loadSteps()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [programId])
+
+    // Persist selections so they survive program switches and reloads.
+    useEffect(() => {
+        if (!runKey || loading || steps.length === 0) return
+        saveRun(runKey, { stepData })
+    }, [runKey, stepData, loading, steps.length])
 
     const handleSelectLevel = (stepId, level) => {
         setStepData(prev => ({
@@ -105,6 +118,7 @@ export default function TaskAnalysisCollector({ programId, onRecord, disabled = 
             }
 
             // Reset selections
+            clearRun(runKey)
             const reset = {}
             steps.forEach(s => { reset[s.id] = null })
             setStepData(reset)

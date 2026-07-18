@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback, useMemo } from 'react'
 import { CheckCircle, XCircle, AlertCircle, Info, X } from 'lucide-react'
 
 const ToastContext = createContext()
@@ -34,16 +34,20 @@ export function ToastProvider({ children }) {
         setToasts(prev => prev.filter(t => t.id !== id))
     }, [])
 
-    // Convenience methods
-    const toast = {
+    // Convenience methods. MUST be referentially stable: pages put `toast`
+    // in fetch-effect deps, so a new identity per render turns one failed
+    // fetch into an infinite fetch -> error-toast -> refetch loop.
+    const toast = useMemo(() => ({
         success: (message, duration) => addToast(message, 'success', duration),
         error: (message, duration) => addToast(message, 'error', duration ?? 6000), // Errors stay longer
         warning: (message, duration) => addToast(message, 'warning', duration),
         info: (message, duration) => addToast(message, 'info', duration),
-    }
+    }), [addToast])
+
+    const contextValue = useMemo(() => ({ toast, removeToast }), [toast, removeToast])
 
     return (
-        <ToastContext.Provider value={{ toast, removeToast }}>
+        <ToastContext.Provider value={contextValue}>
             {children}
             <ToastContainer toasts={toasts} removeToast={removeToast} />
         </ToastContext.Provider>
