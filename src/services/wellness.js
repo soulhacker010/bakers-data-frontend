@@ -13,6 +13,15 @@ export const getStatementsForMood = async (moodScore) => {
 }
 
 /**
+ * Active choices for the "What would help right now?" screen (data-driven so
+ * locations can hide options they don't offer).
+ */
+export const getSupportOptions = async () => {
+    const response = await api.get('/api/wellness/support-options')
+    return response.data
+}
+
+/**
  * Record one completed child check-in.
  * @param {Object} payload - { client_id, session_id, mood_score, statement_id, statement_response, support_requested }
  */
@@ -41,6 +50,7 @@ export const getAttention = async () => {
 
 export default {
     getStatementsForMood,
+    getSupportOptions,
     recordCheckin,
     getClientWellness,
     getSessionWellness,

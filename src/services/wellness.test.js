@@ -11,6 +11,7 @@ vi.mock('./api', () => ({
 import api from './api'
 import {
     getStatementsForMood,
+    getSupportOptions,
     recordCheckin,
     getClientWellness,
     getSessionWellness,
@@ -29,6 +30,13 @@ describe('wellness service contracts', () => {
         const result = await getStatementsForMood(1)
         expect(api.get).toHaveBeenCalledWith('/api/wellness/statements?mood_score=1')
         expect(result).toEqual([{ id: 1, text: 'I feel safe.' }])
+    })
+
+    it('getSupportOptions requests the active support options', async () => {
+        api.get.mockResolvedValueOnce({ data: [{ key: 'break' }] })
+        const result = await getSupportOptions()
+        expect(api.get).toHaveBeenCalledWith('/api/wellness/support-options')
+        expect(result).toEqual([{ key: 'break' }])
     })
 
     it('recordCheckin posts the completed check-in', async () => {
