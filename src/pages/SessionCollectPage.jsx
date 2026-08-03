@@ -7,7 +7,7 @@ import { pauseSession, resumeSession } from '../services/sessions'
 import { useToast } from '../context/ToastContext'
 import { useNotifications, NOTIFICATION_TYPES } from '../context/NotificationContext'
 import { getUserSettings } from '../services/settings'
-import { Check, X, StopCircle, Plus, Minus, Play, Square, RotateCcw, ChevronLeft, ChevronRight, Target, FileText, ListChecks, Pause, CircleSlash, Timer } from 'lucide-react'
+import { Check, X, StopCircle, Plus, Minus, Play, Square, RotateCcw, ChevronLeft, ChevronRight, Target, FileText, ListChecks, Pause, CircleSlash, Timer, Smile } from 'lucide-react'
 import { TaskAnalysisCollector, IntervalCollector, LatencyCollector } from '../components/data'
 import {
     saveActiveSession,
@@ -921,6 +921,18 @@ export default function SessionCollectPage() {
                     </div>
 
                     <div className="flex items-center gap-3">
+                        {/* Child-facing wellness check-in: hand the device over,
+                            it returns here when the child is done. */}
+                        {client?.id && (
+                            <button
+                                onClick={() => navigate(`/clients/${client.id}/wellness-checkin${sessionId ? `?session=${sessionId}` : ''}`)}
+                                className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-full font-semibold text-sm transition-colors flex items-center gap-2"
+                                title="Hand the device to the child for a quick wellness check-in"
+                            >
+                                <Smile size={16} />
+                                Wellness Check-In
+                            </button>
+                        )}
                         <div className={`text-white font-heading text-2xl font-bold font-mono ${isPaused ? 'animate-pulse' : ''}`}>
                             {formatTime}
                         </div>

@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import StaffAssignmentModal from '../components/staff/StaffAssignmentModal'
+import WellnessPanel from '../components/wellness/WellnessPanel'
 
 // Program Card with premium styling
 function ProgramCard({ program, onStartSession, onViewProgress, onEdit }) {
@@ -328,6 +329,15 @@ export default function ClientDetailPage() {
                         >
                             Session History ({clientSessions.length})
                         </button>
+                        <button
+                            onClick={() => setActiveTab('wellness')}
+                            className={`py-4 text-sm font-medium uppercase tracking-wider border-b-2 transition-colors ${activeTab === 'wellness'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-gray-500 hover:text-gray-700'
+                                }`}
+                        >
+                            Wellness
+                        </button>
                     </div>
                 </div>
             </div>
@@ -604,6 +614,13 @@ export default function ClientDetailPage() {
                             ))
                         )}
                     </div>
+                )}
+
+                {activeTab === 'wellness' && (
+                    <WellnessPanel
+                        clientId={client.id}
+                        clientName={`${client.first_name} ${client.last_name}`}
+                    />
                 )}
             </div>
 

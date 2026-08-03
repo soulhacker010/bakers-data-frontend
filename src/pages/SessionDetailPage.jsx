@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext'
 import { ArrowLeft, Calendar, Clock, FileText, Play, Download, Target, Activity, BarChart2, User, Trash2, CheckCircle, XCircle, Edit3, StopCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { deleteSessionData, editSessionTimes, endSession } from '../services/sessions'
+import SessionWellnessStrip from '../components/wellness/SessionWellnessStrip'
 
 export default function SessionDetailPage() {
     const { id } = useParams()
@@ -205,6 +206,9 @@ export default function SessionDetailPage() {
                                 )}
                             </div>
                         </div>
+
+                        {/* Wellness check-ins recorded during this session */}
+                        <SessionWellnessStrip sessionId={session.id} />
 
                         {/* Session Notes */}
                         <div className="bg-white rounded-2xl border border-gray-100 p-6">

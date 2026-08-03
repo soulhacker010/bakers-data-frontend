@@ -29,6 +29,7 @@ import SettingsPage from './pages/SettingsPage'
 import SupportPage from './pages/SupportPage'
 import GettingStartedPage from './pages/GettingStartedPage'
 import DocumentationPage from './pages/DocumentationPage'
+import WellnessCheckInPage from './pages/WellnessCheckInPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import AuditLogsPage from './pages/AuditLogsPage'
 import RegistrationSuccessPage from './pages/RegistrationSuccessPage'
@@ -80,6 +81,11 @@ function App() {
               <Route path="/clients/:clientId/programs/new" element={
                 <ProtectedRoute>
                   <AddProgramPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/clients/:clientId/wellness-checkin" element={
+                <ProtectedRoute>
+                  <WellnessCheckInPage />
                 </ProtectedRoute>
               } />
 

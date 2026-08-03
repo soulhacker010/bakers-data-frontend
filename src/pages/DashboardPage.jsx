@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
+import WellnessAttentionStrip from '../components/wellness/WellnessAttentionStrip'
 import { Button, Card, Avatar } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -165,6 +166,7 @@ export default function DashboardPage() {
 
             {/* Workspace Section - Premium Redesign */}
             <div className="px-6 py-10 max-w-screen-xl mx-auto">
+                <WellnessAttentionStrip />
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                     {/* Workspace Checklist - Dynamic */}

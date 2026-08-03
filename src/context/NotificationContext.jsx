@@ -11,7 +11,8 @@ export const NOTIFICATION_TYPES = {
     CLIENT_ADDED: 'client_added',
     PROGRAM_CREATED: 'program_created',
     TARGET_MASTERED: 'target_mastered',
-    STAFF_ASSIGNED: 'staff_assigned'
+    STAFF_ASSIGNED: 'staff_assigned',
+    WELLNESS_ALERT: 'wellness_alert'
 }
 
 const STORAGE_KEY = 'aba_notifications'
