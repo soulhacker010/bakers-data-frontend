@@ -8,7 +8,9 @@ import { downloadChartPng } from '../../utils/chartExport'
 import { useToast } from '../../context/ToastContext'
 
 const MOOD_EMOJI = { 1: '😢', 2: '😐', 3: '🙂', 4: '😊' }
-const MOOD_LABEL = { 1: 'Distressed', 2: 'Struggling', 3: 'Okay', 4: 'Positive' }
+// The client's own mood vocabulary (prompt-library document).
+const MOOD_LABEL = { 1: 'Having a hard time', 2: 'Not sure', 3: 'Doing okay', 4: 'Feeling good' }
+const MOOD_AXIS = { 1: '😢 Hard time', 2: '😐 Not sure', 3: '🙂 Okay', 4: '😊 Good' }
 const SUPPORT_LABEL = {
     break: 'A break',
     quiet_space: 'A quiet space',
@@ -124,8 +126,8 @@ export default function WellnessPanel({ clientId, clientName }) {
                             <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                             <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
                             <YAxis domain={[1, 4]} ticks={[1, 2, 3, 4]} stroke="#9CA3AF" fontSize={12}
-                                   tickLine={false} axisLine={false}
-                                   tickFormatter={(v) => MOOD_EMOJI[v] || v} />
+                                   tickLine={false} axisLine={false} width={100}
+                                   tickFormatter={(v) => MOOD_AXIS[v] || v} />
                             <Tooltip
                                 contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' }}
                                 formatter={(value) => [`${MOOD_EMOJI[value]} ${MOOD_LABEL[value]}`, 'Mood']}

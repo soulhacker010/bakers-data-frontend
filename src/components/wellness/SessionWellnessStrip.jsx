@@ -4,7 +4,8 @@ import { format } from 'date-fns'
 import { getSessionWellness } from '../../services/wellness'
 
 const MOOD_EMOJI = { 1: '😢', 2: '😐', 3: '🙂', 4: '😊' }
-const MOOD_LABEL = { 1: 'Distressed', 2: 'Struggling', 3: 'Okay', 4: 'Positive' }
+// The client's own mood vocabulary (prompt-library document).
+const MOOD_LABEL = { 1: 'Having a hard time', 2: 'Not sure', 3: 'Doing okay', 4: 'Feeling good' }
 const SUPPORT_LABEL = {
     break: 'A break',
     quiet_space: 'A quiet space',
