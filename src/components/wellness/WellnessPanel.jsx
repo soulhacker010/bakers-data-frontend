@@ -10,7 +10,9 @@ import { useToast } from '../../context/ToastContext'
 const MOOD_EMOJI = { 1: '😢', 2: '😐', 3: '🙂', 4: '😊' }
 // The client's own mood vocabulary (prompt-library document).
 const MOOD_LABEL = { 1: 'Having a hard time', 2: 'Not sure', 3: 'Doing okay', 4: 'Feeling good' }
-const MOOD_AXIS = { 1: '😢 Hard time', 2: '😐 Not sure', 3: '🙂 Okay', 4: '😊 Good' }
+// Words first, emoji at the axis edge: right-aligned ticks keep the emoji
+// column flush. Non-breaking spaces stop "Hard time" wrapping to two lines.
+const MOOD_AXIS = { 1: 'Hard time 😢', 2: 'Not sure 😐', 3: 'Okay 🙂', 4: 'Good 😊' }
 const SUPPORT_LABEL = {
     break: 'A break',
     quiet_space: 'A quiet space',
@@ -106,13 +108,22 @@ export default function WellnessPanel({ clientId, clientName }) {
             <div className="card-premium p-8">
                 <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
                     <h2 className="font-heading text-xl font-bold text-gray-900">Mood Over Time</h2>
-                    <button
-                        onClick={handleDownloadGraph}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:border-[#159DB3] hover:text-[#159DB3] transition-colors"
-                    >
-                        <ImageIcon size={16} />
-                        Download Graph
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => navigate(`/clients/${clientId}/wellness-checkin`)}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#159DB3] text-white text-sm font-semibold hover:bg-[#0E8499] transition-colors"
+                        >
+                            <Smile size={16} />
+                            New Check-In
+                        </button>
+                        <button
+                            onClick={handleDownloadGraph}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:border-[#159DB3] hover:text-[#159DB3] transition-colors"
+                        >
+                            <ImageIcon size={16} />
+                            Download Graph
+                        </button>
+                    </div>
                 </div>
                 <div className="h-72" ref={chartRef}>
                     <ResponsiveContainer width="100%" height="100%">
