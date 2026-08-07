@@ -4,6 +4,7 @@ import { DashboardLayout } from '../components/layout'
 import { getProgram } from '../services/programs'
 import { getProgramProgress, exportProgramData } from '../services/analytics'
 import { downloadChartPng } from '../utils/chartExport'
+import { responsesPerMinute, formatRate } from '../utils/rate'
 import { useToast } from '../context/ToastContext'
 import { Download, Image as ImageIcon, TrendingUp, TrendingDown, Minus, ArrowLeft, Target, Clock, Hash, ListChecks } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, BarChart, Bar, ReferenceLine } from 'recharts'
@@ -48,6 +49,10 @@ export default function ProgressPage() {
     const { toast } = useToast()
     const [dateRange, setDateRange] = useState('30')
     const [targetFilter, setTargetFilter] = useState('all')  // 'all' or a target id
+    // Frequency programs can be charted as a raw count or as responses per
+    // minute. Rate is the clinically comparable one, but count is what staff
+    // recognise from the collection screen, so both are offered.
+    const [frequencyMode, setFrequencyMode] = useState('count')  // 'count' | 'rate'
     const [program, setProgram] = useState(null)
     const [analytics, setAnalytics] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -89,6 +94,12 @@ export default function ProgressPage() {
         date: format(parseISO(session.date + 'T12:00:00'), 'MMM d'),
         accuracy: session.accuracy || 0,
         frequency: session.frequency_count || 0,
+        // Session time for the whole day, already combined across every
+        // therapist who worked with the learner. Null when nothing measurable
+        // was recorded, which leaves a gap on the rate chart rather than a
+        // misleading zero.
+        sessionMinutes: session.session_minutes ?? null,
+        rate: responsesPerMinute(session.frequency_count, session.session_minutes),
         duration: Math.round((session.total_duration_seconds || 0) / 60), // Convert to minutes
         interval: session.interval_percentage ?? null,        // % present (interval recording)
         latency: session.latency_average_seconds ?? null,     // avg seconds-to-onset (latency)
@@ -159,7 +170,9 @@ export default function ProgressPage() {
         if (hasLatency) return { title: 'Latency Over Time', yLabel: 'Seconds', unit: 's' }
         switch (program?.data_type) {
             case 'frequency':
-                return { title: 'Frequency Over Time', yLabel: 'Count', unit: '' }
+                return frequencyMode === 'rate'
+                    ? { title: 'Rate Over Time', yLabel: 'Responses per minute', unit: '/min' }
+                    : { title: 'Frequency Over Time', yLabel: 'Count', unit: '' }
             case 'duration':
                 return { title: 'Duration Over Time', yLabel: 'Minutes', unit: ' min' }
             case 'task_analysis':
@@ -257,14 +270,19 @@ export default function ProgressPage() {
             )
         }
 
-        // Frequency: Line chart (changed from bar per client request)
+        // Frequency: Line chart (changed from bar per client request), plotted
+        // either as the raw count or as responses per minute.
         if (program?.data_type === 'frequency') {
+            const showingRate = frequencyMode === 'rate'
             return (
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData} margin={{ top: 36, right: 80, left: 0, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                         <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis
+                            stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false}
+                            tickFormatter={showingRate ? (v) => `${v}/min` : undefined}
+                        />
                         <Tooltip
                             contentStyle={{
                                 backgroundColor: '#FFFFFF',
@@ -272,7 +290,11 @@ export default function ProgressPage() {
                                 borderRadius: '12px',
                                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                             }}
-                            formatter={(value) => [value, 'Count']}
+                            formatter={(value, name, entry) => (
+                                showingRate
+                                    ? [formatRate(value), `Rate over ${entry?.payload?.sessionMinutes ?? 0} min`]
+                                    : [value, 'Count']
+                            )}
                         />
                         {/* Phase change vertical lines — drawn at the date a target
                             was mastered, with a label showing the next target taking over.
@@ -289,7 +311,13 @@ export default function ProgressPage() {
                                 label={phaseChangeLabel(pc.chartLabel)}
                             />
                         ))}
-                        <Line type="monotone" dataKey="frequency" stroke="#159DB3" strokeWidth={3} dot={{ fill: '#159DB3', r: 4 }} activeDot={{ r: 6 }} />
+                        <Line
+                            type="monotone"
+                            dataKey={showingRate ? 'rate' : 'frequency'}
+                            stroke="#159DB3" strokeWidth={3}
+                            dot={{ fill: '#159DB3', r: 4 }} activeDot={{ r: 6 }}
+                            connectNulls={false}
+                        />
                     </LineChart>
                 </ResponsiveContainer>
             )
@@ -661,7 +689,40 @@ export default function ProgressPage() {
             {/* Chart */}
             <div className="px-6 pb-6 max-w-screen-xl mx-auto">
                 <div className="card-premium p-8">
-                    <h2 className="font-heading text-xl font-bold text-gray-900 mb-6">{chartInfo.title}</h2>
+                    <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                        <h2 className="font-heading text-xl font-bold text-gray-900">{chartInfo.title}</h2>
+
+                        {/* Count or rate. Rate divides the day's count by the time
+                            observed, so sessions of different lengths compare
+                            fairly (requested by the clinical team). */}
+                        {program?.data_type === 'frequency' && (
+                            <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+                                {[['count', 'Count'], ['rate', 'Rate / min']].map(([value, label]) => (
+                                    <button
+                                        key={value}
+                                        onClick={() => setFrequencyMode(value)}
+                                        aria-pressed={frequencyMode === value}
+                                        className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${frequencyMode === value
+                                            ? 'bg-white text-[#159DB3] shadow-sm'
+                                            : 'text-gray-500 hover:text-gray-700'
+                                            }`}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* A day with no recorded session time cannot produce a rate,
+                        so say so rather than letting the line quietly skip it. */}
+                    {program?.data_type === 'frequency' && frequencyMode === 'rate' &&
+                        chartData.some(d => d.rate == null) && (
+                            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5">
+                                Some days have no recorded session time, so no rate can be shown for them.
+                                Those points are left out of the line.
+                            </p>
+                        )}
 
                     <div className="h-80" ref={chartRef}>
                         {renderChart()}
