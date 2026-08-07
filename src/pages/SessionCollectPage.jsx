@@ -30,31 +30,12 @@ import {
     hydrate as hydrateTimerState
 } from '../utils/durationTimer'
 import { saveTimers, loadTimers, clearTimers } from '../utils/durationTimerStore'
+import { sessionElapsedSeconds, formatClock } from '../utils/sessionClock'
 
-// Timer hook
-function useTimer() {
-    const [seconds, setSeconds] = useState(0)
-    const [isRunning, setIsRunning] = useState(true)
-
-    useEffect(() => {
-        let interval = null
-        if (isRunning) {
-            interval = setInterval(() => {
-                setSeconds(s => s + 1)
-            }, 1000)
-        }
-        return () => clearInterval(interval)
-    }, [isRunning])
-
-    const formatTime = (totalSeconds) => {
-        const hrs = Math.floor(totalSeconds / 3600)
-        const mins = Math.floor((totalSeconds % 3600) / 60)
-        const secs = totalSeconds % 60
-        return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-    }
-
-    return { seconds, formatTime: formatTime(seconds), pause: () => setIsRunning(false), resume: () => setIsRunning(true) }
-}
+// The session clock is derived from the server's session record (see
+// utils/sessionClock.js) rather than counted here, so it survives leaving the
+// page — switching programs, refreshing, or handing the tablet over for a
+// wellness check-in no longer restarts it at zero.
 
 // Trial Data Collection Component
 function TrialDataCollector({ onRecord, stats, showPromptLevels = true, disabled = false }) {
@@ -350,9 +331,6 @@ export default function SessionCollectPage() {
     const navigate = useNavigate()
     const { toast } = useToast()
     const { addNotification } = useNotifications()
-    const timer = useTimer()
-    const { formatTime, pause: pauseTimer, resume: resumeTimer } = timer
-
     const [notes, setNotes] = useState('')
     const [sessionData, setSessionData] = useState([])
     const [client, setClient] = useState(null)
@@ -365,6 +343,9 @@ export default function SessionCollectPage() {
     const [saving, setSaving] = useState(false)
     const [sidebarOpen, setSidebarOpen] = useState(true)
     const [isPaused, setIsPaused] = useState(false)
+    // The server's session record — start time plus pause bookkeeping. This is
+    // the single source of truth for the session clock.
+    const [session, setSession] = useState(null)
 
     // Duration timer state — wall-clock based so a running timer survives a
     // page close / refresh / crash and stays accurate across tab throttling.
@@ -437,6 +418,18 @@ export default function SessionCollectPage() {
 
         return () => clearInterval(interval)
     }, [durationTimers])
+
+    // Advance the displayed session clock once a second. Nothing is
+    // accumulated here — the tick only re-renders so the derived value is
+    // recomputed. While paused the reading is constant, so no tick is needed.
+    useEffect(() => {
+        if (!session || session.end_time || session.is_paused) return
+        const interval = setInterval(() => setNow(Date.now()), 1000)
+        return () => clearInterval(interval)
+    }, [session])
+
+    // Session elapsed time, recomputed from the server record every render.
+    const formatTime = formatClock(sessionElapsedSeconds(session, now))
 
     // Duration timer helpers
     const startDurationTimer = useCallback((programId) => {
@@ -540,6 +533,8 @@ export default function SessionCollectPage() {
                     }
 
                     setSessionId(existingSession.id)
+                    setSession(existingSession)
+                    setIsPaused(!!existingSession.is_paused)
 
                     // Get client and program from the session
                     // Note: backend returns client as nested object {id, first_name, last_name}
@@ -575,6 +570,7 @@ export default function SessionCollectPage() {
                     const { startSession } = await import('../services/sessions')
                     const newSession = await startSession(parseInt(clientId), sessionDate)
                     setSessionId(newSession.id)
+                    setSession(newSession)
                     toast.success('Session started')
 
                     // Save session for recovery (browser refresh)
@@ -789,9 +785,14 @@ export default function SessionCollectPage() {
     const handlePause = async () => {
         if (!sessionId) return
         try {
-            await pauseSession(sessionId)
+            const result = await pauseSession(sessionId)
             setIsPaused(true)
-            pauseTimer()
+            // Mirror the server's pause bookkeeping so the clock holds steady.
+            setSession(prev => prev && {
+                ...prev,
+                is_paused: true,
+                pause_started_at: result?.pause_started_at ?? prev.pause_started_at,
+            })
             toast.info('Session paused')
         } catch (err) {
             console.error('Failed to pause session:', err)
@@ -803,9 +804,15 @@ export default function SessionCollectPage() {
     const handleResume = async () => {
         if (!sessionId) return
         try {
-            await resumeSession(sessionId)
+            const result = await resumeSession(sessionId)
             setIsPaused(false)
-            resumeTimer()
+            // The server banks the closed pause into total_paused_seconds.
+            setSession(prev => prev && {
+                ...prev,
+                is_paused: false,
+                pause_started_at: null,
+                total_paused_seconds: result?.total_paused_seconds ?? prev.total_paused_seconds,
+            })
             toast.info('Session resumed')
         } catch (err) {
             console.error('Failed to resume session:', err)

@@ -13,6 +13,12 @@ export default function SessionsPage() {
     const navigate = useNavigate()
     const { toast } = useToast()
     const { user } = useAuth()
+    // Who may clear a day's data. Mirrors the backend rule (_can_correct_data):
+    // BCBAs and admins. This used to test `role === 'admin'`, which no clinical
+    // account ever holds — admin access lives in the is_admin flag — so the
+    // control was invisible to the BCBAs who needed it.
+    const canCorrectData =
+        user?.is_admin || user?.is_superadmin || (user?.role || '').toLowerCase() === 'bcba'
     const [searchTerm, setSearchTerm] = useState('')
     const [deleteConfirm, setDeleteConfirm] = useState(null) // session id to delete
 
@@ -54,15 +60,19 @@ export default function SessionsPage() {
         return clientName.toLowerCase().includes(searchTerm.toLowerCase())
     })
 
-    // Handle delete session
+    // Clear a day's data. The visit record is kept and its data points are
+    // flagged, so the day drops out of graphs and exports while remaining in
+    // the audit trail.
     const handleDelete = async (sessionId) => {
         try {
             await deleteSession(sessionId)
-            setSessions(prev => prev.filter(s => s.id !== sessionId))
-            toast.success('Session deleted')
+            setSessions(prev => prev.map(s => (
+                s.id === sessionId ? { ...s, data_points: 0 } : s
+            )))
+            toast.success("This day's data has been cleared")
             setDeleteConfirm(null)
         } catch (err) {
-            toast.error('Failed to delete session')
+            toast.error(err.message || 'Failed to clear this session')
         }
     }
 
@@ -72,8 +82,12 @@ export default function SessionsPage() {
             {deleteConfirm && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl">
-                        <h3 className="font-heading text-xl font-bold text-gray-900 mb-2">Delete Session?</h3>
-                        <p className="text-gray-500 mb-6">This action cannot be undone. The session and all its data will be permanently deleted.</p>
+                        <h3 className="font-heading text-xl font-bold text-gray-900 mb-2">Clear this day's data?</h3>
+                        <p className="text-gray-500 mb-6">
+                            Everything recorded in this session will be removed from graphs, reports
+                            and exports. The visit itself stays on the record and the change is
+                            logged, so nothing is lost from the clinical history.
+                        </p>
                         <div className="flex gap-3">
                             <button
                                 onClick={() => setDeleteConfirm(null)}
@@ -193,16 +207,16 @@ export default function SessionsPage() {
                                         </div>
                                     </div>
 
-                                    {/* Actions - Delete only visible to admins */}
+                                    {/* Actions - clearing a day's data is a BCBA/admin task */}
                                     <div className="flex items-center gap-2">
-                                        {user?.role === 'admin' && (
+                                        {canCorrectData && (
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation()
                                                     setDeleteConfirm(session.id)
                                                 }}
                                                 className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                title="Delete session"
+                                                title="Clear this day's data"
                                             >
                                                 <Trash2 size={18} />
                                             </button>

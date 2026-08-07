@@ -7,7 +7,7 @@ import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { ArrowLeft, Calendar, Clock, FileText, Play, Download, Target, Activity, BarChart2, User, Trash2, CheckCircle, XCircle, Edit3, StopCircle } from 'lucide-react'
 import { format } from 'date-fns'
-import { deleteSessionData, editSessionTimes, endSession } from '../services/sessions'
+import { deleteSessionData, editSessionData, editSessionTimes, endSession } from '../services/sessions'
 import SessionWellnessStrip from '../components/wellness/SessionWellnessStrip'
 
 export default function SessionDetailPage() {
@@ -28,6 +28,10 @@ export default function SessionDetailPage() {
     const [savingTimeEdit, setSavingTimeEdit] = useState(false)
     const [showEndConfirm, setShowEndConfirm] = useState(false)
     const [endingSession, setEndingSession] = useState(false)
+    // Correcting a single recorded data point (BCBA/admin).
+    const [editingPoint, setEditingPoint] = useState(null)
+    const [dataEditForm, setDataEditForm] = useState({ result: '', count: '', duration_seconds: '', edit_reason: '' })
+    const [savingDataEdit, setSavingDataEdit] = useState(false)
 
     // Whether the current user is allowed to end this session.
     // Matches backend permission: session owner, admin/superadmin, or BCBA role.
@@ -42,6 +46,12 @@ export default function SessionDetailPage() {
             role === 'bcba'
         )
     const isSessionOwner = session?.user_id != null && session.user_id === user?.id
+
+    // Whether the current user may amend or remove a recorded data point.
+    // Mirrors the backend rule (_can_correct_data): BCBAs and admins only.
+    // This used to test `role === 'admin'`, which no clinical account ever has,
+    // so the controls were invisible to the BCBAs who need them.
+    const canCorrectData = user?.is_admin || user?.is_superadmin || role === 'bcba'
 
     // Fetch session data
     useEffect(() => {
@@ -280,20 +290,37 @@ export default function SessionDetailPage() {
                                                 </div>
                                             </div>
 
-                                            {/* Delete button - Admin only */}
-                                            {user?.role === 'admin' && (
-                                                <button
-                                                    onClick={() => setDeleteConfirmId(dataPoint.id)}
-                                                    disabled={deleting === dataPoint.id}
-                                                    className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                                    title="Remove data point"
-                                                >
-                                                    {deleting === dataPoint.id ? (
-                                                        <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
-                                                    ) : (
-                                                        <Trash2 size={16} />
-                                                    )}
-                                                </button>
+                                            {/* Correct or remove a data point - BCBA/admin */}
+                                            {canCorrectData && (
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        onClick={() => {
+                                                            setDataEditForm({
+                                                                result: dataPoint.result || '',
+                                                                count: dataPoint.count ?? '',
+                                                                duration_seconds: dataPoint.duration_seconds ?? '',
+                                                                edit_reason: '',
+                                                            })
+                                                            setEditingPoint(dataPoint)
+                                                        }}
+                                                        className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-[#159DB3] hover:bg-[#E0F4F7] rounded-lg transition-all"
+                                                        title="Correct this data point"
+                                                    >
+                                                        <Edit3 size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setDeleteConfirmId(dataPoint.id)}
+                                                        disabled={deleting === dataPoint.id}
+                                                        className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                        title="Remove data point"
+                                                    >
+                                                        {deleting === dataPoint.id ? (
+                                                            <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                                                        ) : (
+                                                            <Trash2 size={16} />
+                                                        )}
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
                                     ))}
@@ -433,6 +460,143 @@ export default function SessionDetailPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Correct Data Point Modal — BCBAs fixing an entry recorded in error.
+                Which fields appear is driven by what the data point actually
+                holds, so the same modal serves trial, interval, frequency and
+                duration records without hardcoding program types. */}
+            {editingPoint && (
+                <>
+                    <div
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+                        onClick={() => !savingDataEdit && setEditingPoint(null)}
+                    ></div>
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+                            <h3 className="font-heading text-xl font-bold text-gray-900 mb-1">
+                                Correct Data Point
+                            </h3>
+                            <p className="text-sm text-gray-500 mb-5">
+                                {editingPoint.program_name || 'Unknown Program'} ·{' '}
+                                {format(new Date(editingPoint.timestamp || editingPoint.created_at), 'h:mm:ss a')}
+                            </p>
+
+                            {/* Scored results: correct/incorrect for trials and task
+                                analysis, present/absent for interval recording. */}
+                            {editingPoint.result && (
+                                <div className="mb-4">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Result</label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {(['present', 'absent'].includes(editingPoint.result)
+                                            ? [['present', 'Present'], ['absent', 'Absent']]
+                                            : [['correct', 'Correct'], ['incorrect', 'Incorrect']]
+                                        ).map(([value, label]) => (
+                                            <button
+                                                key={value}
+                                                onClick={() => setDataEditForm(f => ({ ...f, result: value }))}
+                                                className={`py-3 rounded-xl font-semibold border-2 transition-colors ${dataEditForm.result === value
+                                                    ? 'bg-[#E0F4F7] border-[#159DB3] text-[#159DB3]'
+                                                    : 'bg-gray-50 border-transparent text-gray-600 hover:border-gray-300'
+                                                    }`}
+                                            >
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {editingPoint.count != null && (
+                                <div className="mb-4">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Count</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={dataEditForm.count}
+                                        onChange={(e) => setDataEditForm(f => ({ ...f, count: e.target.value }))}
+                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#159DB3] focus:outline-none"
+                                    />
+                                </div>
+                            )}
+
+                            {editingPoint.duration_seconds != null && (
+                                <div className="mb-4">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Duration (seconds)</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={dataEditForm.duration_seconds}
+                                        onChange={(e) => setDataEditForm(f => ({ ...f, duration_seconds: e.target.value }))}
+                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#159DB3] focus:outline-none"
+                                    />
+                                </div>
+                            )}
+
+                            <div className="mb-5">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Reason for the correction
+                                </label>
+                                <input
+                                    type="text"
+                                    value={dataEditForm.edit_reason}
+                                    onChange={(e) => setDataEditForm(f => ({ ...f, edit_reason: e.target.value }))}
+                                    placeholder="e.g. Scored in error during session"
+                                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#159DB3] focus:outline-none"
+                                />
+                                <p className="text-xs text-gray-400 mt-2">
+                                    Recorded in the audit log alongside the original value.
+                                </p>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setEditingPoint(null)}
+                                    disabled={savingDataEdit}
+                                    className="flex-1 px-4 py-3 border-2 border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        if (dataEditForm.edit_reason.trim().length < 5) {
+                                            toast.error('Please give a reason of at least 5 characters')
+                                            return
+                                        }
+                                        setSavingDataEdit(true)
+                                        try {
+                                            const payload = { edit_reason: dataEditForm.edit_reason.trim() }
+                                            if (editingPoint.result && dataEditForm.result) {
+                                                payload.result = dataEditForm.result
+                                            }
+                                            if (editingPoint.count != null && dataEditForm.count !== '') {
+                                                payload.count = parseInt(dataEditForm.count, 10)
+                                            }
+                                            if (editingPoint.duration_seconds != null && dataEditForm.duration_seconds !== '') {
+                                                payload.duration_seconds = parseInt(dataEditForm.duration_seconds, 10)
+                                            }
+                                            const updated = await editSessionData(editingPoint.id, payload)
+                                            setSession(prev => ({
+                                                ...prev,
+                                                data: prev.data.map(d => (d.id === updated.id ? { ...d, ...updated } : d)),
+                                            }))
+                                            setEditingPoint(null)
+                                            toast.success('Data point corrected')
+                                        } catch (err) {
+                                            toast.error(err.message || 'Failed to correct data point')
+                                        } finally {
+                                            setSavingDataEdit(false)
+                                        }
+                                    }}
+                                    disabled={savingDataEdit}
+                                    className="flex-1 px-4 py-3 bg-[#159DB3] text-white font-semibold rounded-xl hover:bg-[#128098] transition-colors disabled:opacity-60"
+                                >
+                                    {savingDataEdit ? 'Saving...' : 'Save Correction'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
 
             {/* Delete Confirmation Modal */}
             {deleteConfirmId && (
