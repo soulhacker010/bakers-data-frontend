@@ -21,7 +21,8 @@ import {
     Star,
     GripVertical,
     Archive,
-    RotateCcw
+    RotateCcw,
+    BarChart2
 } from 'lucide-react'
 import { format } from 'date-fns'
 import StaffAssignmentModal from '../components/staff/StaffAssignmentModal'
@@ -359,6 +360,20 @@ export default function ClientDetailPage() {
                             </div>
                         ) : (
                             <>
+                                {/* Every graph for this learner on one page, so a
+                                    BCBA reviewing progress does not have to open
+                                    each program in turn (requested by the clinical
+                                    team, Aug 2026). */}
+                                <div className="flex justify-end mb-4">
+                                    <button
+                                        onClick={() => navigate(`/clients/${client.id}/graphs`)}
+                                        className="flex items-center gap-2 px-4 py-2.5 border-2 border-[#159DB3] text-[#159DB3] rounded-xl font-semibold hover:bg-[#E0F4F7] transition-colors text-sm"
+                                    >
+                                        <BarChart2 size={16} />
+                                        View All Graphs
+                                    </button>
+                                </div>
+
                                 {/* Program Type Filter Tabs */}
                                 <div className="flex items-center gap-2 mb-4">
                                     {[{ key: 'all', label: 'All Programs' },

@@ -30,6 +30,7 @@ import SupportPage from './pages/SupportPage'
 import GettingStartedPage from './pages/GettingStartedPage'
 import DocumentationPage from './pages/DocumentationPage'
 import WellnessCheckInPage from './pages/WellnessCheckInPage'
+import ClientGraphsPage from './pages/ClientGraphsPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import AuditLogsPage from './pages/AuditLogsPage'
 import RegistrationSuccessPage from './pages/RegistrationSuccessPage'
@@ -86,6 +87,11 @@ function App() {
               <Route path="/clients/:clientId/wellness-checkin" element={
                 <ProtectedRoute>
                   <WellnessCheckInPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/clients/:clientId/graphs" element={
+                <ProtectedRoute>
+                  <ClientGraphsPage />
                 </ProtectedRoute>
               } />
 

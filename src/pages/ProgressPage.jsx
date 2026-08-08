@@ -1,15 +1,14 @@
-import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
 import { getProgram } from '../services/programs'
 import { getProgramProgress, exportProgramData } from '../services/analytics'
 import { downloadChartPng } from '../utils/chartExport'
-import { responsesPerMinute, formatRate } from '../utils/rate'
 import { useToast } from '../context/ToastContext'
 import { Download, Image as ImageIcon, TrendingUp, TrendingDown, Minus, ArrowLeft, Target, Clock, Hash, ListChecks } from 'lucide-react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, BarChart, Bar, ReferenceLine } from 'recharts'
-import { format, subDays, parseISO } from 'date-fns'
+import { format, subDays } from 'date-fns'
 import { TargetsList } from '../components/targets'
+import ProgramChart, { buildChartData } from '../components/charts/ProgramChart'
 
 const dateRangeOptions = [
     { value: '7', label: 'Last 7 Days' },
@@ -17,31 +16,6 @@ const dateRangeOptions = [
     { value: '90', label: 'Last 90 Days' },
     { value: 'all', label: 'All Time' },
 ]
-
-// Phase-change ReferenceLine label rendered VERTICALLY along the marker line.
-// The label (date + target transition) used to be horizontal and ran off the
-// right edge of the chart on longer transitions, confusing staff. Drawing it
-// rotated 90° so it reads top-to-bottom next to the line keeps it on-chart
-// and legible (per Dr. Joe's request, 2026-07).
-const phaseChangeLabel = (value) => ({ viewBox } = {}) => {
-    if (!viewBox) return null
-    const x = viewBox.x
-    const y = viewBox.y + 6
-    return (
-        <text
-            x={x}
-            y={y}
-            transform={`rotate(90, ${x}, ${y})`}
-            textAnchor="start"
-            dy={-4}
-            fill="#0E8C6B"
-            fontSize={11}
-            fontWeight={700}
-        >
-            {value}
-        </text>
-    )
-}
 
 export default function ProgressPage() {
     const { id } = useParams()
@@ -88,25 +62,12 @@ export default function ProgressPage() {
         fetchData()
     }, [id, dateRange, targetFilter, toast])
 
-    // Format chart data from analytics
-    // Use parseISO with noon time to avoid timezone date shift
-    const chartData = analytics?.sessions?.map(session => ({
-        date: format(parseISO(session.date + 'T12:00:00'), 'MMM d'),
-        accuracy: session.accuracy || 0,
-        frequency: session.frequency_count || 0,
-        // Session time for the whole day, already combined across every
-        // therapist who worked with the learner. Null when nothing measurable
-        // was recorded, which leaves a gap on the rate chart rather than a
-        // misleading zero.
-        sessionMinutes: session.session_minutes ?? null,
-        rate: responsesPerMinute(session.frequency_count, session.session_minutes),
-        duration: Math.round((session.total_duration_seconds || 0) / 60), // Convert to minutes
-        interval: session.interval_percentage ?? null,        // % present (interval recording)
-        latency: session.latency_average_seconds ?? null,     // avg seconds-to-onset (latency)
-    })) || []
+    // Chart rows, built by the same helper the chart itself uses so the stats
+    // below can never disagree with what is plotted.
+    const chartData = buildChartData(analytics)
 
     // When a target with an interval/latency measurement method is selected, the
-    // analytics rows carry these fields and we switch the chart accordingly.
+    // analytics rows carry these fields and we switch the stats accordingly.
     const hasInterval = chartData.some(d => d.interval != null)
     const hasLatency = chartData.some(d => d.latency != null)
 
@@ -115,29 +76,8 @@ export default function ProgressPage() {
     const latestAccuracy = chartData.length > 0 ? chartData[chartData.length - 1]?.accuracy : 0
     const trend = analytics?.overall_stats?.trend || 'stable'
 
-    // Extract targets for reference lines on graph
+    // Targets drive the filter dropdown below.
     const targets = analytics?.targets || []
-
-    // Truncate long target names so labels don't overflow the chart edge.
-    const truncate = (name, max = 18) => {
-        if (!name) return ''
-        return name.length > max ? name.slice(0, max - 1) + '…' : name
-    }
-
-    // Extract phase changes for vertical markers.
-    // Build a label that includes the introduction date so therapists can
-    // see WHEN each target transitioned without having to read the X-axis.
-    const phaseChanges = (analytics?.phase_changes || []).map(pc => {
-        const dateLabel = format(parseISO(pc.date + 'T12:00:00'), 'MMM d')
-        const transition = pc.to_target
-            ? `${truncate(pc.from_target)} → ${truncate(pc.to_target)}`
-            : `${truncate(pc.from_target)} mastered`
-        return {
-            ...pc,
-            dateLabel,
-            chartLabel: `✓ ${dateLabel} · ${transition}`,
-        }
-    })
 
     const handleExport = async () => {
         try {
@@ -148,7 +88,7 @@ export default function ProgressPage() {
         }
     }
 
-    // Download the on-screen chart as a PNG (with a header) — the artifact
+    // Download the on-screen chart as a PNG (with a header), the artifact
     // clinics actually attach to insurance submissions.
     const handleDownloadGraph = async () => {
         try {
@@ -183,283 +123,6 @@ export default function ProgressPage() {
     }
 
     const chartInfo = getChartInfo()
-
-    // Render chart based on program data type
-    const renderChart = () => {
-        if (chartData.length === 0) {
-            return (
-                <div className="flex flex-col items-center justify-center py-16">
-                    <div className="w-16 h-16 rounded-full bg-[#E0F4F7] flex items-center justify-center mb-4">
-                        <TrendingUp size={36} className="text-[#159DB3]" />
-                    </div>
-                    <h3 className="font-heading text-lg font-semibold text-gray-800 mb-2">No Session Data Yet</h3>
-                    <p className="text-gray-500 mb-4 max-w-md text-center">
-                        Start collecting data for this program to see your progress over time.
-                    </p>
-                    <button
-                        onClick={() => navigate('/sessions/new')}
-                        className="px-6 py-3 bg-gradient-to-r from-[#159DB3] to-[#214B9D] text-white font-semibold rounded-xl hover:shadow-lg transition-all"
-                    >
-                        Start a Session
-                    </button>
-                </div>
-            )
-        }
-
-        // Interval recording: % present over time (0–100% axis, like accuracy)
-        if (hasInterval) {
-            return (
-                <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData} margin={{ top: 36, right: 80, left: 0, bottom: 0 }}>
-                        <defs>
-                            <linearGradient id="colorInterval" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#159DB3" stopOpacity={0.2} />
-                                <stop offset="95%" stopColor="#159DB3" stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                        <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis domain={[0, 100]} stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
-                        <Tooltip
-                            contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' }}
-                            formatter={(value) => [`${value}%`, '% Interval']}
-                        />
-                        {targets.map((target) => (
-                            <ReferenceLine
-                                key={target.id}
-                                y={target.mastery_threshold}
-                                stroke={target.status === 'mastered' ? '#10B981' : '#F59E0B'}
-                                strokeDasharray={target.status === 'mastered' ? '4 4' : '8 4'}
-                                strokeWidth={2}
-                                label={{
-                                    value: `${truncate(target.name)} (${target.mastery_threshold}%)`,
-                                    position: 'insideTopLeft', fontSize: 11,
-                                    fill: target.status === 'mastered' ? '#10B981' : '#F59E0B', fontWeight: 600,
-                                }}
-                            />
-                        ))}
-                        {phaseChanges.map((pc, idx) => (
-                            <ReferenceLine key={`pc-${idx}`} x={pc.dateLabel} stroke="#10B981" strokeDasharray="6 3" strokeWidth={2}
-                                label={phaseChangeLabel(pc.chartLabel)} />
-                        ))}
-                        <Area type="monotone" dataKey="interval" stroke="#159DB3" strokeWidth={3} fill="url(#colorInterval)" dot={{ fill: '#159DB3', r: 4 }} activeDot={{ r: 6 }} connectNulls />
-                    </AreaChart>
-                </ResponsiveContainer>
-            )
-        }
-
-        // Latency: Line chart in seconds
-        if (hasLatency) {
-            return (
-                <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 36, right: 80, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                        <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}s`} />
-                        <Tooltip
-                            contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' }}
-                            formatter={(value) => [`${value}s`, 'Avg latency']}
-                        />
-                        {phaseChanges.map((pc, idx) => (
-                            <ReferenceLine key={`pc-${idx}`} x={pc.dateLabel} stroke="#10B981" strokeDasharray="6 3" strokeWidth={2}
-                                label={phaseChangeLabel(pc.chartLabel)} />
-                        ))}
-                        <Line type="monotone" dataKey="latency" stroke="#8B5CF6" strokeWidth={3} dot={{ fill: '#8B5CF6', r: 4 }} activeDot={{ r: 6 }} connectNulls />
-                    </LineChart>
-                </ResponsiveContainer>
-            )
-        }
-
-        // Frequency: Line chart (changed from bar per client request), plotted
-        // either as the raw count or as responses per minute.
-        if (program?.data_type === 'frequency') {
-            const showingRate = frequencyMode === 'rate'
-            return (
-                <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 36, right: 80, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                        <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis
-                            stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false}
-                            tickFormatter={showingRate ? (v) => `${v}/min` : undefined}
-                        />
-                        <Tooltip
-                            contentStyle={{
-                                backgroundColor: '#FFFFFF',
-                                border: '1px solid #E5E7EB',
-                                borderRadius: '12px',
-                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                            }}
-                            formatter={(value, name, entry) => (
-                                showingRate
-                                    ? [formatRate(value), `Rate over ${entry?.payload?.sessionMinutes ?? 0} min`]
-                                    : [value, 'Count']
-                            )}
-                        />
-                        {/* Phase change vertical lines — drawn at the date a target
-                            was mastered, with a label showing the next target taking over.
-                            Tall stroke + readable label so the transition is obvious on
-                            the graph (per client request from Dena/ABA team). */}
-                        {phaseChanges.map((pc, idx) => (
-                            <ReferenceLine
-                                key={`pc-${idx}`}
-                                x={pc.dateLabel}
-                                stroke="#10B981"
-                                strokeDasharray="6 3"
-                                strokeWidth={2.5}
-                                ifOverflow="extendDomain"
-                                label={phaseChangeLabel(pc.chartLabel)}
-                            />
-                        ))}
-                        <Line
-                            type="monotone"
-                            dataKey={showingRate ? 'rate' : 'frequency'}
-                            stroke="#159DB3" strokeWidth={3}
-                            dot={{ fill: '#159DB3', r: 4 }} activeDot={{ r: 6 }}
-                            connectNulls={false}
-                        />
-                    </LineChart>
-                </ResponsiveContainer>
-            )
-        }
-
-        // Duration: Line chart with minutes
-        if (program?.data_type === 'duration') {
-            return (
-                <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData} margin={{ top: 36, right: 80, left: 0, bottom: 0 }}>
-                        <defs>
-                            <linearGradient id="colorDuration" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.2} />
-                                <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                        <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}m`} />
-                        <Tooltip
-                            contentStyle={{
-                                backgroundColor: '#FFFFFF',
-                                border: '1px solid #E5E7EB',
-                                borderRadius: '12px',
-                            }}
-                            formatter={(value) => [`${value} min`, 'Duration']}
-                        />
-                        {/* Phase change vertical lines — drawn at the date a target
-                            was mastered, with a label showing the next target taking over.
-                            Tall stroke + readable label so the transition is obvious on
-                            the graph (per client request from Dena/ABA team). */}
-                        {phaseChanges.map((pc, idx) => (
-                            <ReferenceLine
-                                key={`pc-${idx}`}
-                                x={pc.dateLabel}
-                                stroke="#10B981"
-                                strokeDasharray="6 3"
-                                strokeWidth={2.5}
-                                ifOverflow="extendDomain"
-                                label={phaseChangeLabel(pc.chartLabel)}
-                            />
-                        ))}
-                        <Area type="monotone" dataKey="duration" stroke="#8B5CF6" strokeWidth={3} fill="url(#colorDuration)" dot={{ fill: '#8B5CF6', r: 4 }} />
-                    </AreaChart>
-                </ResponsiveContainer>
-            )
-        }
-
-        // Task Analysis: Line chart (changed from bar per client request)
-        if (program?.data_type === 'task_analysis') {
-            return (
-                <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 36, right: 80, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                        <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
-                        <Tooltip
-                            contentStyle={{
-                                backgroundColor: '#FFFFFF',
-                                border: '1px solid #E5E7EB',
-                                borderRadius: '12px',
-                            }}
-                            formatter={(value) => [`${value}%`, 'Independent Steps']}
-                        />
-                        {/* Target threshold reference lines */}
-                        {targets.map((target) => (
-                            <ReferenceLine
-                                key={target.id}
-                                y={target.mastery_threshold}
-                                stroke={target.status === 'mastered' ? '#10B981' : '#F59E0B'}
-                                strokeDasharray={target.status === 'mastered' ? '4 4' : '8 4'}
-                                strokeWidth={2}
-                                label={{
-                                    value: `${target.name} (${target.mastery_threshold}%)`,
-                                    position: 'right',
-                                    fontSize: 11,
-                                    fill: target.status === 'mastered' ? '#10B981' : '#F59E0B',
-                                    fontWeight: 600,
-                                }}
-                            />
-                        ))}
-                        <Line type="monotone" dataKey="accuracy" stroke="#10B981" strokeWidth={3} dot={{ fill: '#10B981', r: 4 }} activeDot={{ r: 6 }} />
-                    </LineChart>
-                </ResponsiveContainer>
-            )
-        }
-
-        // Default: Trial-based accuracy chart
-        return (
-            <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 36, right: 80, left: 0, bottom: 0 }}>
-                    <defs>
-                        <linearGradient id="colorAccuracy" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#159DB3" stopOpacity={0.2} />
-                            <stop offset="95%" stopColor="#159DB3" stopOpacity={0} />
-                        </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                    <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis domain={[0, 100]} stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
-                    <Tooltip
-                        contentStyle={{
-                            backgroundColor: '#FFFFFF',
-                            border: '1px solid #E5E7EB',
-                            borderRadius: '12px',
-                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                        }}
-                        formatter={(value) => [`${value}%`, 'Accuracy']}
-                    />
-                    {/* Target threshold reference lines */}
-                    {targets.map((target) => (
-                        <ReferenceLine
-                            key={target.id}
-                            y={target.mastery_threshold}
-                            stroke={target.status === 'mastered' ? '#10B981' : '#F59E0B'}
-                            strokeDasharray={target.status === 'mastered' ? '4 4' : '8 4'}
-                            strokeWidth={2}
-                            label={{
-                                value: `${truncate(target.name)} (${target.mastery_threshold}%)`,
-                                position: 'insideTopLeft',
-                                fontSize: 11,
-                                fill: target.status === 'mastered' ? '#10B981' : '#F59E0B',
-                                fontWeight: 600,
-                            }}
-                        />
-                    ))}
-                    {/* Phase change vertical lines */}
-                    {phaseChanges.map((pc, idx) => (
-                        <ReferenceLine
-                            key={`pc-${idx}`}
-                            x={pc.dateLabel}
-                            stroke="#10B981"
-                            strokeDasharray="6 3"
-                            strokeWidth={2}
-                            label={phaseChangeLabel(pc.chartLabel)}
-                        />
-                    ))}
-                    <Area type="monotone" dataKey="accuracy" stroke="#159DB3" strokeWidth={3} fill="url(#colorAccuracy)" dot={{ fill: '#159DB3', r: 4 }} activeDot={{ r: 6, fill: '#159DB3', stroke: '#fff', strokeWidth: 2 }} />
-                </AreaChart>
-            </ResponsiveContainer>
-        )
-    }
 
     // Get appropriate stats based on data type
     const renderStats = () => {
@@ -665,7 +328,7 @@ export default function ProgressPage() {
                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                     </select>
-                    {/* Per-target filter — lets therapists drill into a single
+                    {/* Per-target filter, lets therapists drill into a single
                         target's history (including mastered ones) so they can
                         review the data behind a phase change. */}
                     {targets.length > 0 && (
@@ -725,7 +388,19 @@ export default function ProgressPage() {
                         )}
 
                     <div className="h-80" ref={chartRef}>
-                        {renderChart()}
+                        <ProgramChart
+                            program={program}
+                            analytics={analytics}
+                            frequencyMode={frequencyMode}
+                            emptyAction={
+                                <button
+                                    onClick={() => navigate('/sessions/new')}
+                                    className="px-6 py-3 bg-gradient-to-r from-[#159DB3] to-[#214B9D] text-white font-semibold rounded-xl hover:shadow-lg transition-all"
+                                >
+                                    Start a Session
+                                </button>
+                            }
+                        />
                     </div>
                 </div>
             </div>
