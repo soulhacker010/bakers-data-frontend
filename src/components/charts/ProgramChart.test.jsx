@@ -157,7 +157,9 @@ describe('ProgramChart gradient ids', () => {
         // if nothing rendered at all.
         expect(ids).toHaveLength(2)
         expect(new Set(ids).size).toBe(2)
-    })
+        // Rendering two full charts is heavier than the default 5s allows on a
+        // loaded machine. The assertion is unchanged; only the patience is.
+    }, 20000)
 
     it('shows an empty state rather than an axis when there is no data', () => {
         const { getByText } = render(

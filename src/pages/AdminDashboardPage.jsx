@@ -317,6 +317,21 @@ export default function AdminDashboardPage() {
         return matchesSearch && matchesType && matchesStatus;
     });
 
+    /**
+     * Whether the signed-in admin may change this person's role.
+     *
+     * Mirrors the server: the owner's role is the owner's alone, and a regular
+     * admin does not reassign a colleague who is also an admin. Everyone may
+     * correct their own clinical role, which is not an escalation because the
+     * admin flag already grants every data permission.
+     */
+    const canEditRoleOf = (u) => {
+        const iAmOwner = !!user?.is_superadmin;
+        if (u.is_superadmin && !iAmOwner) return false;
+        if (u.is_admin && u.id !== user?.id && !iAmOwner) return false;
+        return true;
+    };
+
     const filteredUsers = users.filter(u => {
         if (!userSearch) return true;
         const q = userSearch.toLowerCase();
@@ -510,18 +525,24 @@ export default function AdminDashboardPage() {
                                             <div className="flex items-center gap-1">
                                                 {/* Editable in place: promoting someone is the
                                                     reason an admin opens this list, so it should
-                                                    not need a drawer. */}
-                                                <RoleSelect
-                                                    userId={u.id}
-                                                    role={u.role}
-                                                    compact
-                                                    onChanged={(next) => setData(prev => ({
-                                                        ...prev,
-                                                        users: prev.users.map(x =>
-                                                            x.id === u.id ? { ...x, role: next } : x
-                                                        ),
-                                                    }))}
-                                                />
+                                                    not need a drawer. Rows the server would refuse
+                                                    show a plain badge instead of a control that
+                                                    only fails when used. */}
+                                                {canEditRoleOf(u) ? (
+                                                    <RoleSelect
+                                                        userId={u.id}
+                                                        role={u.role}
+                                                        compact
+                                                        onChanged={(next) => setData(prev => ({
+                                                            ...prev,
+                                                            users: prev.users.map(x =>
+                                                                x.id === u.id ? { ...x, role: next } : x
+                                                            ),
+                                                        }))}
+                                                    />
+                                                ) : (
+                                                    <RoleBadge role={u.role} />
+                                                )}
                                                 {u.is_superadmin && <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-700">Owner</span>}
                                                 {u.is_admin && !u.is_superadmin && <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700">Admin</span>}
                                             </div>

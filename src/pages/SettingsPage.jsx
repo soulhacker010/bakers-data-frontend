@@ -27,19 +27,10 @@ const settingsNav = [
     { id: 'data', label: 'Data & Export', description: 'Export your data, privacy controls' },
 ]
 
-const roleOptions = [
-    { value: 'BCBA', label: 'BCBA (Board Certified Behavior Analyst)' },
-    { value: 'RBT', label: 'RBT (Registered Behavior Technician)' },
-    { value: 'Therapist', label: 'Therapist' },
-    { value: 'Supervisor', label: 'Supervisor' },
-    { value: 'Other', label: 'Other' },
-]
-
 function AccountSettings({ user, toast, setUser }) {
     const [formData, setFormData] = useState({
         full_name: user?.full_name || '',
         email: user?.email || '',
-        role: user?.role || 'Therapist'
     })
     const [saving, setSaving] = useState(false)
     const [saved, setSaved] = useState(false)
@@ -57,7 +48,6 @@ function AccountSettings({ user, toast, setUser }) {
             const result = await updateUserProfile({
                 full_name: formData.full_name,
                 email: formData.email,
-                role: formData.role
             })
 
             setUser(result)
@@ -98,14 +88,19 @@ function AccountSettings({ user, toast, setUser }) {
                     onChange={handleChange}
                 />
 
-                <Select
-                    label="Role"
-                    name="role"
-                    value={formData.role}
-                    onChange={handleChange}
-                    options={roleOptions}
-                    placeholder=""
-                />
+                {/* Read only. A person's role decides what they may do with
+                    recorded data, so it is not something they set for
+                    themselves. It is shown here because staff reasonably want
+                    to know what they hold. */}
+                <div>
+                    <label className="label-uppercase block mb-2">Role</label>
+                    <div className="px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 font-medium">
+                        {user?.role || 'Not set'}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2">
+                        Set by your practice administrator. Contact them if this looks wrong.
+                    </p>
+                </div>
 
                 <Button type="submit" disabled={saving} icon={saved ? <Check size={18} /> : null}>
                     {saving ? 'Saving...' : saved ? 'Saved!' : 'Update Details'}
