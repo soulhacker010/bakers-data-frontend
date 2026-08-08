@@ -11,6 +11,7 @@ import { Download, Image as ImageIcon, TrendingUp, TrendingDown, Minus, ArrowLef
 import { format, subDays } from 'date-fns'
 import { TargetsList } from '../components/targets'
 import ProgramChart, { buildChartData } from '../components/charts/ProgramChart'
+import PhaseLineManager from '../components/charts/PhaseLineManager'
 
 const dateRangeOptions = [
     { value: '7', label: 'Last 7 Days' },
@@ -282,6 +283,22 @@ export default function ProgressPage() {
         )
     }
 
+    // Pull the chart's data again after a phase line changes, so the graph and
+    // the list below it stay in step.
+    const refreshAnalytics = async () => {
+        try {
+            const analyticsData = await getProgramProgress(id, {
+                dateFrom: dateRange === 'all'
+                    ? null
+                    : format(subDays(new Date(), parseInt(dateRange)), 'yyyy-MM-dd'),
+                targetId: targetFilter === 'all' ? null : targetFilter,
+            })
+            setAnalytics(analyticsData)
+        } catch (err) {
+            toast.error('Could not refresh the graph')
+        }
+    }
+
     const handleSavePastEntry = async () => {
         const value = parseFloat(pastEntry.percentage)
         if (!pastEntry.date) {
@@ -540,6 +557,16 @@ export default function ProgressPage() {
                             }
                         />
                     </div>
+
+                    {/* Phase changes: the clinician places these, so they are
+                        managed beside the graph they appear on. */}
+                    {canEnterPastData && (
+                        <PhaseLineManager
+                            programId={program.id}
+                            lines={analytics?.phase_lines || []}
+                            onChanged={refreshAnalytics}
+                        />
+                    )}
                 </div>
             </div>
 

@@ -60,6 +60,9 @@ export const truncate = (name, max = 18) => {
 export function buildChartData(analytics) {
     return analytics?.sessions?.map(session => ({
         date: format(parseISO(session.date + 'T12:00:00'), 'MMM d'),
+        // Kept alongside the display label so phase lines can be positioned by
+        // real date rather than by matching formatted text.
+        rawDate: session.date,
         accuracy: session.accuracy || 0,
         frequency: session.frequency_count || 0,
         duration: Math.round((session.total_duration_seconds || 0) / 60),
@@ -100,6 +103,26 @@ export function buildPhaseChanges(analytics) {
     })
 }
 
+/**
+ * Position clinician-placed phase lines onto the chart's date categories.
+ *
+ * The X axis is categorical: a line can only be drawn on a date that has a
+ * session. A phase change rarely falls exactly on one, so each line is snapped
+ * to the first session on or after the date the clinician chose. That is also
+ * the clinically correct place for it, since the new phase begins at that
+ * session. A line dated after every session sits on the last one.
+ *
+ * Lines are dropped entirely when there is nothing to plot them against.
+ */
+export function resolvePhaseLines(phaseLines, chartData) {
+    if (!phaseLines?.length || !chartData?.length) return []
+
+    return phaseLines.map(line => {
+        const at = chartData.find(row => row.rawDate >= line.date) || chartData[chartData.length - 1]
+        return { id: line.id, title: line.title, notes: line.notes, dateLabel: at.date }
+    })
+}
+
 const TOOLTIP_STYLE = {
     backgroundColor: '#FFFFFF',
     border: '1px solid #E5E7EB',
@@ -118,6 +141,7 @@ export default function ProgramChart({
 }) {
     const chartData = buildChartData(analytics)
     const phaseChanges = buildPhaseChanges(analytics)
+    const clinicianLines = resolvePhaseLines(analytics?.phase_lines, chartData)
     const targets = analytics?.targets || []
 
     const hasInterval = chartData.some(d => d.interval != null)
@@ -125,6 +149,27 @@ export default function ProgramChart({
 
     // Namespaced so several charts on one page keep their own fills.
     const gid = (name) => `${name}-${program?.id ?? 'x'}`
+
+    // Clinician-placed phase changes. Drawn the way ABA graphs are drawn and
+    // the way the clinical team's own example showed: a solid vertical rule
+    // with the phase named horizontally above it, rather than the rotated
+    // label used for the mastery-derived markers.
+    const clinicianPhaseLines = () => clinicianLines.map((line) => (
+        <ReferenceLine
+            key={`pl-${line.id}`}
+            x={line.dateLabel}
+            stroke="#334155"
+            strokeWidth={1.5}
+            ifOverflow="extendDomain"
+            label={{
+                value: line.title,
+                position: 'top',
+                fontSize: 11,
+                fontWeight: 700,
+                fill: '#334155',
+            }}
+        />
+    ))
 
     const phaseLines = (strokeWidth = 2, extend = false) => phaseChanges.map((pc, idx) => (
         <ReferenceLine
@@ -187,6 +232,7 @@ export default function ProgramChart({
                     <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value) => [`${value}%`, '% Interval']} />
                     {targetLines()}
                     {phaseLines()}
+                    {clinicianPhaseLines()}
                     <Area type="monotone" dataKey="interval" stroke="#159DB3" strokeWidth={3}
                         fill={`url(#${gid('colorInterval')})`} dot={{ fill: '#159DB3', r: 4 }}
                         activeDot={{ r: 6 }} connectNulls />
@@ -205,6 +251,7 @@ export default function ProgramChart({
                     <YAxis {...AXIS} tickFormatter={(v) => `${v}s`} />
                     <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value) => [`${value}s`, 'Avg latency']} />
                     {phaseLines()}
+                    {clinicianPhaseLines()}
                     <Line type="monotone" dataKey="latency" stroke="#8B5CF6" strokeWidth={3}
                         dot={{ fill: '#8B5CF6', r: 4 }} activeDot={{ r: 6 }} connectNulls />
                 </LineChart>
@@ -230,6 +277,7 @@ export default function ProgramChart({
                         )}
                     />
                     {phaseLines(2.5, true)}
+                    {clinicianPhaseLines()}
                     <Line type="monotone" dataKey={showingRate ? 'rate' : 'frequency'}
                         stroke="#159DB3" strokeWidth={3} dot={{ fill: '#159DB3', r: 4 }}
                         activeDot={{ r: 6 }} connectNulls={false} />
@@ -254,6 +302,7 @@ export default function ProgramChart({
                     <YAxis {...AXIS} tickFormatter={(v) => `${v}m`} />
                     <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value) => [`${value} min`, 'Duration']} />
                     {phaseLines(2.5, true)}
+                    {clinicianPhaseLines()}
                     <Area type="monotone" dataKey="duration" stroke="#8B5CF6" strokeWidth={3}
                         fill={`url(#${gid('colorDuration')})`} dot={{ fill: '#8B5CF6', r: 4 }} />
                 </AreaChart>
@@ -278,6 +327,7 @@ export default function ProgramChart({
                     />
                     {targetLines('right')}
                     {phaseLines()}
+                    {clinicianPhaseLines()}
                     <Line type="monotone" dataKey="accuracy" stroke="#10B981" strokeWidth={3}
                         dot={dataPointDot('#10B981')} activeDot={{ r: 6 }} />
                 </LineChart>
@@ -307,6 +357,7 @@ export default function ProgramChart({
                 />
                 {targetLines()}
                 {phaseLines()}
+                    {clinicianPhaseLines()}
                 <Area type="monotone" dataKey="accuracy" stroke="#159DB3" strokeWidth={3}
                     fill={`url(#${gid('colorAccuracy')})`} dot={dataPointDot('#159DB3')}
                     activeDot={{ r: 6, fill: '#159DB3', stroke: '#fff', strokeWidth: 2 }} />

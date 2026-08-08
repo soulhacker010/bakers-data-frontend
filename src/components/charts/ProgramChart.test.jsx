@@ -13,7 +13,7 @@ vi.mock('recharts', async (importOriginal) => {
     }
 })
 
-import ProgramChart, { buildChartData, buildPhaseChanges, truncate } from './ProgramChart'
+import ProgramChart, { buildChartData, buildPhaseChanges, resolvePhaseLines, truncate } from './ProgramChart'
 
 const analytics = {
     sessions: [
@@ -78,6 +78,53 @@ describe('buildPhaseChanges', () => {
 
     it('returns an empty list when there are none', () => {
         expect(buildPhaseChanges(null)).toEqual([])
+    })
+})
+
+describe('resolvePhaseLines', () => {
+    const rows = [
+        { rawDate: '2026-08-03', date: 'Aug 3' },
+        { rawDate: '2026-08-05', date: 'Aug 5' },
+        { rawDate: '2026-08-09', date: 'Aug 9' },
+    ]
+
+    it('sits on the session date when the phase change falls on one', () => {
+        const [line] = resolvePhaseLines([{ id: 1, title: 'FCT', date: '2026-08-05' }], rows)
+        expect(line.dateLabel).toBe('Aug 5')
+    })
+
+    it('snaps to the first session after the phase change', () => {
+        // The X axis is categorical, so a line can only be drawn where a
+        // session exists. The first session of the new phase is also where a
+        // clinician would expect the line.
+        const [line] = resolvePhaseLines([{ id: 1, title: 'FCT', date: '2026-08-06' }], rows)
+        expect(line.dateLabel).toBe('Aug 9')
+    })
+
+    it('falls back to the last session when dated after every one', () => {
+        const [line] = resolvePhaseLines([{ id: 1, title: 'FCT', date: '2026-09-01' }], rows)
+        expect(line.dateLabel).toBe('Aug 9')
+    })
+
+    it('sits on the first session when dated before every one', () => {
+        const [line] = resolvePhaseLines([{ id: 1, title: 'Baseline', date: '2026-07-01' }], rows)
+        expect(line.dateLabel).toBe('Aug 3')
+    })
+
+    it('handles a reversal design with several lines', () => {
+        const lines = resolvePhaseLines([
+            { id: 1, title: 'Baseline', date: '2026-08-03' },
+            { id: 2, title: 'FCT', date: '2026-08-05' },
+            { id: 3, title: 'Baseline', date: '2026-08-09' },
+        ], rows)
+        expect(lines.map(l => l.title)).toEqual(['Baseline', 'FCT', 'Baseline'])
+        expect(lines.map(l => l.dateLabel)).toEqual(['Aug 3', 'Aug 5', 'Aug 9'])
+    })
+
+    it('draws nothing when there is no data to plot against', () => {
+        expect(resolvePhaseLines([{ id: 1, title: 'FCT', date: '2026-08-05' }], [])).toEqual([])
+        expect(resolvePhaseLines(null, rows)).toEqual([])
+        expect(resolvePhaseLines([], rows)).toEqual([])
     })
 })
 
