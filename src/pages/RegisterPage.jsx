@@ -2,21 +2,12 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Turnstile from 'react-turnstile'
 import { useToast } from '../context/ToastContext'
-import { Button, Input, Select } from '../components/ui'
+import { Button, Input } from '../components/ui'
 import { Eye, EyeOff, Check, ArrowRight } from 'lucide-react'
 import api from '../services/api'
 
-const roleOptions = [
-    { value: 'BCBA', label: 'BCBA (Board Certified Behavior Analyst)' },
-    { value: 'RBT', label: 'RBT (Registered Behavior Technician)' },
-    { value: 'Therapist', label: 'Therapist' },
-    { value: 'Supervisor', label: 'Supervisor' },
-    { value: 'Other', label: 'Other' },
-]
-
 export default function RegisterPage() {
     const [fullName, setFullName] = useState('')
-    const [role, setRole] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
@@ -63,7 +54,6 @@ export default function RegisterPage() {
                 full_name: fullName,
                 email,
                 password,
-                role: role || 'Therapist',
                 turnstile_token: turnstileToken
             })
 
@@ -206,14 +196,14 @@ export default function RegisterPage() {
                             required
                         />
 
-                        <Select
-                            label="Role / Certification"
-                            value={role}
-                            onChange={(e) => setRole(e.target.value)}
-                            options={roleOptions}
-                            placeholder="Select your role..."
-                            required
-                        />
+                        {/* No role picker. An applicant does not describe their
+                            own authority: this used to offer BCBA, and approval
+                            never challenged the choice. The practice sets each
+                            person's role when the account is approved. */}
+                        <div className="bg-[#F4F8F9] border-l-3 border-[#159DB3] rounded-lg px-4 py-3 text-sm text-gray-600">
+                            Your role and access level are set by your practice when your
+                            account is approved.
+                        </div>
 
                         <div>
                             <label className="label-uppercase block mb-2">Password</label>
