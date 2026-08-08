@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext'
 import { ArrowLeft, Calendar, Clock, FileText, Play, Download, Target, Activity, BarChart2, User, Trash2, CheckCircle, XCircle, Edit3, StopCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { toZonedDate } from '../utils/datetime'
+import { canAmendData, canSuperviseData } from '../utils/permissions'
 import { deleteSessionData, editSessionData, editSessionTimes, endSession } from '../services/sessions'
 import SessionWellnessStrip from '../components/wellness/SessionWellnessStrip'
 
@@ -48,11 +49,11 @@ export default function SessionDetailPage() {
         )
     const isSessionOwner = session?.user_id != null && session.user_id === user?.id
 
-    // Whether the current user may amend or remove a recorded data point.
-    // Mirrors the backend rule (_can_correct_data): BCBAs and admins only.
-    // This used to test `role === 'admin'`, which no clinical account ever has,
-    // so the controls were invisible to the BCBAs who need them.
-    const canCorrectData = user?.is_admin || user?.is_superadmin || role === 'bcba'
+    // Correcting a value and removing one are separate permissions: a
+    // coordinator may fix a mis-scored trial, but removing data stays with
+    // supervision. Mirrors app/core/roles.py on the server.
+    const canAmend = canAmendData(user)
+    const canSupervise = canSuperviseData(user)
 
     // Fetch session data
     useEffect(() => {
@@ -291,8 +292,8 @@ export default function SessionDetailPage() {
                                                 </div>
                                             </div>
 
-                                            {/* Correct or remove a data point - BCBA/admin */}
-                                            {canCorrectData && (
+                                            {/* Correct or remove a data point */}
+                                            {canAmend && (
                                                 <div className="flex items-center gap-1">
                                                     <button
                                                         onClick={() => {
@@ -309,18 +310,22 @@ export default function SessionDetailPage() {
                                                     >
                                                         <Edit3 size={16} />
                                                     </button>
-                                                    <button
-                                                        onClick={() => setDeleteConfirmId(dataPoint.id)}
-                                                        disabled={deleting === dataPoint.id}
-                                                        className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                                        title="Remove data point"
-                                                    >
-                                                        {deleting === dataPoint.id ? (
-                                                            <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
-                                                        ) : (
-                                                            <Trash2 size={16} />
-                                                        )}
-                                                    </button>
+                                                    {/* Removal is destructive, so it stays with
+                                                        supervision rather than with coordinators. */}
+                                                    {canSupervise && (
+                                                        <button
+                                                            onClick={() => setDeleteConfirmId(dataPoint.id)}
+                                                            disabled={deleting === dataPoint.id}
+                                                            className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                            title="Remove data point"
+                                                        >
+                                                            {deleting === dataPoint.id ? (
+                                                                <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                                                            ) : (
+                                                                <Trash2 size={16} />
+                                                            )}
+                                                        </button>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>

@@ -3,8 +3,22 @@ import {
     Loader2, AlertCircle, Users, CalendarDays, ShieldCheck, ShieldOff,
     BadgeCheck, Lock, Unlock,
 } from 'lucide-react';
-import { getUserDetail } from '../../services/admin';
+import { getUserDetail, setUserRole } from '../../services/admin';
 import { StatTile, Section, fmtDate, fmtDuration } from './panelPrimitives';
+import { useToast } from '../../context/ToastContext';
+
+// Mirrors ASSIGNABLE_ROLES in app/core/roles.py. Coordinator sits between an
+// RBT and a BCBA: it may correct recorded data but not remove it or declare a
+// phase change (added at the clinical team's request, Aug 2026).
+const ROLES = [
+    { value: 'bcba', label: 'BCBA', hint: 'Full clinical supervision' },
+    { value: 'coordinator', label: 'Coordinator', hint: 'May correct data, cannot remove it' },
+    { value: 'supervisor', label: 'Supervisor', hint: 'Records data' },
+    { value: 'rbt', label: 'RBT', hint: 'Records data' },
+    { value: 'therapist', label: 'Therapist', hint: 'Records data' },
+    { value: 'staff', label: 'Staff', hint: 'Limited access' },
+    { value: 'other', label: 'Other', hint: 'Records data' },
+];
 
 function Pill({ children, tone = 'gray' }) {
     const tones = {
@@ -23,9 +37,24 @@ function Pill({ children, tone = 'gray' }) {
  * Lazy: only loads when opened.
  */
 export default function TherapistDetailPanel({ userId }) {
+    const { toast } = useToast();
     const [detail, setDetail] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    const [savingRole, setSavingRole] = useState(false);
+
+    const handleRoleChange = async (role) => {
+        setSavingRole(true);
+        try {
+            await setUserRole(userId, role);
+            setDetail((d) => ({ ...d, role }));
+            toast.success('Role updated');
+        } catch (err) {
+            toast.error(err.message || 'Could not update that role');
+        } finally {
+            setSavingRole(false);
+        }
+    };
 
     useEffect(() => {
         let cancelled = false;
@@ -66,6 +95,31 @@ export default function TherapistDetailPanel({ userId }) {
                 <Pill tone={statusTone}>{statusText}</Pill>
                 {detail.is_superadmin && <Pill tone="amber">Owner</Pill>}
                 {detail.is_admin && !detail.is_superadmin && <Pill tone="purple">Admin</Pill>}
+            </div>
+
+            {/* Role assignment. Roles used to be settable by the account holder
+                on their own profile, which meant anyone could make themselves a
+                BCBA. It is an administrator's decision now, and every change is
+                written to the audit log. */}
+            <div className="border border-gray-100 rounded-xl p-4">
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                    Clinical Role
+                </label>
+                <select
+                    value={(detail.role || '').toLowerCase()}
+                    disabled={savingRole}
+                    onChange={(e) => handleRoleChange(e.target.value)}
+                    className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg text-sm font-medium focus:border-[#159DB3] focus:outline-none disabled:opacity-60"
+                >
+                    {ROLES.map((r) => (
+                        <option key={r.value} value={r.value}>
+                            {r.label} — {r.hint}
+                        </option>
+                    ))}
+                </select>
+                <p className="text-xs text-gray-400 mt-2">
+                    Determines who may correct or remove recorded data. Changes are logged.
+                </p>
                 <span className="inline-flex items-center gap-1">
                     {detail.is_verified
                         ? <Pill tone="green"><BadgeCheck className="w-3 h-3 inline -mt-0.5" /> Verified</Pill>

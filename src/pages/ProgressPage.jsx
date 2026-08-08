@@ -12,6 +12,7 @@ import { format, subDays } from 'date-fns'
 import { TargetsList } from '../components/targets'
 import ProgramChart, { buildChartData } from '../components/charts/ProgramChart'
 import PhaseLineManager from '../components/charts/PhaseLineManager'
+import { canAmendData, canSuperviseData } from '../utils/permissions'
 
 const dateRangeOptions = [
     { value: '7', label: 'Last 7 Days' },
@@ -25,9 +26,10 @@ export default function ProgressPage() {
     const navigate = useNavigate()
     const { toast } = useToast()
     const { user } = useAuth()
-    // Historical entry is a supervision task, matching the backend rule.
-    const canEnterPastData =
-        user?.is_admin || user?.is_superadmin || (user?.role || '').toLowerCase() === 'bcba'
+    // Entering historical data is data entry, so coordinators may do it.
+    // Declaring a phase change is a clinical judgement, so they may not.
+    const canEnterPastData = canAmendData(user)
+    const canManagePhases = canSuperviseData(user)
     const [dateRange, setDateRange] = useState('30')
     const [targetFilter, setTargetFilter] = useState('all')  // 'all' or a target id
     // Frequency programs can be charted as a raw count or as responses per
@@ -560,7 +562,7 @@ export default function ProgressPage() {
 
                     {/* Phase changes: the clinician places these, so they are
                         managed beside the graph they appear on. */}
-                    {canEnterPastData && (
+                    {canManagePhases && (
                         <PhaseLineManager
                             programId={program.id}
                             lines={analytics?.phase_lines || []}

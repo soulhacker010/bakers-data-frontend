@@ -9,17 +9,15 @@ import { useAuth } from '../context/AuthContext'
 import { Calendar, Clock, ChevronRight, Plus, Search, User, FileText, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { toZonedDate } from '../utils/datetime'
+import { canSuperviseData } from '../utils/permissions'
 
 export default function SessionsPage() {
     const navigate = useNavigate()
     const { toast } = useToast()
     const { user } = useAuth()
-    // Who may clear a day's data. Mirrors the backend rule (_can_correct_data):
-    // BCBAs and admins. This used to test `role === 'admin'`, which no clinical
-    // account ever holds — admin access lives in the is_admin flag — so the
-    // control was invisible to the BCBAs who needed it.
-    const canCorrectData =
-        user?.is_admin || user?.is_superadmin || (user?.role || '').toLowerCase() === 'bcba'
+    // Clearing a day is destructive, so it sits with supervision rather than
+    // with coordinators. Mirrors app/core/roles.py on the server.
+    const canCorrectData = canSuperviseData(user)
     const [searchTerm, setSearchTerm] = useState('')
     const [deleteConfirm, setDeleteConfirm] = useState(null) // session id to delete
 

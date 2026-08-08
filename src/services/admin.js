@@ -24,6 +24,15 @@ export const getUserDetail = async (userId) => {
     return response.data;
 };
 
+/**
+ * Assign a clinical role. Admin only, and audit logged, because the role
+ * decides who may correct or remove clinical data.
+ */
+export const setUserRole = async (userId, role) => {
+    const response = await api.put(`/api/admin/users/${userId}/role`, { role });
+    return response.data;
+};
+
 export const getClientDetail = async (clientId) => {
     const response = await api.get(`/api/admin/clients/${clientId}/detail`);
     return response.data;
