@@ -40,6 +40,7 @@ import {
 import DetailDrawer from '../components/admin/DetailDrawer';
 import ProgramDetailPanel from '../components/admin/ProgramDetailPanel';
 import TherapistDetailPanel from '../components/admin/TherapistDetailPanel';
+import RoleSelect from '../components/admin/RoleSelect';
 import ClientDetailPanel from '../components/admin/ClientDetailPanel';
 import { ProgramTypeBadge, ProgramStatusBadge, DataTypeBadge } from '../components/admin/programBadges';
 
@@ -507,7 +508,20 @@ export default function AdminDashboardPage() {
                                         </td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-1">
-                                                <RoleBadge role={u.role} />
+                                                {/* Editable in place: promoting someone is the
+                                                    reason an admin opens this list, so it should
+                                                    not need a drawer. */}
+                                                <RoleSelect
+                                                    userId={u.id}
+                                                    role={u.role}
+                                                    compact
+                                                    onChanged={(next) => setData(prev => ({
+                                                        ...prev,
+                                                        users: prev.users.map(x =>
+                                                            x.id === u.id ? { ...x, role: next } : x
+                                                        ),
+                                                    }))}
+                                                />
                                                 {u.is_superadmin && <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-700">Owner</span>}
                                                 {u.is_admin && !u.is_superadmin && <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700">Admin</span>}
                                             </div>

@@ -3,22 +3,9 @@ import {
     Loader2, AlertCircle, Users, CalendarDays, ShieldCheck, ShieldOff,
     BadgeCheck, Lock, Unlock,
 } from 'lucide-react';
-import { getUserDetail, setUserRole } from '../../services/admin';
+import { getUserDetail } from '../../services/admin';
 import { StatTile, Section, fmtDate, fmtDuration } from './panelPrimitives';
-import { useToast } from '../../context/ToastContext';
-
-// Mirrors ASSIGNABLE_ROLES in app/core/roles.py. Coordinator sits between an
-// RBT and a BCBA: it may correct recorded data but not remove it or declare a
-// phase change (added at the clinical team's request, Aug 2026).
-const ROLES = [
-    { value: 'bcba', label: 'BCBA', hint: 'Full clinical supervision' },
-    { value: 'coordinator', label: 'Coordinator', hint: 'May correct data, cannot remove it' },
-    { value: 'supervisor', label: 'Supervisor', hint: 'Records data' },
-    { value: 'rbt', label: 'RBT', hint: 'Records data' },
-    { value: 'therapist', label: 'Therapist', hint: 'Records data' },
-    { value: 'staff', label: 'Staff', hint: 'Limited access' },
-    { value: 'other', label: 'Other', hint: 'Records data' },
-];
+import RoleSelect, { ROLES } from './RoleSelect';
 
 function Pill({ children, tone = 'gray' }) {
     const tones = {
@@ -37,24 +24,9 @@ function Pill({ children, tone = 'gray' }) {
  * Lazy: only loads when opened.
  */
 export default function TherapistDetailPanel({ userId }) {
-    const { toast } = useToast();
     const [detail, setDetail] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
-    const [savingRole, setSavingRole] = useState(false);
-
-    const handleRoleChange = async (role) => {
-        setSavingRole(true);
-        try {
-            await setUserRole(userId, role);
-            setDetail((d) => ({ ...d, role }));
-            toast.success('Role updated');
-        } catch (err) {
-            toast.error(err.message || 'Could not update that role');
-        } finally {
-            setSavingRole(false);
-        }
-    };
 
     useEffect(() => {
         let cancelled = false;
@@ -109,30 +81,11 @@ export default function TherapistDetailPanel({ userId }) {
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                     Clinical Role
                 </label>
-                <select
-                    // An unrecognised role selects the placeholder rather than
-                    // silently falling through to the first real option.
-                    value={isKnownRole ? currentRole : ''}
-                    disabled={savingRole}
-                    onChange={(e) => handleRoleChange(e.target.value)}
-                    className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg text-sm font-medium focus:border-[#159DB3] focus:outline-none disabled:opacity-60"
-                >
-                    {/* An account created before this list existed may hold a
-                        role that is not in it. Without a placeholder the select
-                        would fall back to the first option and display a role
-                        this person does not have, which an admin could then
-                        save by accident. */}
-                    {!isKnownRole && (
-                        <option value="" disabled>
-                            {detail.role ? `${detail.role} (not recognised)` : 'No role set'}
-                        </option>
-                    )}
-                    {ROLES.map((r) => (
-                        <option key={r.value} value={r.value}>
-                            {r.label} — {r.hint}
-                        </option>
-                    ))}
-                </select>
+                <RoleSelect
+                    userId={userId}
+                    role={detail.role}
+                    onChanged={(next) => setDetail((d) => ({ ...d, role: next }))}
+                />
                 {!isKnownRole && (
                     <p className="text-xs text-amber-700 mt-2">
                         This account's role is not one of the current options. Choosing one
