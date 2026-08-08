@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Loader2, Smile, Image as ImageIcon, HeartHandshake, AlertCircle } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
+import { toZonedDate } from '../../utils/datetime'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 import { getClientWellness } from '../../services/wellness'
 import { downloadChartPng } from '../../utils/chartExport'
@@ -186,7 +187,7 @@ export default function WellnessPanel({ clientId, clientName }) {
                                     <div>
                                         <p className="text-sm font-medium text-gray-800">{MOOD_LABEL[c.mood_score]}</p>
                                         <p className="text-xs text-gray-500">
-                                            {format(new Date(c.created_at), 'MMM d, yyyy · h:mm a')}
+                                            {format(toZonedDate(c.created_at), 'MMM d, yyyy · h:mm a')}
                                         </p>
                                     </div>
                                 </div>

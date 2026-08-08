@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Smile } from 'lucide-react'
 import { format } from 'date-fns'
+import { toZonedDate } from '../../utils/datetime'
 import { getSessionWellness } from '../../services/wellness'
 
 const MOOD_EMOJI = { 1: '😢', 2: '😐', 3: '🙂', 4: '😊' }
@@ -51,7 +52,7 @@ export default function SessionWellnessStrip({ sessionId }) {
                                         </span>
                                     )}
                                 </p>
-                                <p className="text-xs text-gray-500">{format(new Date(c.created_at), 'h:mm a')}</p>
+                                <p className="text-xs text-gray-500">{format(toZonedDate(c.created_at), 'h:mm a')}</p>
                             </div>
                         </div>
                         {c.support_requested && (

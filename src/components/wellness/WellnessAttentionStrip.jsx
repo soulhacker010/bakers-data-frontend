@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HeartHandshake } from 'lucide-react'
 import { format } from 'date-fns'
+import { toZonedDate } from '../../utils/datetime'
 import { getAttention } from '../../services/wellness'
 
 const MOOD_EMOJI = { 1: '😢', 2: '😐', 3: '🙂', 4: '😊' }
@@ -48,7 +49,7 @@ export default function WellnessAttentionStrip() {
                             <div>
                                 <p className="text-sm font-semibold text-gray-800">{r.client_name}</p>
                                 <p className="text-xs text-gray-500">
-                                    {format(new Date(r.created_at), 'MMM d · h:mm a')}
+                                    {format(toZonedDate(r.created_at), 'MMM d · h:mm a')}
                                     {r.support_requested && ` · asked for ${SUPPORT_LABEL[r.support_requested] || r.support_requested}`}
                                 </p>
                             </div>

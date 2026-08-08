@@ -6,6 +6,7 @@ import { getClients } from '../services/clients'
 import { useToast } from '../context/ToastContext'
 import { Plus, Search, Users, Calendar, ArrowRight } from 'lucide-react'
 import { format } from 'date-fns'
+import { toZonedDate } from '../utils/datetime'
 
 // Client Selection Modal
 function ClientSelectModal({ isOpen, onClose, clients, onSelect }) {
@@ -105,7 +106,7 @@ function ClientCard({ client, onClick }) {
                 </span>
                 <span className="flex items-center gap-1.5">
                     <Calendar size={14} />
-                    {client.last_session ? format(new Date(client.last_session), 'MMM d, yyyy') : 'No sessions'}
+                    {client.last_session ? format(toZonedDate(client.last_session), 'MMM d, yyyy') : 'No sessions'}
                 </span>
             </div>
         </Card>

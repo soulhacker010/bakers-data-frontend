@@ -7,6 +7,7 @@ import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { ArrowLeft, Calendar, Clock, FileText, Play, Download, Target, Activity, BarChart2, User, Trash2, CheckCircle, XCircle, Edit3, StopCircle } from 'lucide-react'
 import { format } from 'date-fns'
+import { toZonedDate } from '../utils/datetime'
 import { deleteSessionData, editSessionData, editSessionTimes, endSession } from '../services/sessions'
 import SessionWellnessStrip from '../components/wellness/SessionWellnessStrip'
 
@@ -120,7 +121,7 @@ export default function SessionDetailPage() {
                                         {session.client_name}
                                     </h1>
                                     <p className="text-white/70">
-                                        {format(new Date(session.start_time), 'EEEE, MMMM d, yyyy')}
+                                        {format(toZonedDate(session.start_time), 'EEEE, MMMM d, yyyy')}
                                     </p>
                                 </div>
                             </div>
@@ -152,7 +153,7 @@ export default function SessionDetailPage() {
                                     </div>
                                     <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Date</p>
                                     <p className="font-heading font-bold text-gray-900 text-lg">
-                                        {format(new Date(session.start_time), 'MMM d')}
+                                        {format(toZonedDate(session.start_time), 'MMM d')}
                                     </p>
                                 </div>
                                 <div className="text-center p-5 bg-blue-50 rounded-xl">
@@ -284,7 +285,7 @@ export default function SessionDetailPage() {
                                                         )}
                                                     </p>
                                                     <p className="text-xs text-gray-500">
-                                                        {format(new Date(dataPoint.timestamp || dataPoint.created_at), 'h:mm:ss a')}
+                                                        {format(toZonedDate(dataPoint.timestamp || dataPoint.created_at), 'h:mm:ss a')}
                                                         {dataPoint.duration_seconds && ` • ${dataPoint.duration_seconds}s`}
                                                     </p>
                                                 </div>
@@ -382,7 +383,7 @@ export default function SessionDetailPage() {
                                         }
                                         const headers = ['Date', 'Program', 'Type', 'Result', 'Prompt Level', 'Count', 'Duration', 'Notes']
                                         const rows = session.data.map(d => [
-                                            format(new Date(d.timestamp || d.created_at), 'yyyy-MM-dd HH:mm'),
+                                            format(toZonedDate(d.timestamp || d.created_at), 'yyyy-MM-dd HH:mm'),
                                             d.program_name || 'Unknown',
                                             d.data_type,
                                             d.result || '',
@@ -419,12 +420,12 @@ export default function SessionDetailPage() {
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-gray-500">Start Time</span>
-                                    <span className="text-gray-900">{format(new Date(session.start_time), 'h:mm a')}</span>
+                                    <span className="text-gray-900">{format(toZonedDate(session.start_time), 'h:mm a')}</span>
                                 </div>
                                 {session.end_time && (
                                     <div className="flex justify-between">
                                         <span className="text-gray-500">End Time</span>
-                                        <span className="text-gray-900">{format(new Date(session.end_time), 'h:mm a')}</span>
+                                        <span className="text-gray-900">{format(toZonedDate(session.end_time), 'h:mm a')}</span>
                                     </div>
                                 )}
                                 <div className="flex justify-between">
@@ -478,7 +479,7 @@ export default function SessionDetailPage() {
                             </h3>
                             <p className="text-sm text-gray-500 mb-5">
                                 {editingPoint.program_name || 'Unknown Program'} ·{' '}
-                                {format(new Date(editingPoint.timestamp || editingPoint.created_at), 'h:mm:ss a')}
+                                {format(toZonedDate(editingPoint.timestamp || editingPoint.created_at), 'h:mm:ss a')}
                             </p>
 
                             {/* Scored results: correct/incorrect for trials and task

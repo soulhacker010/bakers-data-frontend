@@ -8,6 +8,7 @@ import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { Calendar, Clock, ChevronRight, Plus, Search, User, FileText, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
+import { toZonedDate } from '../utils/datetime'
 
 export default function SessionsPage() {
     const navigate = useNavigate()
@@ -185,7 +186,7 @@ export default function SessionsPage() {
                                             <div className="flex items-center gap-4 text-sm text-gray-500 mb-2">
                                                 <span className="flex items-center gap-1.5">
                                                     <Calendar size={14} />
-                                                    {format(new Date(session.start_time), 'MMMM d, yyyy')}
+                                                    {format(toZonedDate(session.start_time), 'MMMM d, yyyy')}
                                                 </span>
                                                 <span className="flex items-center gap-1.5">
                                                     <Clock size={14} />

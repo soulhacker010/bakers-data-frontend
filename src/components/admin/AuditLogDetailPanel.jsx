@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, AlertCircle, Activity, Globe, Monitor } from 'lucide-react';
 import { format } from 'date-fns';
+import { toZonedDate } from '../../utils/datetime';
 import { getAuditLogDetail } from '../../services/admin';
 import { Section } from './panelPrimitives';
 
@@ -64,7 +65,7 @@ export default function AuditLogDetailPanel({ logId }) {
     }
 
     const tone = ACTION_TONE[detail.action] || 'bg-gray-100 text-gray-700';
-    const when = detail.created_at ? format(new Date(detail.created_at), 'PPpp') : '—';
+    const when = detail.created_at ? format(toZonedDate(detail.created_at), 'PPpp') : '—';
 
     return (
         <div className="space-y-4">

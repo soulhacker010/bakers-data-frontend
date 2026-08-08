@@ -22,6 +22,7 @@ import {
     X
 } from 'lucide-react'
 import { format } from 'date-fns'
+import { toZonedDate } from '../utils/datetime'
 
 // Simple action badge colors
 const ACTION_STYLES = {
@@ -108,7 +109,7 @@ export default function AuditLogsPage() {
 
             const headers = ['Time', 'User', 'Action', 'Resource', 'Details', 'IP', 'Browser']
             const rows = exportLogs.map(log => [
-                format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss'),
+                format(toZonedDate(log.created_at), 'yyyy-MM-dd HH:mm:ss'),
                 log.user_email || 'Unknown',
                 log.action,
                 log.resource_type,
@@ -270,7 +271,7 @@ export default function AuditLogsPage() {
                                                 className={`group cursor-pointer hover:bg-[#159DB3]/5 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
                                             >
                                                 <td className="px-4 py-3 text-gray-500">
-                                                    {format(new Date(log.created_at), 'MMM d, HH:mm')}
+                                                    {format(toZonedDate(log.created_at), 'MMM d, HH:mm')}
                                                 </td>
                                                 <td className="px-4 py-3 font-medium text-gray-900">
                                                     {log.user_email || 'System'}
@@ -332,7 +333,7 @@ export default function AuditLogsPage() {
                 isOpen={selectedLog != null}
                 onClose={() => setSelectedLog(null)}
                 title="Log detail"
-                subtitle={selectedLog ? `${selectedLog.user_email || 'System'} · ${format(new Date(selectedLog.created_at), 'MMM d, HH:mm')}` : ''}
+                subtitle={selectedLog ? `${selectedLog.user_email || 'System'} · ${format(toZonedDate(selectedLog.created_at), 'MMM d, HH:mm')}` : ''}
             >
                 {selectedLog && <AuditLogDetailPanel logId={selectedLog.id} />}
             </DetailDrawer>

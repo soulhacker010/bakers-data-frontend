@@ -25,6 +25,7 @@ import {
     BarChart2
 } from 'lucide-react'
 import { format } from 'date-fns'
+import { toZonedDate } from '../utils/datetime'
 import StaffAssignmentModal from '../components/staff/StaffAssignmentModal'
 import WellnessPanel from '../components/wellness/WellnessPanel'
 
@@ -126,7 +127,7 @@ function SessionCard({ session, onClick }) {
                 <div className="space-y-2">
                     <div className="flex items-center gap-3 text-gray-900 font-medium">
                         <Calendar size={16} className="text-gray-400" />
-                        {format(new Date(session.start_time), 'MMMM d, yyyy')}
+                        {format(toZonedDate(session.start_time), 'MMMM d, yyyy')}
                         <span className="text-gray-300">•</span>
                         <Clock size={16} className="text-gray-400" />
                         {session.duration_minutes || 0} min

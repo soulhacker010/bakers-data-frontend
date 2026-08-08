@@ -16,22 +16,23 @@
  * caller passes `now` (epoch ms) so the module stays deterministic under test.
  */
 
+import { parseServerTime as parseServerDate } from './datetime'
+
 /**
  * Parse a timestamp from the API into epoch ms.
  *
  * Session times are stored with `datetime.utcnow()` and serialized without a
  * timezone suffix (`2026-08-07T14:30:00`). `new Date()` reads a bare string
  * like that as LOCAL time, which would put the clock out by the viewer's UTC
- * offset — five hours for the clinic using this. Append `Z` when no offset is
- * present so it is always read as UTC.
+ * offset, five hours for the clinic using this.
+ *
+ * The parsing itself lives in utils/datetime.js so there is one definition of
+ * how a server timestamp is read, shared with everything that displays one.
+ * This wrapper keeps the epoch-ms contract the timer arithmetic expects.
  */
 export function parseServerTime(value) {
-    if (!value || typeof value !== 'string') return null
-
-    const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/.test(value)
-    const ms = Date.parse(hasZone ? value : `${value}Z`)
-
-    return Number.isNaN(ms) ? null : ms
+    const date = parseServerDate(value)
+    return date ? date.getTime() : null
 }
 
 /**
