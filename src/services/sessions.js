@@ -103,6 +103,15 @@ export const deleteSessionData = async (dataId) => {
 }
 
 /**
+ * Enter a percentage for a past session without re-keying every trial.
+ * @param {Object} entry - { client_id, program_id, date, percentage, notes? }
+ */
+export const recordSummaryEntry = async (entry) => {
+    const response = await api.post('/api/sessions/summary', entry)
+    return response.data
+}
+
+/**
  * Pause an active therapy session
  * @param {number} sessionId 
  * @returns {Object} - Pause confirmation with pause_started_at
@@ -141,6 +150,7 @@ export default {
     deleteSession,
     editSessionData,
     deleteSessionData,
+    recordSummaryEntry,
     pauseSession,
     resumeSession,
     editSessionTimes,

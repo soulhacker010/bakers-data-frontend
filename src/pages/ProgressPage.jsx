@@ -5,7 +5,9 @@ import { getProgram } from '../services/programs'
 import { getProgramProgress, exportProgramData } from '../services/analytics'
 import { downloadChartPng } from '../utils/chartExport'
 import { useToast } from '../context/ToastContext'
-import { Download, Image as ImageIcon, TrendingUp, TrendingDown, Minus, ArrowLeft, Target, Clock, Hash, ListChecks } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { recordSummaryEntry } from '../services/sessions'
+import { Download, Image as ImageIcon, TrendingUp, TrendingDown, Minus, ArrowLeft, Target, Clock, Hash, ListChecks, Plus } from 'lucide-react'
 import { format, subDays } from 'date-fns'
 import { TargetsList } from '../components/targets'
 import ProgramChart, { buildChartData } from '../components/charts/ProgramChart'
@@ -21,12 +23,20 @@ export default function ProgressPage() {
     const { id } = useParams()
     const navigate = useNavigate()
     const { toast } = useToast()
+    const { user } = useAuth()
+    // Historical entry is a supervision task, matching the backend rule.
+    const canEnterPastData =
+        user?.is_admin || user?.is_superadmin || (user?.role || '').toLowerCase() === 'bcba'
     const [dateRange, setDateRange] = useState('30')
     const [targetFilter, setTargetFilter] = useState('all')  // 'all' or a target id
     // Frequency programs can be charted as a raw count or as responses per
     // minute. Rate is the clinically comparable one, but count is what staff
     // recognise from the collection screen, so both are offered.
     const [frequencyMode, setFrequencyMode] = useState('count')  // 'count' | 'rate'
+    // Entering a percentage for a past session rather than re-keying trials.
+    const [showPastEntry, setShowPastEntry] = useState(false)
+    const [pastEntry, setPastEntry] = useState({ date: '', percentage: '', notes: '' })
+    const [savingPastEntry, setSavingPastEntry] = useState(false)
     const [program, setProgram] = useState(null)
     const [analytics, setAnalytics] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -272,8 +282,122 @@ export default function ProgressPage() {
         )
     }
 
+    const handleSavePastEntry = async () => {
+        const value = parseFloat(pastEntry.percentage)
+        if (!pastEntry.date) {
+            toast.error('Please choose the date of the session')
+            return
+        }
+        if (Number.isNaN(value) || value < 0 || value > 100) {
+            toast.error('Please enter a percentage between 0 and 100')
+            return
+        }
+
+        setSavingPastEntry(true)
+        try {
+            await recordSummaryEntry({
+                client_id: program.client_id,
+                program_id: program.id,
+                date: pastEntry.date,
+                percentage: value,
+                notes: pastEntry.notes || null,
+            })
+            setShowPastEntry(false)
+            toast.success('Past session recorded')
+            // Refetch so the new point appears without a manual reload.
+            setDateRange(r => r)
+            const analyticsData = await getProgramProgress(id, {
+                dateFrom: dateRange === 'all' ? null : format(subDays(new Date(), parseInt(dateRange)), 'yyyy-MM-dd'),
+                targetId: targetFilter === 'all' ? null : targetFilter,
+            })
+            setAnalytics(analyticsData)
+        } catch (err) {
+            toast.error(err.message || 'Could not record that session')
+        } finally {
+            setSavingPastEntry(false)
+        }
+    }
+
     return (
         <DashboardLayout>
+            {/* Add past data modal */}
+            {showPastEntry && (
+                <>
+                    <div
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+                        onClick={() => !savingPastEntry && setShowPastEntry(false)}
+                    ></div>
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+                            <h3 className="font-heading text-xl font-bold text-gray-900 mb-1">
+                                Add Past Data
+                            </h3>
+                            <p className="text-sm text-gray-500 mb-5">
+                                Record the result of an earlier session for {program.name} without
+                                entering it trial by trial.
+                            </p>
+
+                            <div className="mb-4">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Session date</label>
+                                <input
+                                    type="date"
+                                    value={pastEntry.date}
+                                    max={format(new Date(), 'yyyy-MM-dd')}
+                                    onChange={(e) => setPastEntry(f => ({ ...f, date: e.target.value }))}
+                                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#159DB3] focus:outline-none"
+                                />
+                            </div>
+
+                            <div className="mb-4">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Percentage</label>
+                                <input
+                                    type="number"
+                                    min="0" max="100" step="0.1"
+                                    value={pastEntry.percentage}
+                                    onChange={(e) => setPastEntry(f => ({ ...f, percentage: e.target.value }))}
+                                    placeholder="e.g. 80"
+                                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#159DB3] focus:outline-none"
+                                />
+                            </div>
+
+                            <div className="mb-5">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Notes <span className="font-normal text-gray-400">(optional)</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={pastEntry.notes}
+                                    onChange={(e) => setPastEntry(f => ({ ...f, notes: e.target.value }))}
+                                    placeholder="e.g. Transferred from paper records"
+                                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#159DB3] focus:outline-none"
+                                />
+                                <p className="text-xs text-gray-400 mt-2">
+                                    Entered figures are marked on the graph with a hollow point, so they
+                                    can be told apart from data collected in session.
+                                </p>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setShowPastEntry(false)}
+                                    disabled={savingPastEntry}
+                                    className="flex-1 px-4 py-3 border-2 border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSavePastEntry}
+                                    disabled={savingPastEntry}
+                                    className="flex-1 px-4 py-3 bg-[#159DB3] text-white font-semibold rounded-xl hover:bg-[#128098] transition-colors disabled:opacity-60"
+                                >
+                                    {savingPastEntry ? 'Saving...' : 'Save'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
+
             {/* Hero Section */}
             <div className="hero-gradient px-6 py-10">
                 <div className="max-w-screen-xl mx-auto">
@@ -297,6 +421,20 @@ export default function ProgressPage() {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-3">
+                            {/* Percentages for sessions that predate the system,
+                                without re-keying every trial. */}
+                            {canEnterPastData && (
+                                <button
+                                    onClick={() => {
+                                        setPastEntry({ date: '', percentage: '', notes: '' })
+                                        setShowPastEntry(true)
+                                    }}
+                                    className="btn-outline-premium bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center gap-2"
+                                >
+                                    <Plus size={18} />
+                                    Add Past Data
+                                </button>
+                            )}
                             <button
                                 onClick={handleDownloadGraph}
                                 className="btn-outline-premium bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center gap-2"

@@ -69,7 +69,24 @@ export function buildChartData(analytics) {
         // worked with the learner that day.
         sessionMinutes: session.session_minutes ?? null,
         rate: responsesPerMinute(session.frequency_count, session.session_minutes),
+        // Typed in for a past session rather than collected. Drawn differently
+        // below so a reader can tell measured data from an entered figure.
+        isSummary: !!session.is_summary,
     })) || []
+}
+
+/**
+ * Point marker that distinguishes an entered figure from a measured one.
+ *
+ * A typed percentage has no trials behind it, so it is drawn hollow. Filling
+ * it identically would let a graph imply precision that was never recorded.
+ */
+export const dataPointDot = (color) => (props) => {
+    const { cx, cy, payload, key } = props
+    if (cx == null || cy == null) return null
+    return payload?.isSummary
+        ? <circle key={key} cx={cx} cy={cy} r={5} fill="#FFFFFF" stroke={color} strokeWidth={2} strokeDasharray="2 1.5" />
+        : <circle key={key} cx={cx} cy={cy} r={4} fill={color} />
 }
 
 /** Phase change markers, labelled with the date so the X axis need not be read. */
@@ -252,11 +269,17 @@ export default function ProgramChart({
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                     <XAxis dataKey="date" {...AXIS} />
                     <YAxis {...AXIS} tickFormatter={(v) => `${v}%`} />
-                    <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value) => [`${value}%`, 'Independent Steps']} />
+                    <Tooltip
+                        contentStyle={TOOLTIP_STYLE}
+                        formatter={(value, name, entry) => [
+                            `${value}%`,
+                            entry?.payload?.isSummary ? 'Independent Steps (entered)' : 'Independent Steps',
+                        ]}
+                    />
                     {targetLines('right')}
                     {phaseLines()}
                     <Line type="monotone" dataKey="accuracy" stroke="#10B981" strokeWidth={3}
-                        dot={{ fill: '#10B981', r: 4 }} activeDot={{ r: 6 }} />
+                        dot={dataPointDot('#10B981')} activeDot={{ r: 6 }} />
                 </LineChart>
             </ResponsiveContainer>
         )
@@ -275,11 +298,17 @@ export default function ProgramChart({
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                 <XAxis dataKey="date" {...AXIS} />
                 <YAxis domain={[0, 100]} {...AXIS} tickFormatter={(v) => `${v}%`} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value) => [`${value}%`, 'Accuracy']} />
+                <Tooltip
+                    contentStyle={TOOLTIP_STYLE}
+                    formatter={(value, name, entry) => [
+                        `${value}%`,
+                        entry?.payload?.isSummary ? 'Accuracy (entered)' : 'Accuracy',
+                    ]}
+                />
                 {targetLines()}
                 {phaseLines()}
                 <Area type="monotone" dataKey="accuracy" stroke="#159DB3" strokeWidth={3}
-                    fill={`url(#${gid('colorAccuracy')})`} dot={{ fill: '#159DB3', r: 4 }}
+                    fill={`url(#${gid('colorAccuracy')})`} dot={dataPointDot('#159DB3')}
                     activeDot={{ r: 6, fill: '#159DB3', stroke: '#fff', strokeWidth: 2 }} />
             </AreaChart>
         </ResponsiveContainer>
