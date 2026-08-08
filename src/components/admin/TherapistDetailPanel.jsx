@@ -87,6 +87,10 @@ export default function TherapistDetailPanel({ userId }) {
     const statusTone = !detail.is_approved ? 'amber' : !detail.is_active ? 'red' : 'green';
     const statusText = !detail.is_approved ? 'Pending' : !detail.is_active ? 'Inactive' : 'Active';
 
+    // Accounts predate this list, so never assume the stored role appears in it.
+    const currentRole = (detail.role || '').trim().toLowerCase();
+    const isKnownRole = ROLES.some((r) => r.value === currentRole);
+
     return (
         <div className="space-y-4">
             {/* Status + account badges */}
@@ -106,17 +110,35 @@ export default function TherapistDetailPanel({ userId }) {
                     Clinical Role
                 </label>
                 <select
-                    value={(detail.role || '').toLowerCase()}
+                    // An unrecognised role selects the placeholder rather than
+                    // silently falling through to the first real option.
+                    value={isKnownRole ? currentRole : ''}
                     disabled={savingRole}
                     onChange={(e) => handleRoleChange(e.target.value)}
                     className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg text-sm font-medium focus:border-[#159DB3] focus:outline-none disabled:opacity-60"
                 >
+                    {/* An account created before this list existed may hold a
+                        role that is not in it. Without a placeholder the select
+                        would fall back to the first option and display a role
+                        this person does not have, which an admin could then
+                        save by accident. */}
+                    {!isKnownRole && (
+                        <option value="" disabled>
+                            {detail.role ? `${detail.role} (not recognised)` : 'No role set'}
+                        </option>
+                    )}
                     {ROLES.map((r) => (
                         <option key={r.value} value={r.value}>
                             {r.label} — {r.hint}
                         </option>
                     ))}
                 </select>
+                {!isKnownRole && (
+                    <p className="text-xs text-amber-700 mt-2">
+                        This account's role is not one of the current options. Choosing one
+                        below will set it.
+                    </p>
+                )}
                 <p className="text-xs text-gray-400 mt-2">
                     Determines who may correct or remove recorded data. Changes are logged.
                 </p>

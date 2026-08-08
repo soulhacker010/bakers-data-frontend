@@ -87,6 +87,28 @@ describe('TherapistDetailPanel', () => {
         await waitFor(() => expect(setUserRole).toHaveBeenCalledWith(3, 'coordinator'))
     })
 
+    it('does not misreport a role it does not recognise', async () => {
+        // Accounts predate this list. Without a placeholder the select falls
+        // back to its first option, showing a role the person does not hold,
+        // which an admin could then save by accident.
+        getUserDetail.mockResolvedValueOnce({ ...DETAIL, role: 'legacy-role' })
+        renderPanel({ userId: 3 })
+
+        await waitFor(() => expect(screen.getByText('dilek@corbehavioral.com')).toBeInTheDocument())
+
+        expect(screen.getByRole('combobox').value).not.toBe('bcba')
+        expect(screen.getByText(/not recognised/i)).toBeInTheDocument()
+    })
+
+    it('matches a capitalised role stored on an older account', async () => {
+        getUserDetail.mockResolvedValueOnce({ ...DETAIL, role: 'BCBA' })
+        renderPanel({ userId: 3 })
+
+        await waitFor(() => expect(screen.getByText('dilek@corbehavioral.com')).toBeInTheDocument())
+        expect(screen.getByRole('combobox').value).toBe('bcba')
+        expect(screen.queryByText(/not recognised/i)).not.toBeInTheDocument()
+    })
+
     it('offers coordinator as an assignable role', async () => {
         getUserDetail.mockResolvedValueOnce(DETAIL)
         renderPanel({ userId: 3 })
