@@ -5,6 +5,7 @@ import { getProgram, getPrograms } from '../services/programs'
 import { getTargets } from '../services/targets'
 import { pauseSession, resumeSession } from '../services/sessions'
 import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/AuthContext'
 import { useNotifications, NOTIFICATION_TYPES } from '../context/NotificationContext'
 import { getUserSettings } from '../services/settings'
 import { Check, X, StopCircle, Plus, Minus, Play, Square, RotateCcw, ChevronLeft, ChevronRight, Target, FileText, ListChecks, Pause, CircleSlash, Timer, Smile } from 'lucide-react'
@@ -31,7 +32,12 @@ import {
 } from '../utils/durationTimer'
 import { saveTimers, loadTimers, clearTimers } from '../utils/durationTimerStore'
 import { sessionElapsedSeconds, formatClock } from '../utils/sessionClock'
-import { restoredEntries, restoredNotes, zeroRecordedProgramIds } from '../utils/sessionResume'
+import {
+    restoredEntries,
+    restoredNotes,
+    zeroRecordedProgramIds,
+    findResumableSession
+} from '../utils/sessionResume'
 
 // The session clock is derived from the server's session record (see
 // utils/sessionClock.js) rather than counted here, so it survives leaving the
@@ -331,6 +337,7 @@ export default function SessionCollectPage() {
     const [searchParams] = useSearchParams()
     const navigate = useNavigate()
     const { toast } = useToast()
+    const { user } = useAuth()
     const { addNotification } = useNotifications()
     const [notes, setNotes] = useState('')
     const [sessionData, setSessionData] = useState([])
@@ -579,6 +586,42 @@ export default function SessionCollectPage() {
 
                     setClient(clientData)
                     setProgram(programData)
+
+                    // Reaching this page again without a session id in the address
+                    // bar — a refresh, a locked screen, a re-tapped link — used to
+                    // open a second session against the same learner and leave the
+                    // first one running with data in it. Continue today's instead.
+                    // Backdating is exempt: that is a deliberate request for a
+                    // session on another date.
+                    if (!sessionDate) {
+                        const { getSessions, getSession: fetchSession } = await import('../services/sessions')
+                        const openToday = findResumableSession(
+                            await getSessions({ clientId: parseInt(clientId) }),
+                            { userId: user?.id }
+                        )
+
+                        if (openToday) {
+                            const resumed = await fetchSession(openToday.id)
+                            const alreadyRecorded = restoredEntries(resumed)
+
+                            setSessionId(resumed.id)
+                            setSession(resumed)
+                            setIsPaused(!!resumed.is_paused)
+                            setSessionData(alreadyRecorded)
+                            setNotes(restoredNotes(resumed))
+                            setZeroRecordedPrograms(zeroRecordedProgramIds(alreadyRecorded))
+
+                            saveActiveSession(resumed.id, clientId)
+                            acquireSessionLock(resumed.id)
+
+                            toast.info(
+                                alreadyRecorded.length
+                                    ? `Continuing today's session — ${alreadyRecorded.length} ${alreadyRecorded.length === 1 ? 'entry' : 'entries'} already recorded`
+                                    : "Continuing today's session"
+                            )
+                            return
+                        }
+                    }
 
                     const { startSession } = await import('../services/sessions')
                     const newSession = await startSession(parseInt(clientId), sessionDate)

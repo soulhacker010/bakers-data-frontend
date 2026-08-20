@@ -11,6 +11,8 @@
  * page starts from.
  */
 
+import { toZonedDate, parseServerTime } from './datetime'
+
 /**
  * Data points already recorded against this session.
  * The server filters out soft-deleted rows, so what arrives is what counts.
@@ -37,6 +39,44 @@ export function restoredNotes(session) {
  * entry with a count of zero, so it can be read straight back off the entries
  * rather than tracked separately.
  */
+/** Which clinic day a timestamp falls on, in the practice's own zone. */
+function clinicDayKey(value) {
+    const date = toZonedDate(value)
+    if (!date) return null
+    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+}
+
+/**
+ * The session already open that starting collection should continue instead of
+ * opening another one.
+ *
+ * Deliberately narrow. A session qualifies only when it has not been ended, was
+ * started by the person now asking, and belongs to today's clinic day. Anything
+ * looser risks appending today's data to a record that was closed in spirit but
+ * never closed in the app, or handing one therapist another's open session.
+ *
+ * A session left running from an earlier day is not resumed. It stays open and
+ * visible, which is a problem for someone to see and end, not one to bury by
+ * quietly writing more data into it.
+ */
+export function findResumableSession(sessions, { userId, now = new Date() } = {}) {
+    if (userId == null) return null
+
+    const today = clinicDayKey(now)
+    if (!today) return null
+
+    const open = (Array.isArray(sessions) ? sessions : []).filter((s) => (
+        !s?.end_time
+        && s?.user_id === userId
+        && clinicDayKey(s?.start_time) === today
+    ))
+
+    if (!open.length) return null
+
+    const startedAt = (s) => parseServerTime(s.start_time)?.getTime() ?? 0
+    return open.reduce((latest, s) => (startedAt(s) > startedAt(latest) ? s : latest))
+}
+
 export function zeroRecordedProgramIds(entries) {
     const list = Array.isArray(entries) ? entries : []
     return new Set(
