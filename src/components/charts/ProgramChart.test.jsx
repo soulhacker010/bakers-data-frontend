@@ -162,6 +162,32 @@ describe('ProgramChart gradient ids', () => {
         // loaded machine. The assertion is unchanged; only the patience is.
     }, 20000)
 
+    it('leaves the mastery criteria off the chart by default', () => {
+        // Dena, 20 Aug 2026: "confused as to what the horizontal orange lines
+        // that remain on graphs - can this be removed off each (taking off
+        // mastery criteria from graph)".
+        const { container } = render(
+            <ProgramChart
+                program={{ id: 1, data_type: 'trial' }}
+                analytics={{ ...analytics, targets: [{ id: 3, name: 'Sitting', mastery_threshold: 80, status: 'active' }] }}
+            />
+        )
+        expect(container.textContent).not.toContain('Sitting (80%)')
+    }, 20000)
+
+    it('draws the mastery criteria when a supervisor asks for them', () => {
+        // Kept rather than deleted: a threshold that silently vanishes is worse
+        // than one that is confusing, and other supervisors read them.
+        const { container } = render(
+            <ProgramChart
+                program={{ id: 1, data_type: 'trial' }}
+                analytics={{ ...analytics, targets: [{ id: 3, name: 'Sitting', mastery_threshold: 80, status: 'active' }] }}
+                showMasteryLines
+            />
+        )
+        expect(container.textContent).toContain('Sitting (80%)')
+    }, 20000)
+
     it('shows an empty state rather than an axis when there is no data', () => {
         const { getByText } = render(
             <ProgramChart program={{ id: 1, data_type: 'trial' }} analytics={{ sessions: [] }} />

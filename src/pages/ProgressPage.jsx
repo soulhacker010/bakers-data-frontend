@@ -36,6 +36,10 @@ export default function ProgressPage() {
     // hour. Rate is the clinically comparable one, but count is what staff
     // recognise from the collection screen, so both are offered.
     const [frequencyMode, setFrequencyMode] = useState('count')  // 'count' | 'rate'
+    // Mastery criteria are drawn as horizontal rules across the chart. Off by
+    // default from 20 Aug 2026: Dena reported them as unexplained orange lines
+    // that read like phase markers. Available on request rather than removed.
+    const [showMasteryLines, setShowMasteryLines] = useState(false)
     // Entering a percentage for a past session rather than re-keying trials.
     const [showPastEntry, setShowPastEntry] = useState(false)
     const [pastEntry, setPastEntry] = useState({ date: '', percentage: '', notes: '' })
@@ -532,6 +536,16 @@ export default function ProgressPage() {
                                 ))}
                             </div>
                         )}
+
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-600 cursor-pointer select-none">
+                            <input
+                                type="checkbox"
+                                checked={showMasteryLines}
+                                onChange={(e) => setShowMasteryLines(e.target.checked)}
+                                className="w-4 h-4 rounded border-gray-300 text-[#159DB3] focus:ring-[#159DB3]"
+                            />
+                            Show mastery criteria
+                        </label>
                     </div>
 
                     {/* A day with no recorded session time cannot produce a rate,
@@ -549,6 +563,7 @@ export default function ProgressPage() {
                             program={program}
                             analytics={analytics}
                             frequencyMode={frequencyMode}
+                            showMasteryLines={showMasteryLines}
                             emptyAction={
                                 <button
                                     onClick={() => navigate('/sessions/new')}

@@ -138,6 +138,7 @@ export default function ProgramChart({
     program,
     analytics,
     frequencyMode = 'count',
+    showMasteryLines = false,
     emptyAction = null,
 }) {
     const chartData = buildChartData(analytics)
@@ -184,7 +185,13 @@ export default function ProgramChart({
         />
     ))
 
-    const targetLines = (position = 'insideTopLeft') => targets.map((target) => (
+    // Mastery criteria, drawn as a horizontal rule across the chart at each
+    // target's threshold. Off by default: Dena reported them as unexplained
+    // orange lines that read like phase markers and asked for them gone
+    // (20 Aug 2026). Kept behind a toggle rather than deleted, because a
+    // threshold that silently disappears is worse than one that confuses, and
+    // other supervisors do read them off the graph.
+    const targetLines = (position = 'insideTopLeft') => (!showMasteryLines ? [] : targets.map((target) => (
         <ReferenceLine
             key={target.id}
             y={target.mastery_threshold}
@@ -199,7 +206,7 @@ export default function ProgramChart({
                 fontWeight: 600,
             }}
         />
-    ))
+    )))
 
     if (chartData.length === 0) {
         return (
