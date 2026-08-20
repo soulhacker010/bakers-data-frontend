@@ -31,6 +31,7 @@ import {
 } from '../utils/durationTimer'
 import { saveTimers, loadTimers, clearTimers } from '../utils/durationTimerStore'
 import { sessionElapsedSeconds, formatClock } from '../utils/sessionClock'
+import { restoredEntries, restoredNotes, zeroRecordedProgramIds } from '../utils/sessionResume'
 
 // The session clock is derived from the server's session record (see
 // utils/sessionClock.js) rather than counted here, so it survives leaving the
@@ -536,6 +537,14 @@ export default function SessionCollectPage() {
                     setSession(existingSession)
                     setIsPaused(!!existingSession.is_paused)
 
+                    // Put back what has already been collected. Without this the
+                    // tallies restart at zero on every return to the page and the
+                    // session looks as though it began again.
+                    const alreadyRecorded = restoredEntries(existingSession)
+                    setSessionData(alreadyRecorded)
+                    setNotes(restoredNotes(existingSession))
+                    setZeroRecordedPrograms(zeroRecordedProgramIds(alreadyRecorded))
+
                     // Get client and program from the session
                     // Note: backend returns client as nested object {id, first_name, last_name}
                     const clientData = await getClient(existingSession.client.id)
@@ -549,7 +558,11 @@ export default function SessionCollectPage() {
                         const programData = await getProgram(programId)
                         setProgram(programData)
                     }
-                    toast.info('Continuing session')
+                    toast.info(
+                        alreadyRecorded.length
+                            ? `Continuing session — ${alreadyRecorded.length} ${alreadyRecorded.length === 1 ? 'entry' : 'entries'} already recorded`
+                            : 'Continuing session'
+                    )
                 } else {
                     // Create a new session
                     const [clientData, programData] = await Promise.all([
