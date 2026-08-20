@@ -38,6 +38,7 @@ import {
     zeroRecordedProgramIds,
     findResumableSession
 } from '../utils/sessionResume'
+import { observableTogether } from '../utils/intervalRun'
 
 // The session clock is derived from the server's session record (see
 // utils/sessionClock.js) rather than counted here, so it survives leaving the
@@ -1131,10 +1132,15 @@ export default function SessionCollectPage() {
                             const isInterval = ['partial_interval', 'whole_interval', 'momentary_time_sampling'].includes(effectiveType)
                             const isLatency = effectiveType === 'latency'
                             if (isInterval) {
+                                const intervalGroup = observableTogether(targets, selectedTarget?.id)
                                 return (
+                                    /* Every behaviour on the same interval
+                                       length runs off one clock and is scored
+                                       together, rather than each keeping its
+                                       own timer (Dena, 20 Aug 2026). */
                                     <IntervalCollector
-                                        key={selectedTarget?.id}
-                                        target={selectedTarget}
+                                        key={intervalGroup.map((t) => t.id).join('-')}
+                                        targets={intervalGroup}
                                         onRecord={(d) => handleRecord({ ...d, data_type: effectiveType })}
                                         disabled={isPaused}
                                     />

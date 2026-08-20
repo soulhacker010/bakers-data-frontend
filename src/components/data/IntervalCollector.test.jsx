@@ -1,187 +1,131 @@
-/**
- * Interval collector timing tests.
- *
- * The critical scenarios simulate what actually happens on a therapist's iPad:
- * the screen locks or Safari throttles the tab, JS timers stop firing, and
- * only wall-clock time advances. A tick-counting timer freezes forever; a
- * wall-clock timer must catch up the moment the page is visible again.
- */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import IntervalCollector from './IntervalCollector'
 
-const TARGET = {
-    id: 1,
-    name: 'Hand flapping',
+/**
+ * Dena, 20 Aug 2026: "can't open multiple partial intervals at a time".
+ *
+ * Several behaviours now share one countdown and are scored together at each
+ * interval, the way a paper interval sheet works.
+ */
+
+const target = (id, name) => ({
+    id,
+    name,
     measurement_type: 'partial_interval',
     interval_seconds: 30,
     interval_count: 3,
-}
+})
 
-describe('IntervalCollector', () => {
+const two = [target(1, 'Flapping'), target(2, 'Out of seat')]
+
+const elapseInterval = () => act(() => { vi.advanceTimersByTime(31_000) })
+
+describe('IntervalCollector with several behaviours', () => {
+    let onRecord
+
     beforeEach(() => {
-        // The shared test setup replaces sessionStorage with no-op stubs.
-        // Run persistence across unmounts is under test here, so install a
-        // faithful in-memory Storage.
-        const store = new Map()
-        global.sessionStorage = {
-            getItem: (k) => (store.has(k) ? store.get(k) : null),
-            setItem: (k, v) => { store.set(k, String(v)) },
-            removeItem: (k) => { store.delete(k) },
-            clear: () => { store.clear() },
-        }
         vi.useFakeTimers()
-        vi.setSystemTime(new Date('2026-07-17T10:00:00Z'))
+        sessionStorage.clear()
+        onRecord = vi.fn()
     })
 
     afterEach(() => {
         vi.useRealTimers()
     })
 
-    const start = () => {
-        act(() => {
-            screen.getByText(/Start Intervals/i).click()
-        })
+    const start = (targets = two) => {
+        render(<IntervalCollector targets={targets} onRecord={onRecord} />)
+        fireEvent.click(screen.getByRole('button', { name: /Start Intervals/i }))
+        elapseInterval()
     }
 
-    it('counts down and prompts for a score when the interval elapses normally', () => {
-        render(<IntervalCollector target={TARGET} onRecord={vi.fn()} />)
+    it('offers a row for every behaviour once the interval ends', () => {
         start()
-        expect(screen.getByText('00:30')).toBeInTheDocument()
 
-        act(() => {
-            vi.advanceTimersByTime(31_000)
-        })
-        expect(screen.getByText(/Did the behavior occur at ANY point/i)).toBeInTheDocument()
-        expect(screen.getByText(/YES/)).toBeInTheDocument()
+        expect(screen.getByLabelText('Flapping yes')).toBeTruthy()
+        expect(screen.getByLabelText('Out of seat yes')).toBeTruthy()
     })
 
-    it('catches up after timers were suspended (screen lock): time jumps, then visibilitychange', () => {
-        render(<IntervalCollector target={TARGET} onRecord={vi.fn()} />)
+    it('records the behaviour that was marked, not just the interval', () => {
+        // One row per behaviour per interval. Without target_id the scores
+        // would all land against whichever target happened to be selected.
         start()
+        fireEvent.click(screen.getByLabelText('Flapping yes'))
 
-        // Simulate iPad lock: wall clock advances 45s but NO timer ticks fire.
-        act(() => {
-            vi.setSystemTime(new Date('2026-07-17T10:00:45Z'))
-            document.dispatchEvent(new Event('visibilitychange'))
-        })
-
-        // A tick-counting timer would still show 00:30 and never prompt.
-        expect(screen.getByText(/Did the behavior occur at ANY point/i)).toBeInTheDocument()
+        expect(onRecord).toHaveBeenCalledWith(
+            expect.objectContaining({ result: 'present', interval_index: 1, target_id: 1 })
+        )
     })
 
-    it('records the score with the interval index and auto-advances to the next interval', () => {
-        const onRecord = vi.fn()
-        render(<IntervalCollector target={TARGET} onRecord={onRecord} />)
+    it('holds the interval open until every behaviour is marked', () => {
         start()
-        act(() => {
-            vi.advanceTimersByTime(31_000)
-        })
-        act(() => {
-            screen.getByText(/YES/).click()
-        })
-        expect(onRecord).toHaveBeenCalledWith({ result: 'present', interval_index: 1 })
-        // Auto-advanced: interval 2 of 3 counting down again.
-        expect(screen.getByText(/Interval 2 of 3/i)).toBeInTheDocument()
-        expect(screen.getByText('00:30')).toBeInTheDocument()
+        fireEvent.click(screen.getByLabelText('Flapping yes'))
+
+        expect(screen.getByText(/Interval 1 of 3/)).toBeTruthy()
+        expect(screen.getByText(/1 of 2 still to mark/)).toBeTruthy()
     })
 
-    it('completes the block after all intervals are scored', () => {
-        const onRecord = vi.fn()
-        render(<IntervalCollector target={TARGET} onRecord={onRecord} />)
+    it('moves on only when the last behaviour is marked', () => {
         start()
-        for (let i = 0; i < 3; i++) {
-            act(() => {
-                vi.advanceTimersByTime(31_000)
-            })
-            act(() => {
-                screen.getByText(i === 0 ? /YES/ : /NO/).click()
-            })
-        }
-        expect(onRecord).toHaveBeenCalledTimes(3)
-        expect(screen.getByText(/Block complete/i)).toBeInTheDocument()
-        expect(screen.getByText(/33% present/i)).toBeInTheDocument()
+        fireEvent.click(screen.getByLabelText('Flapping yes'))
+        fireEvent.click(screen.getByLabelText('Out of seat no'))
+
+        expect(screen.getByText(/Interval 2 of 3/)).toBeTruthy()
     })
 
-    it('keeps the block alive when the therapist switches programs and back (unmount/remount)', () => {
-        // The field-reported bug: mid-block, staff click another program in the
-        // session sidebar to record other data; the collector unmounts. On
-        // return the block must resume, not reset ("once you click out it
-        // times out").
-        const onRecord = vi.fn()
-        const { unmount } = render(<IntervalCollector target={TARGET} onRecord={onRecord} />)
+    it('scores nothing by omission', () => {
+        // The old behaviour: a second timer ran unattended and its intervals
+        // elapsed unscored. Two behaviours, one interval, two records.
         start()
-        act(() => {
-            vi.advanceTimersByTime(31_000)
-        })
-        act(() => {
-            screen.getByText(/YES/).click()
-        })
-        expect(screen.getByText(/Interval 2 of 3/i)).toBeInTheDocument()
+        fireEvent.click(screen.getByLabelText('Flapping yes'))
+        fireEvent.click(screen.getByLabelText('Out of seat no'))
 
-        unmount() // switched to another program
-
-        act(() => {
-            vi.advanceTimersByTime(10_000)
-        })
-        render(<IntervalCollector target={TARGET} onRecord={onRecord} />)
-
-        // Back on interval 2 with the first result intact — not reset to 1.
-        expect(screen.getByText(/Interval 2 of 3/i)).toBeInTheDocument()
+        expect(onRecord).toHaveBeenCalledTimes(2)
     })
 
-    it('prompts for scoring on return when the interval elapsed while unmounted', () => {
-        const onRecord = vi.fn()
-        const { unmount } = render(<IntervalCollector target={TARGET} onRecord={onRecord} />)
+    it('keeps one countdown rather than one per behaviour', () => {
         start()
-        unmount() // switched away right after starting
+        expect(screen.getAllByText(/Interval \d of 3/)).toHaveLength(1)
+    })
+})
 
-        act(() => {
-            vi.setSystemTime(new Date('2026-07-17T10:01:00Z')) // 60s later
-        })
-        render(<IntervalCollector target={TARGET} onRecord={onRecord} />)
+describe('IntervalCollector with a single behaviour', () => {
+    let onRecord
 
-        expect(screen.getByText(/Did the behavior occur at ANY point/i)).toBeInTheDocument()
+    beforeEach(() => {
+        vi.useFakeTimers()
+        sessionStorage.clear()
+        onRecord = vi.fn()
     })
 
-    it('starting a new block after completion starts clean', () => {
-        const onRecord = vi.fn()
-        render(<IntervalCollector target={TARGET} onRecord={onRecord} />)
-        start()
-        for (let i = 0; i < 3; i++) {
-            act(() => {
-                vi.advanceTimersByTime(31_000)
-            })
-            act(() => {
-                screen.getByText(/YES/).click()
-            })
-        }
-        act(() => {
-            screen.getByText(/Start New Block/i).click()
-        })
-        expect(screen.getByText(/Interval 1 of 3/i)).toBeInTheDocument()
-        expect(screen.getByText(/Start Intervals/i)).toBeInTheDocument()
+    afterEach(() => {
+        vi.useRealTimers()
     })
 
-    it('banks the remaining time while the session is paused instead of letting it run out', () => {
-        const { rerender } = render(<IntervalCollector target={TARGET} onRecord={vi.fn()} />)
-        start()
-        act(() => {
-            vi.advanceTimersByTime(10_000) // 20s left
-        })
-        rerender(<IntervalCollector target={TARGET} onRecord={vi.fn()} disabled />)
+    it('keeps the large single-tap buttons', () => {
+        // A tablet in a therapy room. One behaviour must not lose the big
+        // targets just because the multi-behaviour case exists.
+        render(<IntervalCollector targets={[target(1, 'Flapping')]} onRecord={onRecord} />)
+        fireEvent.click(screen.getByRole('button', { name: /Start Intervals/i }))
+        elapseInterval()
 
-        // A long pause passes on the wall clock.
-        act(() => {
-            vi.setSystemTime(new Date('2026-07-17T10:05:00Z'))
-        })
-        rerender(<IntervalCollector target={TARGET} onRecord={vi.fn()} disabled={false} />)
+        expect(screen.getByText(/Did the behavior occur at ANY point/)).toBeTruthy()
+    })
 
-        // Still ~20s left — the pause must not have consumed the interval.
-        act(() => {
-            vi.advanceTimersByTime(1_000)
-        })
-        expect(screen.queryByText(/Did the behavior occur/i)).not.toBeInTheDocument()
-        expect(screen.getByText('00:19')).toBeInTheDocument()
+    it('still carries the behaviour on the record', () => {
+        render(<IntervalCollector targets={[target(1, 'Flapping')]} onRecord={onRecord} />)
+        fireEvent.click(screen.getByRole('button', { name: /Start Intervals/i }))
+        elapseInterval()
+        fireEvent.click(screen.getByLabelText('Flapping yes'))
+
+        expect(onRecord).toHaveBeenCalledWith(
+            expect.objectContaining({ result: 'present', interval_index: 1, target_id: 1 })
+        )
+    })
+
+    it('renders nothing when there is no behaviour to observe', () => {
+        const { container } = render(<IntervalCollector targets={[]} onRecord={onRecord} />)
+        expect(container.firstChild).toBeNull()
     })
 })
