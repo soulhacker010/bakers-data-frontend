@@ -188,6 +188,25 @@ describe('ProgramChart gradient ids', () => {
         expect(container.textContent).toContain('Sitting (80%)')
     }, 20000)
 
+    it('draws one continuous path when no phase line is placed', () => {
+        const { container } = render(
+            <ProgramChart program={{ id: 1, data_type: 'trial' }} analytics={analytics} />
+        )
+        expect(container.querySelectorAll('.recharts-area-curve')).toHaveLength(1)
+    }, 20000)
+
+    it('breaks the data path either side of a phase change line', () => {
+        // Single-subject design convention, and Dena's request of 20 Aug 2026:
+        // the path is never drawn across a phase change.
+        const { container } = render(
+            <ProgramChart
+                program={{ id: 1, data_type: 'trial' }}
+                analytics={{ ...analytics, phase_lines: [{ id: 1, title: 'FCT', date: '2026-08-06' }] }}
+            />
+        )
+        expect(container.querySelectorAll('.recharts-area-curve')).toHaveLength(2)
+    }, 20000)
+
     it('shows an empty state rather than an axis when there is no data', () => {
         const { getByText } = render(
             <ProgramChart program={{ id: 1, data_type: 'trial' }} analytics={{ sessions: [] }} />

@@ -6,6 +6,7 @@ import { format, parseISO } from 'date-fns'
 import { TrendingUp } from 'lucide-react'
 import { responsesPerHour, formatRate } from '../../utils/rate'
 import { countAxisDomain, PERCENT_DOMAIN } from '../../utils/chartAxis'
+import { phaseSeries } from '../../utils/phaseSeries'
 
 /**
  * The progress chart for a single program.
@@ -173,6 +174,13 @@ export default function ProgramChart({
         />
     ))
 
+    // Single-subject design convention: a data path is never drawn across a
+    // phase change line. Joining the points would imply the two conditions form
+    // one continuous series, which is the opposite of what the line says.
+    // Split on the lines a clinician placed, not on the mastery-derived markers,
+    // which record a target transition rather than a change of condition.
+    const seriesFor = (dataKey) => phaseSeries(chartData, clinicianLines, dataKey)
+
     const phaseLines = (strokeWidth = 2, extend = false) => phaseChanges.map((pc, idx) => (
         <ReferenceLine
             key={`pc-${idx}`}
@@ -225,9 +233,10 @@ export default function ProgramChart({
 
     // Interval recording: % present over time (0-100% axis, like accuracy)
     if (hasInterval) {
+        const intervalSeries = seriesFor('interval')
         return (
             <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={MARGIN}>
+                <AreaChart data={intervalSeries.rows} margin={MARGIN}>
                     <defs>
                         <linearGradient id={gid('colorInterval')} x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#159DB3" stopOpacity={0.2} />
@@ -241,9 +250,11 @@ export default function ProgramChart({
                     {targetLines()}
                     {phaseLines()}
                     {clinicianPhaseLines()}
-                    <Area type="monotone" dataKey="interval" stroke="#159DB3" strokeWidth={3}
-                        fill={`url(#${gid('colorInterval')})`} dot={{ fill: '#159DB3', r: 4 }}
-                        activeDot={{ r: 6 }} connectNulls />
+                    {intervalSeries.keys.map((key) => (
+                        <Area key={key} type="monotone" dataKey={key} stroke="#159DB3" strokeWidth={3}
+                            fill={`url(#${gid('colorInterval')})`} dot={{ fill: '#159DB3', r: 4 }}
+                            activeDot={{ r: 6 }} connectNulls />
+                    ))}
                 </AreaChart>
             </ResponsiveContainer>
         )
@@ -251,17 +262,20 @@ export default function ProgramChart({
 
     // Latency: seconds to onset
     if (hasLatency) {
+        const latencySeries = seriesFor('latency')
         return (
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={MARGIN}>
+                <LineChart data={latencySeries.rows} margin={MARGIN}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                     <XAxis dataKey="date" {...AXIS} />
                     <YAxis domain={countAxisDomain(chartData.map(d => d.latency))} {...AXIS} tickFormatter={(v) => `${v}s`} />
                     <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value) => [`${value}s`, 'Avg latency']} />
                     {phaseLines()}
                     {clinicianPhaseLines()}
-                    <Line type="monotone" dataKey="latency" stroke="#8B5CF6" strokeWidth={3}
-                        dot={{ fill: '#8B5CF6', r: 4 }} activeDot={{ r: 6 }} connectNulls />
+                    {latencySeries.keys.map((key) => (
+                        <Line key={key} type="monotone" dataKey={key} stroke="#8B5CF6" strokeWidth={3}
+                            dot={{ fill: '#8B5CF6', r: 4 }} activeDot={{ r: 6 }} connectNulls />
+                    ))}
                 </LineChart>
             </ResponsiveContainer>
         )
@@ -270,9 +284,10 @@ export default function ProgramChart({
     // Frequency: raw count, or responses per hour
     if (program?.data_type === 'frequency') {
         const showingRate = frequencyMode === 'rate'
+        const freqSeries = seriesFor(showingRate ? 'rate' : 'frequency')
         return (
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={MARGIN}>
+                <LineChart data={freqSeries.rows} margin={MARGIN}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                     <XAxis dataKey="date" {...AXIS} />
                     <YAxis
@@ -290,9 +305,11 @@ export default function ProgramChart({
                     />
                     {phaseLines(2.5, true)}
                     {clinicianPhaseLines()}
-                    <Line type="monotone" dataKey={showingRate ? 'rate' : 'frequency'}
-                        stroke="#159DB3" strokeWidth={3} dot={{ fill: '#159DB3', r: 4 }}
-                        activeDot={{ r: 6 }} connectNulls={false} />
+                    {freqSeries.keys.map((key) => (
+                        <Line key={key} type="monotone" dataKey={key}
+                            stroke="#159DB3" strokeWidth={3} dot={{ fill: '#159DB3', r: 4 }}
+                            activeDot={{ r: 6 }} connectNulls={false} />
+                    ))}
                 </LineChart>
             </ResponsiveContainer>
         )
@@ -300,9 +317,10 @@ export default function ProgramChart({
 
     // Duration: minutes per day
     if (program?.data_type === 'duration') {
+        const durationSeries = seriesFor('duration')
         return (
             <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={MARGIN}>
+                <AreaChart data={durationSeries.rows} margin={MARGIN}>
                     <defs>
                         <linearGradient id={gid('colorDuration')} x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.2} />
@@ -315,8 +333,10 @@ export default function ProgramChart({
                     <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value) => [`${value} min`, 'Duration']} />
                     {phaseLines(2.5, true)}
                     {clinicianPhaseLines()}
-                    <Area type="monotone" dataKey="duration" stroke="#8B5CF6" strokeWidth={3}
-                        fill={`url(#${gid('colorDuration')})`} dot={{ fill: '#8B5CF6', r: 4 }} />
+                    {durationSeries.keys.map((key) => (
+                        <Area key={key} type="monotone" dataKey={key} stroke="#8B5CF6" strokeWidth={3}
+                            fill={`url(#${gid('colorDuration')})`} dot={{ fill: '#8B5CF6', r: 4 }} />
+                    ))}
                 </AreaChart>
             </ResponsiveContainer>
         )
@@ -324,9 +344,10 @@ export default function ProgramChart({
 
     // Task analysis: % of steps completed independently
     if (program?.data_type === 'task_analysis') {
+        const taSeries = seriesFor('accuracy')
         return (
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={MARGIN}>
+                <LineChart data={taSeries.rows} margin={MARGIN}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                     <XAxis dataKey="date" {...AXIS} />
                     <YAxis domain={PERCENT_DOMAIN} {...AXIS} tickFormatter={(v) => `${v}%`} />
@@ -340,17 +361,20 @@ export default function ProgramChart({
                     {targetLines('right')}
                     {phaseLines()}
                     {clinicianPhaseLines()}
-                    <Line type="monotone" dataKey="accuracy" stroke="#10B981" strokeWidth={3}
-                        dot={dataPointDot('#10B981')} activeDot={{ r: 6 }} />
+                    {taSeries.keys.map((key) => (
+                        <Line key={key} type="monotone" dataKey={key} stroke="#10B981" strokeWidth={3}
+                            dot={dataPointDot('#10B981')} activeDot={{ r: 6 }} />
+                    ))}
                 </LineChart>
             </ResponsiveContainer>
         )
     }
 
     // Default: trial-based accuracy
+    const accuracySeries = seriesFor('accuracy')
     return (
         <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={MARGIN}>
+            <AreaChart data={accuracySeries.rows} margin={MARGIN}>
                 <defs>
                     <linearGradient id={gid('colorAccuracy')} x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#159DB3" stopOpacity={0.2} />
@@ -370,9 +394,11 @@ export default function ProgramChart({
                 {targetLines()}
                 {phaseLines()}
                     {clinicianPhaseLines()}
-                <Area type="monotone" dataKey="accuracy" stroke="#159DB3" strokeWidth={3}
-                    fill={`url(#${gid('colorAccuracy')})`} dot={dataPointDot('#159DB3')}
-                    activeDot={{ r: 6, fill: '#159DB3', stroke: '#fff', strokeWidth: 2 }} />
+                {accuracySeries.keys.map((key) => (
+                    <Area key={key} type="monotone" dataKey={key} stroke="#159DB3" strokeWidth={3}
+                        fill={`url(#${gid('colorAccuracy')})`} dot={dataPointDot('#159DB3')}
+                        activeDot={{ r: 6, fill: '#159DB3', stroke: '#fff', strokeWidth: 2 }} />
+                ))}
             </AreaChart>
         </ResponsiveContainer>
     )
