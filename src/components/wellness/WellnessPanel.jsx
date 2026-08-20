@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Loader2, Smile, Image as ImageIcon, HeartHandshake, AlertCircle } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { toZonedDate } from '../../utils/datetime'
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 import { getClientWellness } from '../../services/wellness'
 import { downloadChartPng } from '../../utils/chartExport'
 import { useToast } from '../../context/ToastContext'
@@ -126,27 +126,31 @@ export default function WellnessPanel({ clientId, clientName }) {
                         </button>
                     </div>
                 </div>
+                {/* One bar per day rather than a continuous line (Dena,
+                    20 Aug 2026). A check-in is a discrete reading taken once a
+                    day, not a quantity moving between readings, and a line
+                    invited staff to read a slope between two days that was
+                    never measured.
+
+                    The domain starts at 0, not at the lowest mood. Bars are
+                    drawn from the axis baseline, so on a 1-4 domain a check-in
+                    of "having a hard time" would have no height and disappear
+                    from the chart — the worst day being the one that vanishes. */}
                 <div className="h-72" ref={chartRef}>
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                            <defs>
-                                <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#159DB3" stopOpacity={0.2} />
-                                    <stop offset="95%" stopColor="#159DB3" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
+                        <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                             <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                            <YAxis domain={[1, 4]} ticks={[1, 2, 3, 4]} stroke="#9CA3AF" fontSize={12}
+                            <YAxis domain={[0, 4]} ticks={[1, 2, 3, 4]} stroke="#9CA3AF" fontSize={12}
                                    tickLine={false} axisLine={false} width={100}
                                    tickFormatter={(v) => MOOD_AXIS[v] || v} />
                             <Tooltip
+                                cursor={{ fill: 'rgba(21, 157, 179, 0.06)' }}
                                 contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' }}
                                 formatter={(value) => [`${MOOD_EMOJI[value]} ${MOOD_LABEL[value]}`, 'Mood']}
                             />
-                            <Area type="monotone" dataKey="mood" stroke="#159DB3" strokeWidth={3}
-                                  fill="url(#colorMood)" dot={{ fill: '#159DB3', r: 4 }} activeDot={{ r: 6 }} />
-                        </AreaChart>
+                            <Bar dataKey="mood" fill="#159DB3" radius={[6, 6, 0, 0]} maxBarSize={56} />
+                        </BarChart>
                     </ResponsiveContainer>
                 </div>
             </div>
