@@ -286,14 +286,24 @@ function ItemModal({ isOpen, onClose, onSave, item, type }) {
     )
 }
 
-export default function TargetsManager({ programId, dataType }) {
+/**
+ * Manages one list belonging to a program: its task steps, or its targets.
+ *
+ * `mode` chooses which. Left unset it follows the program's data type, which is
+ * how every existing caller behaves. A task analysis programme has both, and
+ * before 20 Aug 2026 the type alone decided, so on a task analysis the targets
+ * could not be reached from anywhere in the app. Dena asked to "modify targets
+ * in addition to adding steps"; the editor now renders this twice for that
+ * program type.
+ */
+export default function TargetsManager({ programId, dataType, mode }) {
     const { toast } = useToast()
     const [items, setItems] = useState([])
     const [loading, setLoading] = useState(true)
     const [modalOpen, setModalOpen] = useState(false)
     const [editingItem, setEditingItem] = useState(null)
 
-    const isTaskAnalysis = dataType === 'task_analysis'
+    const isTaskAnalysis = mode ? mode === 'steps' : dataType === 'task_analysis'
     const itemType = isTaskAnalysis ? 'Step' : 'Target'
 
     // Load items

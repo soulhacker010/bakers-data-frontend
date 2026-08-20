@@ -251,11 +251,21 @@ export default function EditProgramPage() {
 
                 {/* Targets/Steps Manager */}
                 {program && (
-                    <div className="max-w-2xl mt-8">
+                    <div className="max-w-2xl mt-8 space-y-8">
                         <TargetsManager
                             programId={program.id}
                             dataType={formData.data_type}
                         />
+                        {/* A task analysis has steps AND targets. Only the steps
+                            were reachable, so its targets could not be edited
+                            from anywhere in the app (Dena, 20 Aug 2026). */}
+                        {formData.data_type === 'task_analysis' && (
+                            <TargetsManager
+                                programId={program.id}
+                                dataType={formData.data_type}
+                                mode="targets"
+                            />
+                        )}
                     </div>
                 )}
             </div>

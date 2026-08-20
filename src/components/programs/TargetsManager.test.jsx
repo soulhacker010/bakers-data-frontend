@@ -82,6 +82,25 @@ describe('TargetsManager — measurement method setup', () => {
         expect(payload).not.toHaveProperty('interval_count')
     })
 
+    it('shows steps for a task analysis program, as before', async () => {
+        render(<TargetsManager programId={1} dataType="task_analysis" />)
+        expect(await screen.findByRole('button', { name: 'Add Step' })).toBeInTheDocument()
+    })
+
+    it('can be asked for targets on a task analysis program', async () => {
+        // Dena, 20 Aug 2026: "adding or adjusting steps on a task analysis (we
+        // need to modify targets in addition to adding steps)". The editor
+        // showed steps OR targets depending on the program type, so on a task
+        // analysis the targets were unreachable from anywhere in the app.
+        render(<TargetsManager programId={1} dataType="task_analysis" mode="targets" />)
+        expect(await screen.findByRole('button', { name: 'Add Target' })).toBeInTheDocument()
+    })
+
+    it('loads targets rather than steps when asked for targets', async () => {
+        render(<TargetsManager programId={1} dataType="task_analysis" mode="targets" />)
+        await waitFor(() => expect(getTargets).toHaveBeenCalledWith(1))
+    })
+
     it('shows a measurement-method badge on a target with an interval method', async () => {
         getTargets.mockResolvedValueOnce([
             { id: 1, name: 'On Task', status: 'active', measurement_type: 'whole_interval', interval_seconds: 30 },
