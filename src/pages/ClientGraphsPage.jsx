@@ -8,6 +8,7 @@ import { useToast } from '../context/ToastContext'
 import { ArrowLeft, BarChart2, ChevronRight } from 'lucide-react'
 import { format, subDays } from 'date-fns'
 import ProgramChart from '../components/charts/ProgramChart'
+import { learnerCaption } from '../utils/learner'
 
 /**
  * Every graph for one learner, on one page.
@@ -174,6 +175,11 @@ export default function ClientGraphsPage() {
                                         <p className="text-xs text-gray-500 uppercase tracking-wide mt-1">
                                             {program.data_type?.replace('_', ' ')}
                                         </p>
+                                        {/* Named on every graph, not just the page
+                                            header: these are printed one at a time. */}
+                                        {learnerCaption(client) && (
+                                            <p className="text-sm text-gray-500 mt-1">{learnerCaption(client)}</p>
+                                        )}
                                     </div>
                                     <Link
                                         to={`/programs/${program.id}/progress`}

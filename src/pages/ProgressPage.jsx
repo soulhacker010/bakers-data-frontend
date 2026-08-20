@@ -10,6 +10,8 @@ import { recordSummaryEntry } from '../services/sessions'
 import { Download, Image as ImageIcon, TrendingUp, TrendingDown, Minus, ArrowLeft, Target, Clock, Hash, ListChecks, Plus } from 'lucide-react'
 import { format, subDays } from 'date-fns'
 import { TargetsList } from '../components/targets'
+import { getClient } from '../services/clients'
+import { learnerCaption } from '../utils/learner'
 import ProgramChart, { buildChartData } from '../components/charts/ProgramChart'
 import PhaseLineManager from '../components/charts/PhaseLineManager'
 import { canAmendData, canSuperviseData } from '../utils/permissions'
@@ -45,6 +47,10 @@ export default function ProgressPage() {
     const [pastEntry, setPastEntry] = useState({ date: '', percentage: '', notes: '' })
     const [savingPastEntry, setSavingPastEntry] = useState(false)
     const [program, setProgram] = useState(null)
+    // The learner this program belongs to. Named on the chart and on the
+    // exported image so a graph that leaves the building identifies the child
+    // it describes (Dena, 20 Aug 2026).
+    const [client, setClient] = useState(null)
     const [analytics, setAnalytics] = useState(null)
     const [loading, setLoading] = useState(true)
     const chartRef = useRef(null)
@@ -56,6 +62,16 @@ export default function ProgressPage() {
                 setLoading(true)
                 const programData = await getProgram(id)
                 setProgram(programData)
+
+                if (programData?.client_id) {
+                    // Its own try: a graph is still worth showing if the
+                    // learner's record cannot be read for some reason.
+                    try {
+                        setClient(await getClient(programData.client_id))
+                    } catch (clientErr) {
+                        console.error('Failed to load client for graph header:', clientErr)
+                    }
+                }
 
                 // Calculate date range
                 let dateFrom = null
@@ -113,7 +129,12 @@ export default function ProgressPage() {
             const rangeLabel = dateRangeOptions.find(o => o.value === dateRange)?.label || ''
             await downloadChartPng(svg, {
                 title: program?.name || 'Program',
-                subtitle: `${chartInfo.title} · ${rangeLabel} · exported ${format(new Date(), 'MMM d, yyyy')}`,
+                subtitle: [
+                    learnerCaption(client),
+                    chartInfo.title,
+                    rangeLabel,
+                    `exported ${format(new Date(), 'MMM d, yyyy')}`,
+                ].filter(Boolean).join(' · '),
             })
             toast.success('Graph downloaded!')
         } catch (err) {
@@ -514,7 +535,12 @@ export default function ProgressPage() {
             <div className="px-6 pb-6 max-w-screen-xl mx-auto">
                 <div className="card-premium p-8">
                     <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                        <h2 className="font-heading text-xl font-bold text-gray-900">{chartInfo.title}</h2>
+                        <div>
+                            <h2 className="font-heading text-xl font-bold text-gray-900">{chartInfo.title}</h2>
+                            {learnerCaption(client) && (
+                                <p className="text-sm text-gray-500 mt-0.5">{learnerCaption(client)}</p>
+                            )}
+                        </div>
 
                         {/* Count or rate. Rate divides the day's count by the time
                             observed, so sessions of different lengths compare
