@@ -5,6 +5,7 @@ import {
 import { format, parseISO } from 'date-fns'
 import { TrendingUp } from 'lucide-react'
 import { responsesPerHour, formatRate } from '../../utils/rate'
+import { countAxisDomain, PERCENT_DOMAIN } from '../../utils/chartAxis'
 
 /**
  * The progress chart for a single program.
@@ -228,7 +229,7 @@ export default function ProgramChart({
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                     <XAxis dataKey="date" {...AXIS} />
-                    <YAxis domain={[0, 100]} {...AXIS} tickFormatter={(v) => `${v}%`} />
+                    <YAxis domain={PERCENT_DOMAIN} {...AXIS} tickFormatter={(v) => `${v}%`} />
                     <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value) => [`${value}%`, '% Interval']} />
                     {targetLines()}
                     {phaseLines()}
@@ -248,7 +249,7 @@ export default function ProgramChart({
                 <LineChart data={chartData} margin={MARGIN}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                     <XAxis dataKey="date" {...AXIS} />
-                    <YAxis {...AXIS} tickFormatter={(v) => `${v}s`} />
+                    <YAxis domain={countAxisDomain(chartData.map(d => d.latency))} {...AXIS} tickFormatter={(v) => `${v}s`} />
                     <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value) => [`${value}s`, 'Avg latency']} />
                     {phaseLines()}
                     {clinicianPhaseLines()}
@@ -267,7 +268,11 @@ export default function ProgramChart({
                 <LineChart data={chartData} margin={MARGIN}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                     <XAxis dataKey="date" {...AXIS} />
-                    <YAxis {...AXIS} tickFormatter={showingRate ? (v) => `${v}/hr` : undefined} />
+                    <YAxis
+                        domain={countAxisDomain(chartData.map(d => showingRate ? d.rate : d.frequency))}
+                        {...AXIS}
+                        tickFormatter={showingRate ? (v) => `${v}/hr` : undefined}
+                    />
                     <Tooltip
                         contentStyle={TOOLTIP_STYLE}
                         formatter={(value, name, entry) => (
@@ -299,7 +304,7 @@ export default function ProgramChart({
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                     <XAxis dataKey="date" {...AXIS} />
-                    <YAxis {...AXIS} tickFormatter={(v) => `${v}m`} />
+                    <YAxis domain={countAxisDomain(chartData.map(d => d.duration))} {...AXIS} tickFormatter={(v) => `${v}m`} />
                     <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value) => [`${value} min`, 'Duration']} />
                     {phaseLines(2.5, true)}
                     {clinicianPhaseLines()}
@@ -317,7 +322,7 @@ export default function ProgramChart({
                 <LineChart data={chartData} margin={MARGIN}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                     <XAxis dataKey="date" {...AXIS} />
-                    <YAxis {...AXIS} tickFormatter={(v) => `${v}%`} />
+                    <YAxis domain={PERCENT_DOMAIN} {...AXIS} tickFormatter={(v) => `${v}%`} />
                     <Tooltip
                         contentStyle={TOOLTIP_STYLE}
                         formatter={(value, name, entry) => [
@@ -347,7 +352,7 @@ export default function ProgramChart({
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                 <XAxis dataKey="date" {...AXIS} />
-                <YAxis domain={[0, 100]} {...AXIS} tickFormatter={(v) => `${v}%`} />
+                <YAxis domain={PERCENT_DOMAIN} {...AXIS} tickFormatter={(v) => `${v}%`} />
                 <Tooltip
                     contentStyle={TOOLTIP_STYLE}
                     formatter={(value, name, entry) => [
