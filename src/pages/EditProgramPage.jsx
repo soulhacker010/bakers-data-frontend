@@ -7,6 +7,8 @@ import { getClient } from '../services/clients'
 import { ArrowLeft, Check, Archive } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import TargetsManager from '../components/programs/TargetsManager'
+import { useAuth } from '../context/AuthContext'
+import { canSuperviseData } from '../utils/permissions'
 
 const programTypeOptions = [
     { value: 'skill', label: 'Skill Acquisition' },
@@ -46,6 +48,11 @@ export default function EditProgramPage() {
     const [saving, setSaving] = useState(false)
     const [saved, setSaved] = useState(false)
     const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const { user } = useAuth()
+    // Archiving a programme takes its graph out of daily collection, so it
+    // sits with supervision rather than with whoever happens to be recording.
+    // Mirrors the guard on DELETE /api/programs/{id}.
+    const canArchive = canSuperviseData(user)
 
     // Fetch program and client data
     useEffect(() => {
@@ -219,15 +226,21 @@ export default function EditProgramPage() {
                         </div>
 
                         <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                onClick={() => setShowDeleteModal(true)}
-                                className="text-gray-600 hover:text-gray-800 hover:bg-gray-100"
-                                icon={<Archive size={18} />}
-                            >
-                                Archive Program
-                            </Button>
+                            {canArchive ? (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => setShowDeleteModal(true)}
+                                    className="text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+                                    icon={<Archive size={18} />}
+                                >
+                                    Archive Program
+                                </Button>
+                            ) : (
+                                <span className="text-sm text-gray-400">
+                                    Archiving a program is done by BCBA-level staff.
+                                </span>
+                            )}
 
                             <div className="flex items-center gap-3">
                                 <Button
