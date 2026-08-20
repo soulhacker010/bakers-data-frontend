@@ -3,7 +3,7 @@ import { DashboardLayout } from '../components/layout';
 import { Button, Card, ConfirmModal } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import {
     Users,
     UserCheck,
@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import {
     getDetailedStats,
+    getOpenSessions,
     getPendingUsers,
     approveUser,
     rejectUser,
@@ -41,6 +42,7 @@ import DetailDrawer from '../components/admin/DetailDrawer';
 import ProgramDetailPanel from '../components/admin/ProgramDetailPanel';
 import TherapistDetailPanel from '../components/admin/TherapistDetailPanel';
 import RoleSelect from '../components/admin/RoleSelect';
+import { formatDateTimeInZone } from '../utils/datetime';
 import ClientDetailPanel from '../components/admin/ClientDetailPanel';
 import { ProgramTypeBadge, ProgramStatusBadge, DataTypeBadge } from '../components/admin/programBadges';
 
@@ -170,6 +172,9 @@ export default function AdminDashboardPage() {
         programs: []
     });
     const [pendingUsers, setPendingUsers] = useState([]);
+    // Sessions nobody ended. Practice-wide, so a supervisor can see work
+    // left running by anyone (Dena, 20 Aug 2026).
+    const [openSessions, setOpenSessions] = useState({ open: [], completed_today: 0 });
 
     // Detail drawers + list filtering (client-side over already-loaded data)
     const [selectedProgram, setSelectedProgram] = useState(null);
@@ -202,12 +207,16 @@ export default function AdminDashboardPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [detailedData, pending] = await Promise.all([
+            const [detailedData, pending, openData] = await Promise.all([
                 getDetailedStats(),
-                getPendingUsers()
+                getPendingUsers(),
+                // Its own catch: the rest of the panel is still worth showing
+                // if this one query fails.
+                getOpenSessions().catch(() => ({ open: [], completed_today: 0 })),
             ]);
             setData(detailedData);
             setPendingUsers(pending);
+            setOpenSessions(openData);
         } catch (err) {
             console.error('Failed to fetch admin data:', err);
             toast.error('Failed to load admin data');
@@ -419,6 +428,15 @@ export default function AdminDashboardPage() {
                             onClick={() => setActiveView('users')}
                         />
                         <StatCard
+                            title="Still Open"
+                            value={openSessions.open.length}
+                            subtitle="sessions"
+                            icon={Clock}
+                            accent={openSessions.open.length > 0}
+                            active={activeView === 'open-sessions'}
+                            onClick={() => setActiveView('open-sessions')}
+                        />
+                        <StatCard
                             title="Pending"
                             value={summary.pending_users}
                             subtitle="approvals"
@@ -432,6 +450,86 @@ export default function AdminDashboardPage() {
 
             {/* Content Section */}
             <div className="px-6 py-8 max-w-screen-xl mx-auto">
+                {/* Sessions left running, across every client.
+
+                    Read only by design. Ending a session that started six hours
+                    ago would write a six hour duration into a billing record,
+                    so each row links through to the session, where the end and
+                    edit-times controls already live and the time can be set to
+                    what actually happened. */}
+                {activeView === 'open-sessions' && (
+                    <div className="mb-8">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
+                                <Clock className="w-4 h-4 text-white" />
+                            </div>
+                            <h2 className="font-heading text-xl font-bold text-gray-900">Sessions Still Open</h2>
+                            <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-amber-100 text-amber-700">
+                                {openSessions.open.length}
+                            </span>
+                        </div>
+                        <p className="text-sm text-gray-500 mb-4">
+                            {openSessions.completed_today} completed today. A session that is never
+                            ended has no duration, so it does not appear on the day's totals.
+                        </p>
+
+                        {openSessions.open.length === 0 ? (
+                            <div className="card-premium p-8 text-center text-gray-500">
+                                Nothing is left running. Every session has been ended.
+                            </div>
+                        ) : (
+                            <div className="card-premium overflow-hidden">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-gray-50 text-gray-500 text-left">
+                                            <tr>
+                                                <th className="px-5 py-3 font-semibold">Client</th>
+                                                <th className="px-5 py-3 font-semibold">Started by</th>
+                                                <th className="px-5 py-3 font-semibold">Started</th>
+                                                <th className="px-5 py-3 font-semibold">Open for</th>
+                                                <th className="px-5 py-3 font-semibold">Data</th>
+                                                <th className="px-5 py-3" />
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {openSessions.open.map((s) => (
+                                                <tr key={s.id} className="hover:bg-gray-50">
+                                                    <td className="px-5 py-3 font-semibold text-gray-900">{s.client_name}</td>
+                                                    <td className="px-5 py-3 text-gray-600">{s.therapist_name}</td>
+                                                    <td className="px-5 py-3 text-gray-600">
+                                                        {formatDateTimeInZone(s.start_time)}
+                                                    </td>
+                                                    <td className="px-5 py-3">
+                                                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${s.hours_open >= 4
+                                                            ? 'bg-red-100 text-red-700'
+                                                            : 'bg-amber-100 text-amber-700'}`}>
+                                                            {s.hours_open}h
+                                                        </span>
+                                                        {s.is_paused && (
+                                                            <span className="ml-2 text-xs text-gray-400">paused</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-5 py-3 text-gray-600">
+                                                        {s.data_points} {s.data_points === 1 ? 'entry' : 'entries'}
+                                                    </td>
+                                                    <td className="px-5 py-3 text-right">
+                                                        <Link
+                                                            to={`/sessions/${s.id}`}
+                                                            className="text-sm font-semibold text-[#159DB3] hover:text-[#0E8499] whitespace-nowrap"
+                                                        >
+                                                            Review and end
+                                                        </Link>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Pending Approvals - Always show when pending view is active */}
                 {activeView === 'pending' && (
                     <div className="mb-8">

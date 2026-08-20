@@ -94,8 +94,18 @@ export const getAuditLogDetail = async (logId) => {
     return response.data;
 };
 
+/**
+ * Sessions still running across the whole practice, longest first.
+ * Returns { open: [...], completed_today: number }.
+ */
+export const getOpenSessions = async () => {
+    const response = await api.get('/api/admin/sessions/open');
+    return response.data;
+};
+
 export default {
     getAdminStats,
+    getOpenSessions,
     getDetailedStats,
     getProgramDetail,
     getUserDetail,
