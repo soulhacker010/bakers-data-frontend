@@ -33,7 +33,7 @@ export default function ProgressPage() {
     const [dateRange, setDateRange] = useState('30')
     const [targetFilter, setTargetFilter] = useState('all')  // 'all' or a target id
     // Frequency programs can be charted as a raw count or as responses per
-    // minute. Rate is the clinically comparable one, but count is what staff
+    // hour. Rate is the clinically comparable one, but count is what staff
     // recognise from the collection screen, so both are offered.
     const [frequencyMode, setFrequencyMode] = useState('count')  // 'count' | 'rate'
     // Entering a percentage for a past session rather than re-keying trials.
@@ -124,7 +124,7 @@ export default function ProgressPage() {
         switch (program?.data_type) {
             case 'frequency':
                 return frequencyMode === 'rate'
-                    ? { title: 'Rate Over Time', yLabel: 'Responses per minute', unit: '/min' }
+                    ? { title: 'Rate Over Time', yLabel: 'Responses per hour', unit: '/hr' }
                     : { title: 'Frequency Over Time', yLabel: 'Count', unit: '' }
             case 'duration':
                 return { title: 'Duration Over Time', yLabel: 'Minutes', unit: ' min' }
@@ -517,7 +517,7 @@ export default function ProgressPage() {
                             fairly (requested by the clinical team). */}
                         {program?.data_type === 'frequency' && (
                             <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
-                                {[['count', 'Count'], ['rate', 'Rate / min']].map(([value, label]) => (
+                                {[['count', 'Count'], ['rate', 'Rate / hr']].map(([value, label]) => (
                                     <button
                                         key={value}
                                         onClick={() => setFrequencyMode(value)}

@@ -33,9 +33,10 @@ describe('buildChartData', () => {
         expect(rows[0].frequency).toBe(12)
     })
 
-    it('derives the rate from the day session time', () => {
+    it('derives an hourly rate from the day session time', () => {
+        // 12 responses across 60 recorded minutes reads back as 12 per hour.
         const rows = buildChartData(analytics)
-        expect(rows[0].rate).toBe(0.2)
+        expect(rows[0].rate).toBe(12)
     })
 
     it('leaves the rate null when the day has no session time', () => {

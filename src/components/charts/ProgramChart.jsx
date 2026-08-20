@@ -4,7 +4,7 @@ import {
 } from 'recharts'
 import { format, parseISO } from 'date-fns'
 import { TrendingUp } from 'lucide-react'
-import { responsesPerMinute, formatRate } from '../../utils/rate'
+import { responsesPerHour, formatRate } from '../../utils/rate'
 
 /**
  * The progress chart for a single program.
@@ -71,7 +71,7 @@ export function buildChartData(analytics) {
         // Whole-day session time, already combined across every therapist who
         // worked with the learner that day.
         sessionMinutes: session.session_minutes ?? null,
-        rate: responsesPerMinute(session.frequency_count, session.session_minutes),
+        rate: responsesPerHour(session.frequency_count, session.session_minutes),
         // Typed in for a past session rather than collected. Drawn differently
         // below so a reader can tell measured data from an entered figure.
         isSummary: !!session.is_summary,
@@ -259,7 +259,7 @@ export default function ProgramChart({
         )
     }
 
-    // Frequency: raw count, or responses per minute
+    // Frequency: raw count, or responses per hour
     if (program?.data_type === 'frequency') {
         const showingRate = frequencyMode === 'rate'
         return (
@@ -267,7 +267,7 @@ export default function ProgramChart({
                 <LineChart data={chartData} margin={MARGIN}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                     <XAxis dataKey="date" {...AXIS} />
-                    <YAxis {...AXIS} tickFormatter={showingRate ? (v) => `${v}/min` : undefined} />
+                    <YAxis {...AXIS} tickFormatter={showingRate ? (v) => `${v}/hr` : undefined} />
                     <Tooltip
                         contentStyle={TOOLTIP_STYLE}
                         formatter={(value, name, entry) => (

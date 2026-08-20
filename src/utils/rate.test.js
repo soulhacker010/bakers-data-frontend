@@ -1,48 +1,48 @@
 import { describe, it, expect } from 'vitest'
-import { responsesPerMinute, formatRate } from './rate'
+import { responsesPerHour, formatRate } from './rate'
 
-describe('responsesPerMinute', () => {
-    it('divides the count by the session time', () => {
-        expect(responsesPerMinute(12, 75)).toBe(0.16)
-        expect(responsesPerMinute(8, 10)).toBe(0.8)
+describe('responsesPerHour', () => {
+    it('converts a count over session minutes into an hourly rate', () => {
+        expect(responsesPerHour(12, 75)).toBe(9.6)
+        expect(responsesPerHour(8, 10)).toBe(48)
+    })
+
+    it('reads back the count itself over a full hour', () => {
+        expect(responsesPerHour(12, 60)).toBe(12)
     })
 
     it('rounds to two decimal places', () => {
-        expect(responsesPerMinute(1, 3)).toBe(0.33)
-    })
-
-    it('keeps a rate above one intact', () => {
-        expect(responsesPerMinute(90, 30)).toBe(3)
+        expect(responsesPerHour(1, 7)).toBe(8.57)
     })
 
     it('reports zero behaviours as a real rate of zero', () => {
         // No behaviours in forty minutes is a genuine clinical finding, not
         // missing data.
-        expect(responsesPerMinute(0, 40)).toBe(0)
+        expect(responsesPerHour(0, 40)).toBe(0)
     })
 
     it('returns null when there is no session time to divide by', () => {
         // Different from zero: without a duration there is no rate to show.
-        expect(responsesPerMinute(12, null)).toBeNull()
-        expect(responsesPerMinute(12, undefined)).toBeNull()
-        expect(responsesPerMinute(12, 0)).toBeNull()
+        expect(responsesPerHour(12, null)).toBeNull()
+        expect(responsesPerHour(12, undefined)).toBeNull()
+        expect(responsesPerHour(12, 0)).toBeNull()
     })
 
     it('returns null when there is no count', () => {
-        expect(responsesPerMinute(null, 30)).toBeNull()
-        expect(responsesPerMinute(undefined, 30)).toBeNull()
+        expect(responsesPerHour(null, 30)).toBeNull()
+        expect(responsesPerHour(undefined, 30)).toBeNull()
     })
 
     it('returns null for a negative duration', () => {
-        expect(responsesPerMinute(12, -5)).toBeNull()
+        expect(responsesPerHour(12, -5)).toBeNull()
     })
 })
 
 describe('formatRate', () => {
-    it('labels the value per minute', () => {
-        expect(formatRate(0.16)).toBe('0.16/min')
-        expect(formatRate(3)).toBe('3/min')
-        expect(formatRate(0)).toBe('0/min')
+    it('labels the value per hour', () => {
+        expect(formatRate(9.6)).toBe('9.6/hr')
+        expect(formatRate(48)).toBe('48/hr')
+        expect(formatRate(0)).toBe('0/hr')
     })
 
     it('shows nothing usable when there is no rate', () => {
