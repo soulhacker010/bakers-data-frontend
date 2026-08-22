@@ -382,8 +382,8 @@ export default function AdminDashboardPage() {
                         </div>
                     </div>
 
-                    {/* Clickable Stat Cards */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                    {/* Clickable Stat Cards - 8 cards, so 4 across keeps both rows full */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <StatCard
                             title="Therapists"
                             value={summary.total_users}
