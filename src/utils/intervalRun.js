@@ -18,6 +18,13 @@
  * everything about what has been scored and what happens next lives here.
  */
 
+/**
+ * Stands in for a behaviour when the run belongs to the program itself: the
+ * interval method is on program.data_type and there are no active targets to
+ * score against. Scores under this id are persisted with target_id null.
+ */
+export const PROGRAM_LEVEL = '__program__'
+
 /** Measurement methods that are scored off an interval countdown. */
 const INTERVAL_METHODS = new Set([
     'partial_interval',
@@ -98,14 +105,23 @@ export function scoreTarget(run, targetId, result) {
  * differ: partial and momentary describe when the observer looks, not how long
  * the interval lasts, and mixing them on one sheet is ordinary practice.
  */
-export function observableTogether(targets, targetId) {
+export function observableTogether(targets, targetId, fallbackMethod = null) {
     const list = Array.isArray(targets) ? targets : []
-    const chosen = list.find((t) => t.id === targetId)
 
-    if (!chosen || !INTERVAL_METHODS.has(chosen.measurement_type)) return []
+    // measurement_type on a target is an OPTIONAL OVERRIDE (nullable in the
+    // model). On an ordinary interval program the method lives on
+    // program.data_type and every target leaves the field empty, so the
+    // program's type has to stand in or nothing groups at all.
+    const methodOf = (t) => t?.measurement_type || fallbackMethod
+
+    // Falling back to the first target matters on the first render, before a
+    // target has been auto-selected: without it the sheet renders blank.
+    const chosen = list.find((t) => t.id === targetId) ?? list[0]
+
+    if (!chosen || !INTERVAL_METHODS.has(methodOf(chosen))) return []
 
     return list.filter((t) => (
-        INTERVAL_METHODS.has(t.measurement_type)
+        INTERVAL_METHODS.has(methodOf(t))
         && (t.interval_seconds || null) === (chosen.interval_seconds || null)
     ))
 }

@@ -6,6 +6,7 @@ import {
     scoreTarget,
     pendingTargets,
     isComplete,
+    PROGRAM_LEVEL,
 } from '../../utils/intervalRun'
 
 /**
@@ -53,8 +54,16 @@ const PROMPT = {
     momentary_time_sampling: 'Was the behavior occurring at the END of this interval?',
 }
 
-export default function IntervalCollector({ targets, onRecord, disabled = false }) {
-    const observed = (targets || []).filter(Boolean)
+export default function IntervalCollector({ targets, method = null, onRecord, disabled = false }) {
+    const supplied = (targets || []).filter(Boolean)
+
+    // A program can carry the interval method itself and have no active targets.
+    // Grouping behaviours must not cost that case its sheet: it runs as a single
+    // unnamed behaviour and is recorded against the program (Dr Joe, 27 Aug 2026).
+    const observed = supplied.length
+        ? supplied
+        : (method ? [{ id: PROGRAM_LEVEL, name: null, measurement_type: method }] : [])
+
     const first = observed[0]
     const intervalSeconds = first?.interval_seconds || 30
     const totalIntervals = first?.interval_count || 20
@@ -223,8 +232,13 @@ export default function IntervalCollector({ targets, onRecord, disabled = false 
         setRun(next)
 
         // One row per behaviour per interval, which is what the timeline engine
-        // will later read back.
-        onRecord({ result, interval_index: scoredInterval, target_id: targetId })
+        // will later read back. A program-level run has no target to attribute
+        // the score to, so it is persisted against the program.
+        onRecord({
+            result,
+            interval_index: scoredInterval,
+            target_id: targetId === PROGRAM_LEVEL ? null : targetId,
+        })
 
         if (isComplete(next)) {
             setRunning(false)

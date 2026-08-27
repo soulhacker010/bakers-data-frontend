@@ -1132,15 +1132,20 @@ export default function SessionCollectPage() {
                             const isInterval = ['partial_interval', 'whole_interval', 'momentary_time_sampling'].includes(effectiveType)
                             const isLatency = effectiveType === 'latency'
                             if (isInterval) {
-                                const intervalGroup = observableTogether(targets, selectedTarget?.id)
+                                // The program's own type stands in for targets that
+                                // do not override measurement_type, which is the
+                                // ordinary case: without it nothing groups and the
+                                // sheet renders blank (Dr Joe, 27 Aug 2026).
+                                const intervalGroup = observableTogether(targets, selectedTarget?.id, program.data_type)
                                 return (
                                     /* Every behaviour on the same interval
                                        length runs off one clock and is scored
                                        together, rather than each keeping its
                                        own timer (Dena, 20 Aug 2026). */
                                     <IntervalCollector
-                                        key={intervalGroup.map((t) => t.id).join('-')}
+                                        key={intervalGroup.map((t) => t.id).join('-') || 'program'}
                                         targets={intervalGroup}
+                                        method={effectiveType}
                                         onRecord={(d) => handleRecord({ ...d, data_type: effectiveType })}
                                         disabled={isPaused}
                                     />

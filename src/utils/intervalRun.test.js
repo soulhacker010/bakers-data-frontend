@@ -153,6 +153,42 @@ describe('observableTogether', () => {
         expect(observableTogether(targets, 5)).toEqual([])
     })
 
+    /**
+     * Dr Joe, 27 Aug 2026: "The partial interval function is not showing up
+     * for staff to use."
+     *
+     * measurement_type on a target is an OPTIONAL OVERRIDE (nullable in the
+     * model). For an ordinary interval program the method lives on
+     * program.data_type and every target leaves it empty, so grouping purely on
+     * the target's own field found nothing and the sheet rendered blank.
+     */
+    describe('when the method lives on the program instead of the target', () => {
+        const plain = [
+            { id: 1, name: 'Flapping', measurement_type: null, interval_seconds: 30 },
+            { id: 2, name: 'Out of seat', measurement_type: null, interval_seconds: 30 },
+        ]
+
+        it('groups targets that inherit the interval method from the program', () => {
+            expect(observableTogether(plain, 1, 'partial_interval').map((t) => t.id)).toEqual([1, 2])
+        })
+
+        it('still finds the group when no target has been chosen yet', () => {
+            expect(observableTogether(plain, null, 'partial_interval').map((t) => t.id)).toEqual([1, 2])
+        })
+
+        it('lets a target override the program method', () => {
+            const mixed = [
+                { id: 1, name: 'Flapping', measurement_type: null, interval_seconds: 30 },
+                { id: 2, name: 'Greeting', measurement_type: 'trial', interval_seconds: 30 },
+            ]
+            expect(observableTogether(mixed, 1, 'partial_interval').map((t) => t.id)).toEqual([1])
+        })
+
+        it('groups nothing when the program is not an interval program', () => {
+            expect(observableTogether(plain, 1, 'frequency')).toEqual([])
+        })
+    })
+
     it('copes with no targets at all', () => {
         expect(observableTogether([], 1)).toEqual([])
         expect(observableTogether(null, 1)).toEqual([])

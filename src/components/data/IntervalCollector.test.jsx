@@ -124,6 +124,31 @@ describe('IntervalCollector with a single behaviour', () => {
         )
     })
 
+    /**
+     * Dr Joe, 27 Aug 2026: "The partial interval function is not showing up
+     * for staff to use."
+     *
+     * A program can carry the interval method itself and have no active
+     * targets. Before behaviours were grouped this rendered off the program
+     * and recorded with target_id null. It must still do that.
+     */
+    it('renders off the program when it has no active targets', () => {
+        render(<IntervalCollector targets={[]} method="partial_interval" onRecord={onRecord} />)
+
+        expect(screen.getByRole('button', { name: /Start Intervals/i })).toBeTruthy()
+    })
+
+    it('records against the program, not against a target', () => {
+        render(<IntervalCollector targets={[]} method="partial_interval" onRecord={onRecord} />)
+        fireEvent.click(screen.getByRole('button', { name: /Start Intervals/i }))
+        elapseInterval()
+        fireEvent.click(screen.getByLabelText(/yes/i))
+
+        expect(onRecord).toHaveBeenCalledWith(
+            expect.objectContaining({ result: 'present', interval_index: 1, target_id: null })
+        )
+    })
+
     it('renders nothing when there is no behaviour to observe', () => {
         const { container } = render(<IntervalCollector targets={[]} onRecord={onRecord} />)
         expect(container.firstChild).toBeNull()
