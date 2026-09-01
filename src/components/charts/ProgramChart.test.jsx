@@ -102,9 +102,32 @@ describe('resolvePhaseLines', () => {
         expect(line.dateLabel).toBe('Aug 9')
     })
 
-    it('falls back to the last session when dated after every one', () => {
-        const [line] = resolvePhaseLines([{ id: 1, title: 'FCT', date: '2026-09-01' }], rows)
-        expect(line.dateLabel).toBe('Aug 9')
+    // SPEC CHANGED 1 Sept 2026. This used to fall back to the last session,
+    // which is what Dr Joe reported as "vertical graph line keeps shifting the
+    // percentages based on data". Drawing a phase change on the last session
+    // says that session belongs to the new phase, so phaseSeries split it off
+    // and its percentage moved to a line of its own. Worse, "the last session"
+    // is whatever was entered most recently, so every new session dragged the
+    // boundary along with it and the split moved again.
+    it('is not drawn at all when dated after every session', () => {
+        // Nothing has been collected under the new phase yet, so there is
+        // nowhere honest to put it.
+        expect(resolvePhaseLines([{ id: 1, title: 'FCT', date: '2026-09-01' }], rows)).toEqual([])
+    })
+
+    it('stops the boundary wandering as sessions are added', () => {
+        const line = [{ id: 1, title: 'FCT', date: '2026-09-01' }]
+        const later = [...rows, { rawDate: '2026-08-11', date: 'Aug 11' }]
+
+        expect(resolvePhaseLines(line, rows)).toEqual(resolvePhaseLines(line, later))
+    })
+
+    it('still draws a line the data has caught up with', () => {
+        const line = [{ id: 1, title: 'FCT', date: '2026-08-10' }]
+
+        expect(resolvePhaseLines(line, rows)).toEqual([])
+        const [drawn] = resolvePhaseLines(line, [...rows, { rawDate: '2026-08-11', date: 'Aug 11' }])
+        expect(drawn.dateLabel).toBe('Aug 11')
     })
 
     it('sits on the first session when dated before every one', () => {

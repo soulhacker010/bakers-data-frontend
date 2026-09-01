@@ -112,16 +112,26 @@ export function buildPhaseChanges(analytics) {
  * session. A phase change rarely falls exactly on one, so each line is snapped
  * to the first session on or after the date the clinician chose. That is also
  * the clinically correct place for it, since the new phase begins at that
- * session. A line dated after every session sits on the last one.
+ * session.
+ *
+ * A line dated after every session is not drawn. It used to fall back to the
+ * last session, which Dr Joe reported (1 Sept 2026) as the vertical line
+ * shifting the percentages: putting the boundary on the final session says that
+ * session belongs to the new phase, so phaseSeries split its value onto a line
+ * of its own. And "the last session" is simply whatever was entered most
+ * recently, so every session added dragged the boundary along and the split
+ * moved again. Until data is collected under the new phase there is nowhere
+ * honest to put the line, and the moment there is, it appears by itself.
  *
  * Lines are dropped entirely when there is nothing to plot them against.
  */
 export function resolvePhaseLines(phaseLines, chartData) {
     if (!phaseLines?.length || !chartData?.length) return []
 
-    return phaseLines.map(line => {
-        const at = chartData.find(row => row.rawDate >= line.date) || chartData[chartData.length - 1]
-        return { id: line.id, title: line.title, notes: line.notes, dateLabel: at.date }
+    return phaseLines.flatMap(line => {
+        const at = chartData.find(row => row.rawDate >= line.date)
+        if (!at) return []
+        return [{ id: line.id, title: line.title, notes: line.notes, dateLabel: at.date }]
     })
 }
 
