@@ -152,11 +152,14 @@ function SessionCard({ session, onClick }) {
 
 import { ConfirmModal } from '../components/ui'
 import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/AuthContext'
+import { canManageStaffAssignments } from '../utils/permissions'
 
 export default function ClientDetailPage() {
     const { id } = useParams()
     const navigate = useNavigate()
     const { toast } = useToast()
+    const { user } = useAuth()
     const [activeTab, setActiveTab] = useState('programs')
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [showStaffModal, setShowStaffModal] = useState(false)
@@ -274,13 +277,19 @@ export default function ClientDetailPage() {
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => setShowStaffModal(true)}
-                                className="btn-outline-premium bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center gap-2"
-                            >
-                                <Users size={18} />
-                                Staff Access
-                            </button>
+                            {/* Assigning staff is refused for the staff role, so
+                                offering the control only produced an error the
+                                team then reported as a bug (Dr Joe, 1 Sept 2026).
+                                The server still checks; this only stops us asking. */}
+                            {canManageStaffAssignments(user) && (
+                                <button
+                                    onClick={() => setShowStaffModal(true)}
+                                    className="btn-outline-premium bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center gap-2"
+                                >
+                                    <Users size={18} />
+                                    Staff Access
+                                </button>
+                            )}
                             <button
                                 onClick={() => navigate(`/clients/${id}/edit`)}
                                 className="btn-outline-premium bg-white/10 border-white/30 text-white hover:bg-white/20 flex items-center gap-2"

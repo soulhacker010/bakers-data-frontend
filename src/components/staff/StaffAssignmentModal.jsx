@@ -3,7 +3,8 @@
  */
 import { useState, useEffect } from 'react'
 import { getStaffMembers, getClientAssignments, bulkAssignStaff } from '../../services/staff'
-import { X, User, Check, Loader2, Users } from 'lucide-react'
+import { apiErrorMessage, isPermissionError } from '../../utils/apiError'
+import { X, User, Check, Loader2, Users, Lock } from 'lucide-react'
 
 export default function StaffAssignmentModal({ clientId, clientName, onClose, onSaved }) {
     const [staffMembers, setStaffMembers] = useState([])
@@ -12,6 +13,10 @@ export default function StaffAssignmentModal({ clientId, clientName, onClose, on
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState(null)
+    // A refusal is the system working, so it is held separately from a fault
+    // and shown calmly. Dr Joe, 1 Sept 2026: a rule was being presented to
+    // staff as broken software, and they reported it as a bug.
+    const [notAllowed, setNotAllowed] = useState(false)
 
     useEffect(() => {
         const fetchData = async () => {
@@ -26,8 +31,12 @@ export default function StaffAssignmentModal({ clientId, clientName, onClose, on
                 // Pre-select existing assignments
                 setSelectedStaff(existing.map(a => a.staff_id))
             } catch (err) {
-                console.error('Failed to load staff data:', err)
-                setError('Failed to load staff members')
+                if (isPermissionError(err)) {
+                    setNotAllowed(true)
+                } else {
+                    console.error('Failed to load staff data:', err)
+                    setError(apiErrorMessage(err, 'Failed to load staff members'))
+                }
             } finally {
                 setLoading(false)
             }
@@ -50,8 +59,12 @@ export default function StaffAssignmentModal({ clientId, clientName, onClose, on
             onSaved?.()
             onClose()
         } catch (err) {
-            console.error('Failed to save assignments:', err)
-            setError('Failed to save assignments')
+            if (isPermissionError(err)) {
+                setNotAllowed(true)
+            } else {
+                console.error('Failed to save assignments:', err)
+                setError(apiErrorMessage(err, 'Failed to save assignments'))
+            }
         } finally {
             setSaving(false)
         }
@@ -81,6 +94,19 @@ export default function StaffAssignmentModal({ clientId, clientName, onClose, on
 
                 {/* Content */}
                 <div className="p-6">
+                    {notAllowed ? (
+                        <div className="text-center py-8">
+                            <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                                <Lock size={26} className="text-gray-400" />
+                            </div>
+                            <p className="font-semibold text-gray-800 mb-1">Staff access is managed by a supervisor</p>
+                            <p className="text-sm text-gray-500 max-w-xs mx-auto">
+                                Only BCBAs and administrators can change who is assigned to a client.
+                                Ask your supervisor if this needs to change.
+                            </p>
+                        </div>
+                    ) : (
+                    <>
                     {error && (
                         <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-xl text-sm">
                             {error}
@@ -131,6 +157,8 @@ export default function StaffAssignmentModal({ clientId, clientName, onClose, on
                             </div>
                         </>
                     )}
+                    </>
+                    )}
                 </div>
 
                 {/* Footer */}
@@ -139,15 +167,19 @@ export default function StaffAssignmentModal({ clientId, clientName, onClose, on
                         onClick={onClose}
                         className="flex-1 py-3 border-2 border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors"
                     >
-                        Cancel
+                        {notAllowed ? 'Close' : 'Cancel'}
                     </button>
-                    <button
-                        onClick={handleSave}
-                        disabled={saving || loading}
-                        className="flex-1 py-3 bg-[#159DB3] text-white font-semibold rounded-xl hover:bg-[#0D7C8C] transition-colors disabled:opacity-50"
-                    >
-                        {saving ? 'Saving...' : `Assign ${selectedStaff.length} Staff`}
-                    </button>
+                    {/* Offering a save that can only be refused invites the
+                        report we just had. */}
+                    {!notAllowed && (
+                        <button
+                            onClick={handleSave}
+                            disabled={saving || loading}
+                            className="flex-1 py-3 bg-[#159DB3] text-white font-semibold rounded-xl hover:bg-[#0D7C8C] transition-colors disabled:opacity-50"
+                        >
+                            {saving ? 'Saving...' : `Assign ${selectedStaff.length} Staff`}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

@@ -29,3 +29,15 @@ export function canAmendData(user) {
 export function canSuperviseData(user) {
     return hasAdminFlag(user) || roleOf(user) === 'bcba'
 }
+
+/**
+ * Assign staff to a client, or see who is already assigned.
+ *
+ * Mirrors `require_not_staff` in app/api/staff.py, which refuses one role
+ * rather than allowing a list, so this is written the same way round. An
+ * account carrying the admin flag is allowed regardless of its clinical role,
+ * matching the rest of this file.
+ */
+export function canManageStaffAssignments(user) {
+    return hasAdminFlag(user) || roleOf(user) !== 'staff'
+}

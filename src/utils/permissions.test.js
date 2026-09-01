@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { canAmendData, canSuperviseData } from './permissions'
+import { canAmendData, canSuperviseData, canManageStaffAssignments } from './permissions'
 
 const user = (role, flags = {}) => ({ role, ...flags })
 
@@ -65,5 +65,29 @@ describe('role matching', () => {
     it('does not match a role that merely contains a permitted one', () => {
         expect(canSuperviseData(user('not-bcba'))).toBe(false)
         expect(canAmendData(user('bcba-assistant'))).toBe(false)
+    })
+})
+
+describe('canManageStaffAssignments', () => {
+    // Mirrors require_not_staff in app/api/staff.py, which refuses exactly one
+    // role rather than allowing a list.
+    it('refuses a staff member', () => {
+        expect(canManageStaffAssignments({ role: 'staff' })).toBe(false)
+    })
+
+    it('allows a BCBA', () => {
+        expect(canManageStaffAssignments({ role: 'bcba' })).toBe(true)
+    })
+
+    it('allows a coordinator', () => {
+        expect(canManageStaffAssignments({ role: 'coordinator' })).toBe(true)
+    })
+
+    it('allows an admin who is recorded as staff by role', () => {
+        expect(canManageStaffAssignments({ role: 'staff', is_admin: true })).toBe(true)
+    })
+
+    it('is not fooled by casing or stray whitespace', () => {
+        expect(canManageStaffAssignments({ role: ' Staff ' })).toBe(false)
     })
 })
