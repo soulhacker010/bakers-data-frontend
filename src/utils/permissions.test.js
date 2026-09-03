@@ -83,11 +83,35 @@ describe('canManageStaffAssignments', () => {
         expect(canManageStaffAssignments({ role: 'coordinator' })).toBe(true)
     })
 
-    it('allows an admin who is recorded as staff by role', () => {
-        expect(canManageStaffAssignments({ role: 'staff', is_admin: true })).toBe(true)
+    // SPEC CHANGED 3 Sept 2026. The admin flag deliberately does not grant this
+    // one, unlike the two above: holding the admin panel is administrative,
+    // while deciding which clinician works with a child is clinical.
+    it('refuses an admin whose clinical role only records data', () => {
+        expect(canManageStaffAssignments({ role: 'staff', is_admin: true })).toBe(false)
+        expect(canManageStaffAssignments({ role: 'rbt', is_superadmin: true })).toBe(false)
+    })
+
+    it('allows a BCBA who also holds the admin panel', () => {
+        expect(canManageStaffAssignments({ role: 'bcba', is_admin: true })).toBe(true)
+    })
+
+    it('refuses a therapist and an RBT, who record data only', () => {
+        expect(canManageStaffAssignments({ role: 'therapist' })).toBe(false)
+        expect(canManageStaffAssignments({ role: 'rbt' })).toBe(false)
+        expect(canManageStaffAssignments({ role: 'other' })).toBe(false)
+    })
+
+    it('allows a supervisor', () => {
+        expect(canManageStaffAssignments({ role: 'supervisor' })).toBe(true)
+    })
+
+    it('refuses a missing user rather than defaulting open', () => {
+        expect(canManageStaffAssignments(null)).toBe(false)
+        expect(canManageStaffAssignments({})).toBe(false)
     })
 
     it('is not fooled by casing or stray whitespace', () => {
         expect(canManageStaffAssignments({ role: ' Staff ' })).toBe(false)
+        expect(canManageStaffAssignments({ role: ' BCBA ' })).toBe(true)
     })
 })

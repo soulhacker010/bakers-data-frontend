@@ -33,11 +33,19 @@ export function canSuperviseData(user) {
 /**
  * Assign staff to a client, or see who is already assigned.
  *
- * Mirrors `require_not_staff` in app/api/staff.py, which refuses one role
- * rather than allowing a list, so this is written the same way round. An
- * account carrying the admin flag is allowed regardless of its clinical role,
- * matching the rest of this file.
+ * Mirrors `can_manage_staff_assignments` in app/core/roles.py, and is the one
+ * permission here the admin flag does NOT grant (Prince, 3 Sept 2026). Holding
+ * the admin panel is an administrative fact; deciding which clinician works
+ * with a child is a clinical one. The two above govern how recorded data is
+ * handled, which administration does cover; this governs who may reach a
+ * child's record at all.
+ *
+ * Written as the roles allowed rather than the one refused. The rule this
+ * replaced named 'staff' alone, so therapist, rbt, supervisor and other all
+ * passed it, and new accounts default to rbt.
  */
+const ASSIGN_ROLES = ['bcba', 'coordinator', 'supervisor']
+
 export function canManageStaffAssignments(user) {
-    return hasAdminFlag(user) || roleOf(user) !== 'staff'
+    return ASSIGN_ROLES.includes(roleOf(user))
 }
