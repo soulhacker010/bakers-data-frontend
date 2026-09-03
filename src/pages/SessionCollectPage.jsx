@@ -3,12 +3,13 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { getClient } from '../services/clients'
 import { getProgram, getPrograms } from '../services/programs'
 import { getTargets } from '../services/targets'
+import { unavailableTargetsNotice } from '../utils/targetAvailability'
 import { pauseSession, resumeSession } from '../services/sessions'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { useNotifications, NOTIFICATION_TYPES } from '../context/NotificationContext'
 import { getUserSettings } from '../services/settings'
-import { Check, X, StopCircle, Plus, Minus, Play, Square, RotateCcw, ChevronLeft, ChevronRight, Target, FileText, ListChecks, Pause, CircleSlash, Timer, Smile } from 'lucide-react'
+import { Check, X, StopCircle, Plus, Minus, Play, Square, RotateCcw, ChevronLeft, ChevronRight, Target, FileText, ListChecks, Pause, CircleSlash, Timer, Smile, CheckCircle } from 'lucide-react'
 import { TaskAnalysisCollector, IntervalCollector, LatencyCollector } from '../components/data'
 import {
     saveActiveSession,
@@ -346,6 +347,10 @@ export default function SessionCollectPage() {
     const [program, setProgram] = useState(null)
     const [programs, setPrograms] = useState([])
     const [targets, setTargets] = useState([])
+    // Why there is nothing to collect against, when that is the case. An empty
+    // sidebar reads as a broken program, which cost Dena a working day
+    // (3 Sept 2026); the screen has to say what happened.
+    const [targetsNotice, setTargetsNotice] = useState(null)
     const [selectedTarget, setSelectedTarget] = useState(null)
     const [loading, setLoading] = useState(true)
     const [sessionId, setSessionId] = useState(null)
@@ -702,11 +707,15 @@ export default function SessionCollectPage() {
                 // Filter to only show 'active' targets during session (hide 'on-hold', 'mastered', etc.)
                 const activeTargets = programTargets.filter(t => t.status === 'active')
                 setTargets(activeTargets)
+                // Held from every target, not the active ones, because the whole
+                // point is to account for the ones that are missing from the list.
+                setTargetsNotice(unavailableTargetsNotice(programTargets))
                 // Select first active target by default
                 setSelectedTarget(activeTargets[0] || null)
             } catch (err) {
                 console.error('Failed to load targets:', err)
                 setTargets([])
+                setTargetsNotice(null)
             }
         }
         loadTargets()
@@ -1121,6 +1130,19 @@ export default function SessionCollectPage() {
                                 <span className="ml-auto text-sm text-[#159DB3]/70">
                                     {selectedTarget.current_accuracy.toFixed(0)}% accuracy
                                 </span>
+                            </div>
+                        )}
+
+                        {/* Every target accounted for, when none can be collected
+                            against. Without this the sidebar simply emptied and the
+                            program read as broken (Dena, 3 Sept 2026). */}
+                        {targetsNotice && (
+                            <div className="mb-4 bg-white border border-gray-200 rounded-2xl p-6 text-center">
+                                <div className="w-12 h-12 rounded-full bg-[#E0F4F7] flex items-center justify-center mx-auto mb-3">
+                                    <CheckCircle size={24} className="text-[#159DB3]" />
+                                </div>
+                                <p className="font-heading font-semibold text-gray-900 mb-1">{targetsNotice.title}</p>
+                                <p className="text-sm text-gray-500 max-w-sm mx-auto">{targetsNotice.detail}</p>
                             </div>
                         )}
 
