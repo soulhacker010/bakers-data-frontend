@@ -74,3 +74,51 @@ describe('start / stop / reset wiring', () => {
         expect(onRecord).toHaveBeenCalledWith({ duration_seconds: 42 })
     })
 })
+
+/**
+ * Dena (BCBA, Cor Behavioral), 22 Sept 2026:
+ *   "The inability to record a 'zero' on duration timers"
+ *
+ * Frequency has had a Record Zero button since July. Duration never got one,
+ * so a behaviour that was watched for and did not happen could not be entered:
+ * the only route was Start then immediately Stop, which records one second of
+ * a behaviour that never occurred and is worse than recording nothing.
+ *
+ * A zero is real clinical data. It is the difference between "this did not
+ * happen today" and "nobody looked".
+ */
+describe('recording a zero', () => {
+    it('offers it when the timer is sitting at zero', () => {
+        renderCollector({ durationSeconds: 0, isTracking: false })
+
+        expect(screen.getByRole('button', { name: /record zero/i })).toBeInTheDocument()
+    })
+
+    it('records a duration of zero seconds', async () => {
+        const onRecordZero = vi.fn()
+        renderCollector({ durationSeconds: 0, isTracking: false, onRecordZero })
+
+        await userEvent.click(screen.getByRole('button', { name: /record zero/i }))
+
+        expect(onRecordZero).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not offer it while the timer is running', () => {
+        renderCollector({ durationSeconds: 0, isTracking: true })
+
+        expect(screen.queryByRole('button', { name: /record zero/i })).not.toBeInTheDocument()
+    })
+
+    it('does not offer it once time has been put on the clock', () => {
+        // There is nothing to say zero about: the behaviour did occur.
+        renderCollector({ durationSeconds: 12, isTracking: false })
+
+        expect(screen.queryByRole('button', { name: /record zero/i })).not.toBeInTheDocument()
+    })
+
+    it('shows it as done rather than letting it be entered twice', () => {
+        renderCollector({ durationSeconds: 0, isTracking: false, zeroRecorded: true })
+
+        expect(screen.getByRole('button', { name: /zero recorded/i })).toBeDisabled()
+    })
+})

@@ -208,7 +208,7 @@ function FrequencyDataCollector({ onRecord, onSubtract, onRecordZero, count, dis
 
 // Duration Data Collection Component
 // Now receives timer state from parent so it persists across tab switches
-export function DurationDataCollector({ onRecord, onStart, onStop, onReset, onAdjust, durationSeconds, isTracking, disabled = false }) {
+export function DurationDataCollector({ onRecord, onStart, onStop, onReset, onAdjust, onRecordZero, durationSeconds, isTracking, disabled = false, zeroRecorded = false }) {
     const formatDuration = (secs) => {
         const mins = Math.floor(secs / 60)
         const remainingSecs = secs % 60
@@ -256,6 +256,36 @@ export function DurationDataCollector({ onRecord, onStart, onStop, onReset, onAd
                     ))}
                 </div>
             </div>
+
+            {/* A behaviour that was watched for and did not happen is real data.
+                Without this the only route was Start then immediately Stop,
+                which records a second of something that never occurred
+                (Dena, 22 Sept 2026). Offered only with the clock at zero and
+                stopped: once there is time on it, the behaviour did occur. */}
+            {!isTracking && durationSeconds === 0 && (
+                <div className="mb-4">
+                    <button
+                        onClick={() => !disabled && onRecordZero && onRecordZero()}
+                        disabled={disabled || zeroRecorded}
+                        className={`w-full py-4 rounded-2xl text-lg font-heading font-bold transition-all duration-150 flex items-center justify-center gap-3 border-2 ${zeroRecorded
+                                ? 'bg-green-50 border-green-300 text-green-700 cursor-default'
+                                : disabled
+                                    ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+                                    : 'bg-amber-50 border-amber-400 text-amber-700 hover:bg-amber-100 hover:border-amber-500 active:scale-95 shadow-md hover:shadow-lg'
+                            }`}
+                    >
+                        {zeroRecorded
+                            ? <><Check size={22} /> Zero Recorded for Today</>
+                            : <><CircleSlash size={22} /> Record Zero — Behavior Did Not Occur</>
+                        }
+                    </button>
+                    {!zeroRecorded && (
+                        <p className="text-xs text-gray-400 text-center mt-2">
+                            Use this to confirm the behavior was tracked but did not occur
+                        </p>
+                    )}
+                </div>
+            )}
 
             {/* Start/Stop Buttons */}
             <div className="grid grid-cols-2 gap-4 mb-4">
@@ -814,15 +844,20 @@ export default function SessionCollectPage() {
     const [zeroRecordedPrograms, setZeroRecordedPrograms] = useState(new Set())
     const isZeroRecorded = program ? zeroRecordedPrograms.has(program.id) : false
 
-    // Handle record zero for frequency/behavior programs
+    // Handle record zero for frequency and duration programs.
+    // The zero means the same thing either way — the behaviour was watched for
+    // and did not happen — but each program type records it in its own field,
+    // and sending the wrong one is rejected by the server as a type mismatch.
     const handleRecordZero = useCallback(async () => {
         if (!program || !sessionId) return
 
+        const isDuration = program.data_type === 'duration'
         const dataPoint = {
             program_id: program.id,
-            data_type: 'frequency',
+            data_type: isDuration ? 'duration' : 'frequency',
             target_id: selectedTarget?.id || null,
-            count: 0  // Explicit zero — behavior tracked but did not occur
+            // Explicit zero — behavior tracked but did not occur
+            ...(isDuration ? { duration_seconds: 0 } : { count: 0 }),
         }
 
         // Add to local state
@@ -1212,9 +1247,11 @@ export default function SessionCollectPage() {
                                 onStop={() => stopDurationTimer(program.id)}
                                 onReset={() => resetDurationTimer(program.id)}
                                 onAdjust={(delta) => adjustDurationTimer(program.id, delta)}
+                                onRecordZero={handleRecordZero}
                                 durationSeconds={elapsedSeconds(durationTimers.get(program.id) || createTimer(), now)}
                                 isTracking={durationTimers.get(program.id)?.isRunning || false}
                                 disabled={isPaused}
+                                zeroRecorded={isZeroRecorded}
                             />
                         )}
                         {!selectedTarget?.measurement_type && program.data_type === 'task_analysis' && (

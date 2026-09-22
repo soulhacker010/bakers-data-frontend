@@ -190,3 +190,20 @@ describe('findResumableSession', () => {
         expect(findResumableSession(sessions, { userId: null, now: NOW })).toBeNull()
     })
 })
+
+describe('zeroRecordedProgramIds, for duration programs', () => {
+    // Duration gained its own Record Zero in Sept 2026 (Dena). Resuming a
+    // session has to recognise that zero too, or the button comes back and the
+    // therapist records a second one.
+    it('counts a duration of zero as already recorded', () => {
+        const entries = [{ program_id: 9, data_type: 'duration', duration_seconds: 0 }]
+
+        expect(zeroRecordedProgramIds(entries).has(9)).toBe(true)
+    })
+
+    it('does not count a duration that was actually timed', () => {
+        const entries = [{ program_id: 9, data_type: 'duration', duration_seconds: 45 }]
+
+        expect(zeroRecordedProgramIds(entries).has(9)).toBe(false)
+    })
+})

@@ -81,7 +81,13 @@ export function zeroRecordedProgramIds(entries) {
     const list = Array.isArray(entries) ? entries : []
     return new Set(
         list
-            .filter((d) => d.data_type === 'frequency' && d.count === 0)
+            // Frequency records the zero as a count, duration as seconds.
+            // Both mean the same thing clinically: it was watched for and did
+            // not happen (Dena, 22 Sept 2026).
+            .filter((d) => (
+                (d.data_type === 'frequency' && d.count === 0)
+                || (d.data_type === 'duration' && d.duration_seconds === 0)
+            ))
             .map((d) => d.program_id)
     )
 }
