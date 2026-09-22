@@ -26,7 +26,7 @@ vi.mock('../../context/ToastContext', () => ({
 }))
 
 import TargetsManager from './TargetsManager'
-import { createTarget, getTargets } from '../../services/targets'
+import { createTarget, getTargets, updateTarget } from '../../services/targets'
 
 describe('TargetsManager — measurement method setup', () => {
     beforeEach(() => {
@@ -107,5 +107,74 @@ describe('TargetsManager — measurement method setup', () => {
         ])
         render(<TargetsManager programId={1} dataType="trial" />)
         expect(await screen.findByText('Whole Interval · 30s')).toBeInTheDocument()
+    })
+})
+
+/**
+ * Dena (BCBA, Cor Behavioral), 22 Sept 2026:
+ *   "Being able to modify mastery criteria within the target (not just within
+ *    the program)"
+ *
+ * The same trap as June 2026. Mastery threshold and the number of consecutive
+ * sessions were on AddProgramPage, which is where a program is first created,
+ * and nowhere on TargetsManager, which is the program EDIT page where a BCBA
+ * actually revisits a target. So the criteria could be set once and never
+ * changed.
+ *
+ * This matters more since 22 Sept, because the mastery calculation now reads
+ * the threshold off the target rather than parsing it out of a sentence. A
+ * number the clinician cannot reach is a number they cannot correct.
+ */
+describe('mastery criteria on the program edit page', () => {
+    const openEditFor = async (target) => {
+        getTargets.mockResolvedValue([target])
+        render(<TargetsManager programId={1} dataType="trial" mode="targets" />)
+        await screen.findByText(target.name)
+        await fireEvent.click(screen.getByLabelText(`Edit ${target.name}`))
+    }
+
+    const target = {
+        id: 5,
+        name: 'Eye contact',
+        description: '',
+        status: 'active',
+        mastery_threshold: 80,
+        mastery_consecutive_sessions: 3,
+    }
+
+    it('shows the threshold the target is actually set to', async () => {
+        await openEditFor(target)
+
+        expect(await screen.findByLabelText(/mastery threshold/i)).toHaveValue(80)
+    })
+
+    it('shows the number of consecutive sessions required', async () => {
+        await openEditFor(target)
+
+        expect(await screen.findByLabelText(/consecutive sessions/i)).toHaveValue(3)
+    })
+
+    it('saves a changed threshold against the target', async () => {
+        await openEditFor(target)
+
+        const field = await screen.findByLabelText(/mastery threshold/i)
+        await fireEvent.change(field, { target: { value: '95' } })
+        await fireEvent.click(screen.getByRole('button', { name: /update/i }))
+
+        await waitFor(() => expect(updateTarget).toHaveBeenCalled())
+        const [, payload] = updateTarget.mock.calls.at(-1)
+        expect(payload.mastery_threshold).toBe(95)
+    })
+
+    it('saves a changed session count against the target', async () => {
+        await openEditFor(target)
+
+        const field = await screen.findByLabelText(/consecutive sessions/i)
+        await fireEvent.change(field, { target: { value: '5' } })
+        await fireEvent.click(screen.getByRole('button', { name: /update/i }))
+
+        await waitFor(() => expect(updateTarget).toHaveBeenCalled())
+        const [, payload] = updateTarget.mock.calls.at(-1)
+        expect(payload.mastery_consecutive_sessions).toBe(5)
     })
 })

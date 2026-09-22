@@ -33,12 +33,14 @@ function TargetRow({ target, onEdit, onDelete }) {
             <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                     onClick={() => onEdit(target)}
+                    aria-label={`Edit ${target.name}`}
                     className="p-2 text-gray-400 hover:text-[#159DB3] hover:bg-white rounded-lg transition-colors"
                 >
                     <Edit3 size={16} />
                 </button>
                 <button
                     onClick={() => onDelete(target.id)}
+                    aria-label={`Delete ${target.name}`}
                     className="p-2 text-gray-400 hover:text-red-500 hover:bg-white rounded-lg transition-colors"
                 >
                     <Trash2 size={16} />
@@ -87,6 +89,11 @@ function ItemModal({ isOpen, onClose, onSave, item, type }) {
     const [measurementType, setMeasurementType] = useState('')
     const [intervalSeconds, setIntervalSeconds] = useState(30)
     const [observationMinutes, setObservationMinutes] = useState(10)
+    // Mastery lives on the target and is read there by the mastery calculation,
+    // so it has to be reachable from the page where targets are revisited, not
+    // only from the one where the program was first created (Dena, 22 Sept 2026).
+    const [masteryThreshold, setMasteryThreshold] = useState(80)
+    const [masterySessions, setMasterySessions] = useState(3)
     const [saving, setSaving] = useState(false)
 
     useEffect(() => {
@@ -99,6 +106,8 @@ function ItemModal({ isOpen, onClose, onSave, item, type }) {
             setMeasurementType(item.measurement_type || '')
             setIntervalSeconds(secs)
             setObservationMinutes(Math.max(1, Math.round((count * secs) / 60)))
+            setMasteryThreshold(item.mastery_threshold ?? 80)
+            setMasterySessions(item.mastery_consecutive_sessions ?? 3)
         } else {
             setName('')
             setDescription('')
@@ -106,6 +115,8 @@ function ItemModal({ isOpen, onClose, onSave, item, type }) {
             setMeasurementType('')
             setIntervalSeconds(30)
             setObservationMinutes(10)
+            setMasteryThreshold(80)
+            setMasterySessions(3)
         }
     }, [item])
 
@@ -126,6 +137,12 @@ function ItemModal({ isOpen, onClose, onSave, item, type }) {
                     status,
                     // empty string => clear the override (inherit program default)
                     measurement_type: measurementType || null,
+                    mastery_threshold: Number(masteryThreshold),
+                    mastery_consecutive_sessions: Number(masterySessions),
+                    // Kept in step with the numbers above. It is prose shown on
+                    // reports, and left alone it goes stale and contradicts the
+                    // criteria the target is actually judged against.
+                    mastery_criteria: `${Number(masteryThreshold)}% accuracy over ${Number(masterySessions)} consecutive sessions`,
                 }
                 if (INTERVAL_METHODS.includes(measurementType)) {
                     data.interval_seconds = Number(intervalSeconds)
@@ -194,6 +211,42 @@ function ItemModal({ isOpen, onClose, onSave, item, type }) {
                                     </select>
                                     <p className="text-xs text-gray-400 mt-1">
                                         "On Hold" targets won't appear during sessions until activated
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Mastery criteria - only for Targets */}
+                            {type === 'Target' && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label htmlFor="target-mastery-threshold" className="block text-sm font-medium text-gray-700 mb-2">
+                                            Mastery threshold (%)
+                                        </label>
+                                        <input
+                                            id="target-mastery-threshold"
+                                            type="number"
+                                            min={0}
+                                            max={100}
+                                            value={masteryThreshold}
+                                            onChange={(e) => setMasteryThreshold(e.target.value)}
+                                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3] focus:border-transparent"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="target-mastery-sessions" className="block text-sm font-medium text-gray-700 mb-2">
+                                            Consecutive sessions
+                                        </label>
+                                        <input
+                                            id="target-mastery-sessions"
+                                            type="number"
+                                            min={1}
+                                            value={masterySessions}
+                                            onChange={(e) => setMasterySessions(e.target.value)}
+                                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#159DB3] focus:border-transparent"
+                                        />
+                                    </div>
+                                    <p className="col-span-2 text-xs text-gray-400">
+                                        The run must be consecutive. Changing either applies to the sessions already recorded.
                                     </p>
                                 </div>
                             )}
