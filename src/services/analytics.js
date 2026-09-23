@@ -76,6 +76,23 @@ export const getProgramProgress = async (programId, options = {}) => {
 }
 
 /**
+ * The individual values recorded against a program on one day.
+ *
+ * What sits behind a single point on the progress chart. The chart plots a
+ * whole day as one dot, so this is how a supervisor gets from the dot to the
+ * entries they want to correct or remove.
+ *
+ * @param {number|string} programId
+ * @param {string} date - the plotted day, YYYY-MM-DD
+ */
+export const getProgramDayEntries = async (programId, date) => {
+    const response = await api.get(
+        `/api/analytics/programs/${programId}/entries?date=${encodeURIComponent(date)}`
+    )
+    return response.data
+}
+
+/**
  * Get mastery progress for all programs of a client
  * @param {number} clientId 
  * @returns {Object} - Mastery progress data for each program
@@ -113,6 +130,7 @@ export default {
     getDashboardStats,
     getClientProgress,
     getProgramProgress,
+    getProgramDayEntries,
     getMasteryProgress,
     exportProgramData,
 }

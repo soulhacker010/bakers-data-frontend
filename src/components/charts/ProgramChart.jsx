@@ -54,6 +54,21 @@ export const truncate = (name, max = 18) => {
 }
 
 /**
+ * The plotted day behind a click on the chart.
+ *
+ * Recharts reports a click on the chart rather than on a dot, handing back
+ * whichever row is active. Reading it is the whole of the wiring that lets a
+ * supervisor open a point and correct what is behind it (Dena, 22 Sept 2026),
+ * so it is pulled out here where it can be tested without a browser.
+ *
+ * Returns null for a click that landed on no data, which is most of the chart.
+ */
+export function pointFromChartClick(state) {
+    const row = state?.activePayload?.[0]?.payload
+    return row?.rawDate ? row : null
+}
+
+/**
  * Turn an analytics response into chart rows.
  *
  * Dates are parsed at noon so a timezone offset can never shift a session onto
@@ -151,8 +166,17 @@ export default function ProgramChart({
     frequencyMode = 'count',
     showMasteryLines = false,
     emptyAction = null,
+    onPointClick = null,
 }) {
     const chartData = buildChartData(analytics)
+    // Left undefined when nobody is listening, so the all-graphs page keeps a
+    // chart that is purely something to read.
+    const handleChartClick = onPointClick
+        ? (state) => {
+            const row = pointFromChartClick(state)
+            if (row) onPointClick(row)
+        }
+        : undefined
     const phaseChanges = buildPhaseChanges(analytics)
     const clinicianLines = resolvePhaseLines(analytics?.phase_lines, chartData)
     const targets = analytics?.targets || []
@@ -246,7 +270,7 @@ export default function ProgramChart({
         const intervalSeries = seriesFor('interval')
         return (
             <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={intervalSeries.rows} margin={MARGIN}>
+                <AreaChart onClick={handleChartClick} data={intervalSeries.rows} margin={MARGIN}>
                     <defs>
                         <linearGradient id={gid('colorInterval')} x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#159DB3" stopOpacity={0.2} />
@@ -275,7 +299,7 @@ export default function ProgramChart({
         const latencySeries = seriesFor('latency')
         return (
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={latencySeries.rows} margin={MARGIN}>
+                <LineChart onClick={handleChartClick} data={latencySeries.rows} margin={MARGIN}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                     <XAxis dataKey="date" {...AXIS} />
                     <YAxis domain={countAxisDomain(chartData.map(d => d.latency))} {...AXIS} tickFormatter={(v) => `${v}s`} />
@@ -297,7 +321,7 @@ export default function ProgramChart({
         const freqSeries = seriesFor(showingRate ? 'rate' : 'frequency')
         return (
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={freqSeries.rows} margin={MARGIN}>
+                <LineChart onClick={handleChartClick} data={freqSeries.rows} margin={MARGIN}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                     <XAxis dataKey="date" {...AXIS} />
                     <YAxis
@@ -330,7 +354,7 @@ export default function ProgramChart({
         const durationSeries = seriesFor('duration')
         return (
             <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={durationSeries.rows} margin={MARGIN}>
+                <AreaChart onClick={handleChartClick} data={durationSeries.rows} margin={MARGIN}>
                     <defs>
                         <linearGradient id={gid('colorDuration')} x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.2} />
@@ -357,7 +381,7 @@ export default function ProgramChart({
         const taSeries = seriesFor('accuracy')
         return (
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={taSeries.rows} margin={MARGIN}>
+                <LineChart onClick={handleChartClick} data={taSeries.rows} margin={MARGIN}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                     <XAxis dataKey="date" {...AXIS} />
                     <YAxis domain={PERCENT_DOMAIN} {...AXIS} tickFormatter={(v) => `${v}%`} />
@@ -384,7 +408,7 @@ export default function ProgramChart({
     const accuracySeries = seriesFor('accuracy')
     return (
         <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={accuracySeries.rows} margin={MARGIN}>
+            <AreaChart onClick={handleChartClick} data={accuracySeries.rows} margin={MARGIN}>
                 <defs>
                     <linearGradient id={gid('colorAccuracy')} x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#159DB3" stopOpacity={0.2} />

@@ -13,7 +13,7 @@ vi.mock('recharts', async (importOriginal) => {
     }
 })
 
-import ProgramChart, { buildChartData, buildPhaseChanges, resolvePhaseLines, truncate } from './ProgramChart'
+import ProgramChart, { buildChartData, buildPhaseChanges, resolvePhaseLines, truncate, pointFromChartClick } from './ProgramChart'
 
 const analytics = {
     sessions: [
@@ -235,5 +235,26 @@ describe('ProgramChart gradient ids', () => {
             <ProgramChart program={{ id: 1, data_type: 'trial' }} analytics={{ sessions: [] }} />
         )
         expect(getByText('No Session Data Yet')).toBeTruthy()
+    })
+})
+
+describe('pointFromChartClick', () => {
+    // Recharts reports a click on the chart rather than on a dot, handing back
+    // whichever row is active. This is the whole of the wiring that lets a
+    // supervisor open a point and correct what is behind it (Dena, 22 Sept 2026).
+    const row = { rawDate: '2026-09-18', date: 'Sep 18', accuracy: 60 }
+
+    it('finds the day behind an active point', () => {
+        expect(pointFromChartClick({ activePayload: [{ payload: row }] })).toBe(row)
+    })
+
+    it('ignores a click that landed on no data, which is most of the chart', () => {
+        expect(pointFromChartClick({})).toBeNull()
+        expect(pointFromChartClick(null)).toBeNull()
+        expect(pointFromChartClick({ activePayload: [] })).toBeNull()
+    })
+
+    it('ignores a row carrying no date, which nothing could be opened from', () => {
+        expect(pointFromChartClick({ activePayload: [{ payload: { accuracy: 60 } }] })).toBeNull()
     })
 })

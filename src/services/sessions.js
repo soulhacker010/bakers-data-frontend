@@ -96,10 +96,17 @@ export const editSessionData = async (dataId, updateData) => {
 
 /**
  * Delete session data point
+ *
+ * The reason is recorded against the row and in the audit entry. Correcting a
+ * value has always required one; removing it outright did not, which left the
+ * more destructive of the two as the less accountable.
+ *
  * @param {number} dataId - Session data ID to delete
+ * @param {string} [reason] - why the value is being removed
  */
-export const deleteSessionData = async (dataId) => {
-    await api.delete(`/api/sessions/data/${dataId}`)
+export const deleteSessionData = async (dataId, reason) => {
+    const query = reason ? `?reason=${encodeURIComponent(reason)}` : ''
+    await api.delete(`/api/sessions/data/${dataId}${query}`)
 }
 
 /**

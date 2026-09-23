@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
 import { getProgram } from '../services/programs'
 import { getProgramProgress, exportProgramData } from '../services/analytics'
+import DayEntriesModal from '../components/charts/DayEntriesModal'
 import { downloadChartPng } from '../utils/chartExport'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
@@ -34,6 +35,9 @@ export default function ProgressPage() {
     const canManagePhases = canSuperviseData(user)
     const [dateRange, setDateRange] = useState('30')
     const [targetFilter, setTargetFilter] = useState('all')  // 'all' or a target id
+    // The plotted day a supervisor opened, to correct or remove what is behind
+    // it (Dena, 22 Sept 2026). Null when nothing is open.
+    const [openDay, setOpenDay] = useState(null)
     // Frequency programs can be charted as a raw count or as responses per
     // hour. Rate is the clinically comparable one, but count is what staff
     // recognise from the collection screen, so both are offered.
@@ -364,6 +368,19 @@ export default function ProgressPage() {
 
     return (
         <DashboardLayout>
+            {/* What was recorded on the day a supervisor clicked. Correcting or
+                removing a value here redraws the chart it was opened from. */}
+            {openDay && (
+                <DayEntriesModal
+                    programId={id}
+                    date={openDay.date}
+                    dateLabel={openDay.label}
+                    user={user}
+                    onClose={() => setOpenDay(null)}
+                    onChanged={refreshAnalytics}
+                />
+            )}
+
             {/* Add past data modal */}
             {showPastEntry && (
                 <>
@@ -590,6 +607,7 @@ export default function ProgressPage() {
                             analytics={analytics}
                             frequencyMode={frequencyMode}
                             showMasteryLines={showMasteryLines}
+                            onPointClick={(row) => setOpenDay({ date: row.rawDate, label: row.date })}
                             emptyAction={
                                 <button
                                     onClick={() => navigate('/sessions/new')}
