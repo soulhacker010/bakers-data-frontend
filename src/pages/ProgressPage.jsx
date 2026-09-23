@@ -46,6 +46,9 @@ export default function ProgressPage() {
     // default from 20 Aug 2026: Dena reported them as unexplained orange lines
     // that read like phase markers. Available on request rather than removed.
     const [showMasteryLines, setShowMasteryLines] = useState(false)
+    // The green markers placed automatically when a target masters. On by
+    // default, because that is how every graph already reads (Dena, 22 Sept 2026).
+    const [showPhaseChanges, setShowPhaseChanges] = useState(true)
     // Entering a percentage for a past session rather than re-keying trials.
     const [showPastEntry, setShowPastEntry] = useState(false)
     const [pastEntry, setPastEntry] = useState({ date: '', percentage: '', notes: '' })
@@ -589,6 +592,16 @@ export default function ProgressPage() {
                             />
                             Show mastery criteria
                         </label>
+
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-600 cursor-pointer select-none">
+                            <input
+                                type="checkbox"
+                                checked={showPhaseChanges}
+                                onChange={(e) => setShowPhaseChanges(e.target.checked)}
+                                className="w-4 h-4 rounded border-gray-300 text-[#159DB3] focus:ring-[#159DB3]"
+                            />
+                            Show automatic phase changes
+                        </label>
                     </div>
 
                     {/* A day with no recorded session time cannot produce a rate,
@@ -607,6 +620,7 @@ export default function ProgressPage() {
                             analytics={analytics}
                             frequencyMode={frequencyMode}
                             showMasteryLines={showMasteryLines}
+                            showPhaseChanges={showPhaseChanges}
                             onPointClick={(row) => setOpenDay({ date: row.rawDate, label: row.date })}
                             emptyAction={
                                 <button

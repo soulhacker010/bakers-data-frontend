@@ -258,3 +258,36 @@ describe('pointFromChartClick', () => {
         expect(pointFromChartClick({ activePayload: [{ payload: { accuracy: 60 } }] })).toBeNull()
     })
 })
+
+describe('buildPhaseChanges, and being able to turn the automatic markers off', () => {
+    /**
+     * Dena (BCBA, Cor Behavioral), 22 Sept 2026:
+     *   "Changing or modifying the program phase change lines (green vertical
+     *    lines automatically placed to label a new target)"
+     *
+     * These markers are derived from when a target mastered, so there is no row
+     * to edit: the line is a reflection of a fact, and moving it would mean
+     * moving the fact. What was missing is the ability to decline them, which
+     * is the same thing she asked for about the mastery criteria lines on
+     * 20 Aug and got. With them off, the phase lines she places herself carry
+     * her own dates and her own wording.
+     */
+    const analytics = {
+        phase_changes: [
+            { date: '2026-08-05', from_target: 'Dog', to_target: 'Cat', type: 'mastered' },
+        ],
+    }
+
+    it('builds a marker for each mastered target', () => {
+        expect(buildPhaseChanges(analytics)).toHaveLength(1)
+    })
+
+    it('builds none when the reader has turned them off', () => {
+        expect(buildPhaseChanges(analytics, { show: false })).toEqual([])
+    })
+
+    it('still builds them when nothing was said either way', () => {
+        // The default has to stay as it was, or every existing graph changes.
+        expect(buildPhaseChanges(analytics, {})).toHaveLength(1)
+    })
+})

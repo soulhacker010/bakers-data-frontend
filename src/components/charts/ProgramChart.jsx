@@ -109,8 +109,20 @@ export const dataPointDot = (color) => (props) => {
         : <circle key={key} cx={cx} cy={cy} r={4} fill={color} />
 }
 
-/** Phase change markers, labelled with the date so the X axis need not be read. */
-export function buildPhaseChanges(analytics) {
+/**
+ * Phase change markers, labelled with the date so the X axis need not be read.
+ *
+ * Derived from when each target mastered, so there is no row behind one to
+ * edit: the line reflects a fact, and moving it would mean moving the fact.
+ * What a reader can do is decline them (Dena, 22 Sept 2026), which is the same
+ * thing she asked for about the mastery criteria lines in August and got. With
+ * them off, the phase lines she places herself carry her own dates and wording.
+ *
+ * On by default, or every graph already in use would change.
+ */
+export function buildPhaseChanges(analytics, { show = true } = {}) {
+    if (!show) return []
+
     return (analytics?.phase_changes || []).map(pc => {
         const dateLabel = format(parseISO(pc.date + 'T12:00:00'), 'MMM d')
         const transition = pc.to_target
@@ -165,6 +177,7 @@ export default function ProgramChart({
     analytics,
     frequencyMode = 'count',
     showMasteryLines = false,
+    showPhaseChanges = true,
     emptyAction = null,
     onPointClick = null,
 }) {
@@ -177,7 +190,7 @@ export default function ProgramChart({
             if (row) onPointClick(row)
         }
         : undefined
-    const phaseChanges = buildPhaseChanges(analytics)
+    const phaseChanges = buildPhaseChanges(analytics, { show: showPhaseChanges })
     const clinicianLines = resolvePhaseLines(analytics?.phase_lines, chartData)
     const targets = analytics?.targets || []
 
