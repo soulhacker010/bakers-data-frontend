@@ -70,6 +70,12 @@ export const getProgramProgress = async (programId, options = {}) => {
     if (options.targetId != null && options.targetId !== '') {
         params.append('target_id', options.targetId)
     }
+    // 'day' combines every session on a date into one point; 'session' keeps
+    // each its own. Day is the server default, so it is only sent when asked
+    // for explicitly.
+    if (options.groupBy) {
+        params.append('group_by', options.groupBy)
+    }
 
     const response = await api.get(`/api/analytics/programs/${programId}?${params.toString()}`)
     return response.data

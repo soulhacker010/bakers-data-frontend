@@ -75,8 +75,21 @@ export function pointFromChartClick(state) {
  * the previous or next day.
  */
 export function buildChartData(analytics) {
-    return analytics?.sessions?.map(session => ({
-        date: format(parseISO(session.date + 'T12:00:00'), 'MMM d'),
+    const rows = analytics?.sessions || []
+
+    // Grouped per session, a day with three sessions produces three points. The
+    // X axis is categorical, so they would collide on one label and two of them
+    // would be unreadable. The time tells them apart, and is added only where a
+    // date actually carries more than one, so the day view is untouched
+    // (Dena, 22 Sept 2026).
+    const perDate = rows.reduce((counts, s) => {
+        counts[s.date] = (counts[s.date] || 0) + 1
+        return counts
+    }, {})
+
+    return rows.map(session => ({
+        date: format(parseISO(session.date + 'T12:00:00'), 'MMM d')
+            + (perDate[session.date] > 1 && session.session_time ? ` ${session.session_time}` : ''),
         // Kept alongside the display label so phase lines can be positioned by
         // real date rather than by matching formatted text.
         rawDate: session.date,
@@ -92,7 +105,7 @@ export function buildChartData(analytics) {
         // Typed in for a past session rather than collected. Drawn differently
         // below so a reader can tell measured data from an entered figure.
         isSummary: !!session.is_summary,
-    })) || []
+    }))
 }
 
 /**

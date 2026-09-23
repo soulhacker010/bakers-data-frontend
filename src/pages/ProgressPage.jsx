@@ -49,6 +49,11 @@ export default function ProgressPage() {
     // The green markers placed automatically when a target masters. On by
     // default, because that is how every graph already reads (Dena, 22 Sept 2026).
     const [showPhaseChanges, setShowPhaseChanges] = useState(true)
+    // What one point on the chart is. Day combines every session on a date,
+    // which is why several sessions looked like missing data (Dena, 22 Sept
+    // 2026). Day stays the default so no graph moves under the people reading
+    // it; a clinician who wants a point per session switches it here.
+    const [groupBy, setGroupBy] = useState('day')
     // Entering a percentage for a past session rather than re-keying trials.
     const [showPastEntry, setShowPastEntry] = useState(false)
     const [pastEntry, setPastEntry] = useState({ date: '', percentage: '', notes: '' })
@@ -90,6 +95,7 @@ export default function ProgressPage() {
                 const analyticsData = await getProgramProgress(id, {
                     dateFrom,
                     targetId: targetFilter === 'all' ? null : targetFilter,
+                    groupBy,
                 })
                 setAnalytics(analyticsData)
             } catch (err) {
@@ -100,7 +106,7 @@ export default function ProgressPage() {
             }
         }
         fetchData()
-    }, [id, dateRange, targetFilter, toast])
+    }, [id, dateRange, targetFilter, groupBy, toast])
 
     // Chart rows, built by the same helper the chart itself uses so the stats
     // below can never disagree with what is plotted.
@@ -326,6 +332,7 @@ export default function ProgressPage() {
                     ? null
                     : format(subDays(new Date(), parseInt(dateRange)), 'yyyy-MM-dd'),
                 targetId: targetFilter === 'all' ? null : targetFilter,
+                groupBy,
             })
             setAnalytics(analyticsData)
         } catch (err) {
@@ -360,6 +367,7 @@ export default function ProgressPage() {
             const analyticsData = await getProgramProgress(id, {
                 dateFrom: dateRange === 'all' ? null : format(subDays(new Date(), parseInt(dateRange)), 'yyyy-MM-dd'),
                 targetId: targetFilter === 'all' ? null : targetFilter,
+                groupBy,
             })
             setAnalytics(analyticsData)
         } catch (err) {
@@ -601,6 +609,16 @@ export default function ProgressPage() {
                                 className="w-4 h-4 rounded border-gray-300 text-[#159DB3] focus:ring-[#159DB3]"
                             />
                             Show automatic phase changes
+                        </label>
+
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-600 cursor-pointer select-none">
+                            <input
+                                type="checkbox"
+                                checked={groupBy === 'session'}
+                                onChange={(e) => setGroupBy(e.target.checked ? 'session' : 'day')}
+                                className="w-4 h-4 rounded border-gray-300 text-[#159DB3] focus:ring-[#159DB3]"
+                            />
+                            One point per session
                         </label>
                     </div>
 

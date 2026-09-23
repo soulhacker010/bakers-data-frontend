@@ -291,3 +291,49 @@ describe('buildPhaseChanges, and being able to turn the automatic markers off', 
         expect(buildPhaseChanges(analytics, {})).toHaveLength(1)
     })
 })
+
+describe('buildChartData, when two points share a date', () => {
+    /**
+     * Dena (BCBA), 22 Sept 2026, on data "primarily from September 18th".
+     *
+     * Grouped per session, a day with three sessions produces three points. The
+     * X axis is categorical, so they would collide on one label and two of them
+     * would be unreadable. The time tells them apart, and is only shown where
+     * it is needed.
+     */
+    const rows = (sessions) => ({ sessions })
+
+    it('leaves a single session on a date labelled by the date alone', () => {
+        const data = buildChartData(rows([
+            { date: '2026-09-18', session_id: 1, session_time: '09:00', accuracy: 60 },
+        ]))
+
+        expect(data[0].date).toBe('Sep 18')
+    })
+
+    it('adds the time when a date carries more than one session', () => {
+        const data = buildChartData(rows([
+            { date: '2026-09-18', session_id: 1, session_time: '09:00', accuracy: 60 },
+            { date: '2026-09-18', session_id: 2, session_time: '13:00', accuracy: 80 },
+        ]))
+
+        expect(data.map(d => d.date)).toEqual(['Sep 18 09:00', 'Sep 18 13:00'])
+    })
+
+    it('keeps the real date for phase lines to be placed against', () => {
+        const data = buildChartData(rows([
+            { date: '2026-09-18', session_id: 1, session_time: '09:00', accuracy: 60 },
+            { date: '2026-09-18', session_id: 2, session_time: '13:00', accuracy: 80 },
+        ]))
+
+        expect(data.every(d => d.rawDate === '2026-09-18')).toBe(true)
+    })
+
+    it('is unaffected when the day view sends no times at all', () => {
+        const data = buildChartData(rows([
+            { date: '2026-09-18', session_id: 1, accuracy: 60 },
+        ]))
+
+        expect(data[0].date).toBe('Sep 18')
+    })
+})
