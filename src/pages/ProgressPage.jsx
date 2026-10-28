@@ -4,6 +4,7 @@ import { DashboardLayout } from '../components/layout'
 import { getProgram } from '../services/programs'
 import { getProgramProgress, exportProgramData } from '../services/analytics'
 import DayEntriesModal from '../components/charts/DayEntriesModal'
+import { pastEntryField, pastEntryPayload } from '../utils/pastEntry'
 import { downloadChartPng } from '../utils/chartExport'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
@@ -56,7 +57,7 @@ export default function ProgressPage() {
     const [groupBy, setGroupBy] = useState('day')
     // Entering a percentage for a past session rather than re-keying trials.
     const [showPastEntry, setShowPastEntry] = useState(false)
-    const [pastEntry, setPastEntry] = useState({ date: '', percentage: '', notes: '' })
+    const [pastEntry, setPastEntry] = useState({ date: '', value: '', notes: '', targetId: '' })
     const [savingPastEntry, setSavingPastEntry] = useState(false)
     const [program, setProgram] = useState(null)
     // The learner this program belongs to. Named on the chart and on the
@@ -341,25 +342,33 @@ export default function ProgressPage() {
     }
 
     const handleSavePastEntry = async () => {
-        const value = parseFloat(pastEntry.percentage)
         if (!pastEntry.date) {
             toast.error('Please choose the date of the session')
             return
         }
-        if (Number.isNaN(value) || value < 0 || value > 100) {
-            toast.error('Please enter a percentage between 0 and 100')
+
+        // The figure, its bounds and the field it is sent under all come from
+        // the program's own type, so a duration program is never asked for a
+        // percentage again (Dena, 28 Oct 2026).
+        let body
+        try {
+            body = pastEntryPayload({
+                clientId: program.client_id,
+                programId: program.id,
+                date: pastEntry.date,
+                dataType: program.data_type,
+                value: pastEntry.value,
+                notes: pastEntry.notes,
+                targetId: pastEntry.targetId,
+            })
+        } catch (err) {
+            toast.error(err.message)
             return
         }
 
         setSavingPastEntry(true)
         try {
-            await recordSummaryEntry({
-                client_id: program.client_id,
-                program_id: program.id,
-                date: pastEntry.date,
-                percentage: value,
-                notes: pastEntry.notes || null,
-            })
+            await recordSummaryEntry(body)
             setShowPastEntry(false)
             toast.success('Past session recorded')
             // Refetch so the new point appears without a manual reload.
@@ -420,17 +429,50 @@ export default function ProgressPage() {
                                 />
                             </div>
 
-                            <div className="mb-4">
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Percentage</label>
-                                <input
-                                    type="number"
-                                    min="0" max="100" step="0.1"
-                                    value={pastEntry.percentage}
-                                    onChange={(e) => setPastEntry(f => ({ ...f, percentage: e.target.value }))}
-                                    placeholder="e.g. 80"
-                                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#159DB3] focus:outline-none"
-                                />
-                            </div>
+                            {(() => {
+                                const field = pastEntryField(program?.data_type)
+                                return (
+                                    <div className="mb-4">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            {field.label}
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            {...(field.max != null ? { max: field.max } : {})}
+                                            step={field.step}
+                                            value={pastEntry.value}
+                                            onChange={(e) => setPastEntry(f => ({ ...f, value: e.target.value }))}
+                                            placeholder={field.placeholder}
+                                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#159DB3] focus:outline-none"
+                                        />
+                                        <p className="text-xs text-gray-400 mt-1">{field.help}</p>
+                                    </div>
+                                )
+                            })()}
+
+                            {/* Naming the behaviour is what lets the entry count
+                                toward its run of sessions at criteria. */}
+                            {targets.length > 0 && (
+                                <div className="mb-4">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Behavior <span className="font-normal text-gray-400">(optional)</span>
+                                    </label>
+                                    <select
+                                        value={pastEntry.targetId}
+                                        onChange={(e) => setPastEntry(f => ({ ...f, targetId: e.target.value }))}
+                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#159DB3] focus:outline-none"
+                                    >
+                                        <option value="">Whole program</option>
+                                        {targets.map(t => (
+                                            <option key={t.id} value={t.id}>{t.name}</option>
+                                        ))}
+                                    </select>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        Choose the behavior so this session counts toward its mastery
+                                    </p>
+                                </div>
+                            )}
 
                             <div className="mb-5">
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
