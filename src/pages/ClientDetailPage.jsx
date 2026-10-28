@@ -182,7 +182,7 @@ export default function ClientDetailPage() {
                 const [clientData, programsData, sessionsData, masteryRes] = await Promise.all([
                     getClient(id),
                     getPrograms({ client_id: id, includeInactive: true }),
-                    getSessions({ client_id: id }),
+                    getSessions({ clientId: id, limit: 200 }),
                     getMasteryProgress(id).catch(() => null)
                 ])
                 setClient(clientData)

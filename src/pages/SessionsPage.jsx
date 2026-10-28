@@ -35,7 +35,7 @@ export default function SessionsPage() {
         try {
             setLoading(true)
             const [sessionsData, clientsData] = await Promise.all([
-                getSessions(),
+                getSessions({ limit: 200 }),
                 getClients()
             ])
             setSessions(sessionsData)
