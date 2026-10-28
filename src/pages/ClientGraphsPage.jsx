@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { DashboardLayout } from '../components/layout'
 import { getClient } from '../services/clients'
 import { getPrograms } from '../services/programs'
 import { getProgramProgress } from '../services/analytics'
 import { useToast } from '../context/ToastContext'
-import { ArrowLeft, BarChart2, ChevronRight } from 'lucide-react'
+import { ArrowLeft, BarChart2, ChevronRight, Download } from 'lucide-react'
 import { format, subDays } from 'date-fns'
 import ProgramChart from '../components/charts/ProgramChart'
+import { downloadAllChartsPng } from '../utils/chartExport'
 import { learnerCaption } from '../utils/learner'
 
 /**
@@ -82,6 +83,37 @@ export default function ClientGraphsPage() {
     }, [clientId, dateRange, toast])
 
     const clientName = client ? `${client.first_name} ${client.last_name}` : ''
+
+    // Every graph as one file, rather than one save prompt per program
+    // (Dena, 28 Oct 2026). Read off the page as rendered, so what downloads is
+    // what the clinician is looking at, date range and all.
+    const [downloading, setDownloading] = useState(false)
+    const sheetRef = useRef(null)
+
+    const handleDownloadAll = async () => {
+        setDownloading(true)
+        try {
+            const cards = sheetRef.current?.querySelectorAll('[data-graph-card]') || []
+            const charts = Array.from(cards).map((card) => ({
+                svg: card.querySelector('svg'),
+                title: card.getAttribute('data-graph-title') || 'Program',
+            }))
+            const rangeLabel = dateRangeOptions.find(o => o.value === dateRange)?.label || ''
+            await downloadAllChartsPng(charts, {
+                title: clientName,
+                subtitle: [
+                    learnerCaption(client),
+                    rangeLabel,
+                    `exported ${format(new Date(), 'MMM d, yyyy')}`,
+                ].filter(Boolean).join(' · '),
+            })
+            toast.success('Graphs downloaded')
+        } catch (err) {
+            toast.error(err.message || 'Could not download the graphs')
+        } finally {
+            setDownloading(false)
+        }
+    }
     const hasFrequencyProgram = entries.some(e => e.program?.data_type === 'frequency')
 
     if (loading) {
@@ -134,6 +166,16 @@ export default function ClientGraphsPage() {
                                     ))}
                                 </div>
                             )}
+                            {entries.length > 0 && (
+                                <button
+                                    onClick={handleDownloadAll}
+                                    disabled={downloading}
+                                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/15 text-white border border-white/30 font-medium hover:bg-white/25 transition-colors disabled:opacity-50"
+                                >
+                                    <Download size={18} />
+                                    {downloading ? 'Preparing...' : 'Download all graphs'}
+                                </button>
+                            )}
                             <select
                                 value={dateRange}
                                 onChange={(e) => setDateRange(e.target.value)}
@@ -164,9 +206,14 @@ export default function ClientGraphsPage() {
                         </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <div ref={sheetRef} className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                         {entries.map(({ program, analytics }) => (
-                            <div key={program.id} className="card-premium p-6">
+                            <div
+                                key={program.id}
+                                data-graph-card
+                                data-graph-title={program.name}
+                                className="card-premium p-6"
+                            >
                                 <div className="flex items-start justify-between gap-4 mb-4">
                                     <div>
                                         <h2 className="font-heading text-lg font-bold text-gray-900">
