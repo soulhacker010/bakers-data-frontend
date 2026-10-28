@@ -84,3 +84,60 @@ describe('phaseSeries', () => {
         expect(phaseSeries(null, null, 'accuracy')).toEqual({ rows: [], keys: ['accuracy'] })
     })
 })
+
+describe('every line that is drawn breaks the path', () => {
+    /**
+     * Dena (BCBA, Cor Behavioral), 28 Oct 2026:
+     *   "Data points are still connecting across phase change lines. When a
+     *    phase change line exists, the dots should not connect across those
+     *    changes."
+     *
+     * SPEC CHANGED. August's version split the path only at lines a clinician
+     * had placed, on the reasoning that a mastery marker records a target
+     * transition rather than a change of condition. Dena is the clinical
+     * authority here and has now said twice that it does not matter which kind
+     * of line it is: a line on the chart means the conditions either side are
+     * not one continuous series. Her rule is also the simpler one, which is
+     * usually the tell.
+     *
+     * The rule is now "the path breaks wherever a line is drawn", so hiding the
+     * automatic markers stops them breaking it too. A gap with no visible line
+     * beside it would be unreadable.
+     */
+    const rows = [
+        { date: 'Aug 3', accuracy: 40 },
+        { date: 'Aug 5', accuracy: 60 },
+        { date: 'Aug 9', accuracy: 90 },
+    ]
+
+    it('breaks at a mastery marker, not only at a clinician line', () => {
+        const { keys } = phaseSeries(rows, [{ dateLabel: 'Aug 5' }], 'accuracy')
+
+        expect(keys).toHaveLength(2)
+    })
+
+    it('puts the days either side of the marker on different series', () => {
+        const { rows: out } = phaseSeries(rows, [{ dateLabel: 'Aug 5' }], 'accuracy')
+
+        // Nothing carries a value on both sides, which is what stops the line
+        // being drawn across the break.
+        expect(out[0].accuracy__0).toBe(40)
+        expect(out[0].accuracy__1).toBeUndefined()
+        expect(out[1].accuracy__1).toBe(60)
+        expect(out[1].accuracy__0).toBeUndefined()
+    })
+
+    it('breaks at each of several lines of either kind', () => {
+        const { keys } = phaseSeries(
+            rows,
+            [{ dateLabel: 'Aug 5' }, { dateLabel: 'Aug 9' }],
+            'accuracy'
+        )
+
+        expect(keys).toHaveLength(3)
+    })
+
+    it('leaves the path whole when no line is drawn', () => {
+        expect(phaseSeries(rows, [], 'accuracy').keys).toEqual(['accuracy'])
+    })
+})

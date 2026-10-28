@@ -175,6 +175,28 @@ export function resolvePhaseLines(phaseLines, chartData) {
     })
 }
 
+/**
+ * The lines a data path must not be drawn across.
+ *
+ * Dena (BCBA, Cor Behavioral), 28 Oct 2026:
+ *   "Data points are still connecting across phase change lines. When a phase
+ *    change line exists, the dots should not connect across those changes."
+ *
+ * SPEC CHANGED. August's version split the path only at lines a clinician had
+ * placed, reasoning that a mastery marker records a target transition rather
+ * than a change of condition. Dena is the clinical authority and has now said
+ * twice that the distinction does not matter to a reader: a line on the chart
+ * says the conditions either side are not one continuous series, whichever kind
+ * of line drew it. Hers is also the simpler rule.
+ *
+ * Stated as "whatever is drawn breaks the path", so a reader who has hidden the
+ * automatic markers stops them breaking it as well. A gap with no visible line
+ * beside it would be unreadable.
+ */
+export function linesBreakingThePath(clinicianLines, phaseChanges) {
+    return [...(clinicianLines || []), ...(phaseChanges || [])]
+}
+
 const TOOLTIP_STYLE = {
     backgroundColor: '#FFFFFF',
     border: '1px solid #E5E7EB',
@@ -237,9 +259,13 @@ export default function ProgramChart({
     // Single-subject design convention: a data path is never drawn across a
     // phase change line. Joining the points would imply the two conditions form
     // one continuous series, which is the opposite of what the line says.
-    // Split on the lines a clinician placed, not on the mastery-derived markers,
-    // which record a target transition rather than a change of condition.
-    const seriesFor = (dataKey) => phaseSeries(chartData, clinicianLines, dataKey)
+    // Every line that is drawn breaks it, mastery markers included: see
+    // linesBreakingThePath for why that changed (Dena, 28 Oct 2026).
+    const seriesFor = (dataKey) => phaseSeries(
+        chartData,
+        linesBreakingThePath(clinicianLines, phaseChanges),
+        dataKey
+    )
 
     const phaseLines = (strokeWidth = 2, extend = false) => phaseChanges.map((pc, idx) => (
         <ReferenceLine

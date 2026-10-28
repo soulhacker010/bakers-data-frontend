@@ -11,8 +11,13 @@ import api from './api'
 export const getSessions = async (options = {}) => {
     const params = new URLSearchParams()
 
-    if (options.clientId) {
-        params.append('client_id', options.clientId)
+    // Both spellings, because the pages pass both and dropping the filter is
+    // silent: the client page asked with client_id and listed the most recent
+    // sessions across every client instead of that one's (Dena, 28 Oct 2026).
+    // getPrograms has accepted both for the same reason since July.
+    const clientId = options.clientId ?? options.client_id
+    if (clientId != null && clientId !== '') {
+        params.append('client_id', clientId)
     }
     if (options.dateFrom) {
         params.append('date_from', options.dateFrom)

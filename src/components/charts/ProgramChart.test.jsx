@@ -13,7 +13,7 @@ vi.mock('recharts', async (importOriginal) => {
     }
 })
 
-import ProgramChart, { buildChartData, buildPhaseChanges, resolvePhaseLines, truncate, pointFromChartClick } from './ProgramChart'
+import ProgramChart, { buildChartData, buildPhaseChanges, resolvePhaseLines, truncate, pointFromChartClick, linesBreakingThePath } from './ProgramChart'
 
 const analytics = {
     sessions: [
@@ -335,5 +335,42 @@ describe('buildChartData, when two points share a date', () => {
         ]))
 
         expect(data[0].date).toBe('Sep 18')
+    })
+})
+
+describe('linesBreakingThePath', () => {
+    /**
+     * Dena (BCBA), 28 Oct 2026: "When a phase change line exists, the dots
+     * should not connect across those changes."
+     *
+     * phaseSeries was always willing to break at any line it was handed. What
+     * was wrong is what this chart handed it: clinician-placed lines only. The
+     * green mastery markers were deliberately left out in August, which is the
+     * decision Dena has now overruled.
+     */
+    const clinician = [{ id: 1, title: 'FCT', dateLabel: 'Aug 5' }]
+    const mastery = [{ dateLabel: 'Aug 9', chartLabel: '✓ Aug 9 · Dog mastered' }]
+
+    it('breaks at a clinician line, as it always did', () => {
+        expect(linesBreakingThePath(clinician, [])).toHaveLength(1)
+    })
+
+    it('breaks at a mastery marker too, which is the fix', () => {
+        expect(linesBreakingThePath([], mastery)).toHaveLength(1)
+    })
+
+    it('breaks at both kinds together', () => {
+        expect(linesBreakingThePath(clinician, mastery).map(l => l.dateLabel))
+            .toEqual(['Aug 5', 'Aug 9'])
+    })
+
+    it('does not break at a marker the reader has hidden', () => {
+        // buildPhaseChanges returns nothing when the toggle is off, and a gap
+        // with no visible line beside it would be unreadable.
+        expect(linesBreakingThePath(clinician, [])).toHaveLength(1)
+    })
+
+    it('copes with either list being missing', () => {
+        expect(linesBreakingThePath(null, null)).toEqual([])
     })
 })
