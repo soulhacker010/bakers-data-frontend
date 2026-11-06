@@ -20,13 +20,19 @@ const PROMPT_LEVELS = [
 
 // Single step row component
 function StepRow({ step, selectedLevel, onSelectLevel, disabled = false }) {
+    // Aligned to the top rather than centred, because a step that wraps to two
+    // lines should not push its prompt buttons out of line with it.
     return (
-        <div className={`flex items-center gap-2 py-3 border-b border-gray-100 last:border-0 ${disabled ? 'opacity-50' : ''}`}>
-            {/* Step name */}
+        <div className={`flex items-start gap-3 py-3 border-b border-gray-100 last:border-0 ${disabled ? 'opacity-50' : ''}`}>
+            {/* Step name. A task analysis step is an instruction rather than a
+                label, often a whole sentence, and the therapist is reading it to
+                decide what prompt level the learner needed. It used to be
+                truncated to one line, so a step they could not read was a step
+                they could not score honestly (Dena, 6 Nov 2026). */}
             <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-900 truncate">{step.name}</p>
+                <p className="font-medium text-gray-900 break-words">{step.name}</p>
                 {step.description && (
-                    <p className="text-xs text-gray-500 truncate">{step.description}</p>
+                    <p className="text-xs text-gray-500 break-words mt-0.5">{step.description}</p>
                 )}
             </div>
 

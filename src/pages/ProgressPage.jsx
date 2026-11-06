@@ -57,7 +57,7 @@ export default function ProgressPage() {
     const [groupBy, setGroupBy] = useState('day')
     // Entering a percentage for a past session rather than re-keying trials.
     const [showPastEntry, setShowPastEntry] = useState(false)
-    const [pastEntry, setPastEntry] = useState({ date: '', value: '', notes: '', targetId: '' })
+    const [pastEntry, setPastEntry] = useState({ date: '', value: '', notes: '', targetId: '', sessionMinutes: '' })
     const [savingPastEntry, setSavingPastEntry] = useState(false)
     const [program, setProgram] = useState(null)
     // The learner this program belongs to. Named on the chart and on the
@@ -360,6 +360,7 @@ export default function ProgressPage() {
                 value: pastEntry.value,
                 notes: pastEntry.notes,
                 targetId: pastEntry.targetId,
+                sessionMinutes: pastEntry.sessionMinutes,
             })
         } catch (err) {
             toast.error(err.message)
@@ -447,6 +448,30 @@ export default function ProgressPage() {
                                             className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#159DB3] focus:outline-none"
                                         />
                                         <p className="text-xs text-gray-400 mt-1">{field.help}</p>
+
+                                        {/* A rate is this count divided by the time
+                                            observed. Without it the day has no rate
+                                            at all (Dena, 6 Nov 2026). */}
+                                        {field.asksSessionLength && (
+                                            <div className="mt-4">
+                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                    Session length{' '}
+                                                    <span className="font-normal text-gray-400">(optional)</span>
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    step="1"
+                                                    value={pastEntry.sessionMinutes}
+                                                    onChange={(e) => setPastEntry(f => ({ ...f, sessionMinutes: e.target.value }))}
+                                                    placeholder="e.g. 40"
+                                                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#159DB3] focus:outline-none"
+                                                />
+                                                <p className="text-xs text-gray-400 mt-1">
+                                                    Minutes observed. Needed for this day to appear on the rate view.
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                 )
                             })()}

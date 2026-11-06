@@ -37,6 +37,11 @@ const BY_TYPE = {
         // at a hundred is how this came to ask everyone for a percentage.
         max: undefined,
         help: 'How many times the behavior occurred',
+        // A rate is a count divided by the time observed, and only frequency
+        // programs are charted as one. Without the length the entry creates a
+        // session with no time in it and the rate view leaves the day blank
+        // (Dena, 6 Nov 2026). Nobody can infer it afterwards, so it is asked.
+        asksSessionLength: true,
     },
     duration: {
         key: 'duration_seconds',
@@ -60,7 +65,7 @@ export function pastEntryField(dataType) {
  * Throws with a message meant for the clinician, because the only caller is a
  * form and every one of these is something they can correct themselves.
  */
-export function pastEntryPayload({ clientId, programId, date, dataType, value, notes, targetId }) {
+export function pastEntryPayload({ clientId, programId, date, dataType, value, notes, targetId, sessionMinutes }) {
     const field = pastEntryField(dataType)
     const number = parseFloat(value)
 
@@ -74,10 +79,21 @@ export function pastEntryPayload({ clientId, programId, date, dataType, value, n
         throw new Error(`Please enter ${field.label.toLowerCase()} between 0 and ${field.max}`)
     }
 
+    // Only sent where it means something: on anything but a rate chart there is
+    // nothing to divide, so carrying it would imply a precision that is not there.
+    let minutes
+    if (field.asksSessionLength && sessionMinutes !== '' && sessionMinutes != null) {
+        minutes = Math.round(parseFloat(sessionMinutes))
+        if (Number.isNaN(minutes) || minutes <= 0) {
+            throw new Error('Session length must be more than zero minutes')
+        }
+    }
+
     return {
         client_id: clientId,
         program_id: programId,
         date,
+        ...(minutes != null ? { session_minutes: minutes } : {}),
         // Half an occurrence is not a thing, and nor is half a second here.
         [field.key]: field.key === 'percentage' ? number : Math.round(number),
         target_id: targetId || null,

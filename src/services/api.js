@@ -7,6 +7,7 @@
  * - Per-request retry on 429 (rate limit) with backoff
  */
 import axios from 'axios'
+import { shouldEndSession } from './sessionEnd'
 
 // API Base URL - uses Vite env variable or defaults to localhost
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -30,10 +31,17 @@ export const removeToken = () => localStorage.removeItem('access_token')
 let isRefreshing = false
 let refreshPromise = null
 let refreshIntervalId = null
+// Why the last refresh failed, so the 401 handler can tell "your token is no
+// good" from "we could not reach the server to find out".
+let lastRefreshError = null
 
 /**
  * Silently refresh the access token.
- * Returns the new token or null if refresh failed.
+ *
+ * Returns the new token, or null when it could not be refreshed. `lastRefreshError`
+ * carries why, because the caller has to tell a rejected token apart from a
+ * question we never got to ask: a cold service taking longer than the timeout
+ * was ending sessions mid-observation (Dena, 6 Nov 2026).
  */
 const silentRefresh = async () => {
     const currentToken = getToken()
@@ -43,6 +51,7 @@ const silentRefresh = async () => {
     if (isRefreshing) return refreshPromise
 
     isRefreshing = true
+    lastRefreshError = null
     refreshPromise = (async () => {
         try {
             const response = await axios.post(
@@ -53,7 +62,9 @@ const silentRefresh = async () => {
                         'Authorization': `Bearer ${currentToken}`,
                         'Content-Type': 'application/json',
                     },
-                    timeout: 10000,
+                    // The service can be cold, and ten seconds was short enough
+                    // that waking it looked identical to a rejected session.
+                    timeout: 30000,
                 }
             )
             const newToken = response.data.access_token
@@ -70,6 +81,7 @@ const silentRefresh = async () => {
             if (isDev) {
                 console.warn('Token refresh failed:', err.response?.status)
             }
+            lastRefreshError = err
             return null
         } finally {
             isRefreshing = false
@@ -149,9 +161,21 @@ api.interceptors.response.use(
                             config.headers.Authorization = `Bearer ${newToken}`
                             return api(config)
                         }
+
+                        // The refresh itself failed. Only end the session when
+                        // the server actually rejected the credentials: a
+                        // timeout or an unreachable service is a question we
+                        // never got to ask, and ending a session on one costs
+                        // the therapist the run they were scoring
+                        // (Dena, 6 Nov 2026).
+                        if (!shouldEndSession(lastRefreshError)) {
+                            break
+                        }
                     }
 
-                    // Refresh failed or already retried - logout
+                    // Either the refresh was refused, or it worked and the
+                    // freshly minted token was still rejected. Both are the
+                    // server telling us this session is over.
                     if (!isAuthEndpoint) {
                         if (isDev) {
                             console.warn('401 Unauthorized - token expired, redirecting to login');

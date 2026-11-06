@@ -96,3 +96,50 @@ describe('pastEntryPayload', () => {
         expect(() => pastEntryPayload({ ...base, dataType: 'duration', value: '-5' })).toThrow()
     })
 })
+
+/**
+ * Dena (BCBA, Cor Behavioral), 6 Nov 2026:
+ *   "When data is not recorded as zero and is later added in manually, it is
+ *    not showing under rate per minute- 0"
+ *
+ * A rate is a count divided by the time observed. A past entry created a
+ * session with no length, so there was nothing to divide by and the rate view
+ * left the day blank. Only frequency programs are charted as a rate, so only
+ * they need to be asked.
+ */
+describe('session length on a past entry', () => {
+    const base = { clientId: 3, programId: 9, date: '2026-11-05', notes: null, targetId: null }
+
+    it('is asked for on a frequency program', () => {
+        expect(pastEntryField('frequency').asksSessionLength).toBe(true)
+    })
+
+    it('is not asked for on the kinds that are not charted as a rate', () => {
+        expect(pastEntryField('trial').asksSessionLength).toBeFalsy()
+        expect(pastEntryField('duration').asksSessionLength).toBeFalsy()
+    })
+
+    it('is sent when given', () => {
+        const body = pastEntryPayload({ ...base, dataType: 'frequency', value: '6', sessionMinutes: '30' })
+
+        expect(body.session_minutes).toBe(30)
+    })
+
+    it('is left out when not given, since it stays optional', () => {
+        const body = pastEntryPayload({ ...base, dataType: 'frequency', value: '6' })
+
+        expect(body.session_minutes).toBeUndefined()
+    })
+
+    it('rejects a length of zero rather than sending something undividable', () => {
+        expect(() => pastEntryPayload({
+            ...base, dataType: 'frequency', value: '6', sessionMinutes: '0',
+        })).toThrow(/length|minutes/i)
+    })
+
+    it('is ignored on a program that is not charted as a rate', () => {
+        const body = pastEntryPayload({ ...base, dataType: 'trial', value: '80', sessionMinutes: '30' })
+
+        expect(body.session_minutes).toBeUndefined()
+    })
+})

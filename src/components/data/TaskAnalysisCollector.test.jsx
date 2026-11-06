@@ -71,3 +71,40 @@ describe('TaskAnalysisCollector', () => {
         expect(screen.getByText('0/2 steps')).toBeInTheDocument()
     })
 })
+
+/**
+ * Dena (BCBA, Cor Behavioral), 6 Nov 2026:
+ *   "we can't read the full task analysis targets when running the task
+ *    analysis programs"
+ *
+ * The step name was rendered with Tailwind's `truncate`, which forces one line
+ * and cuts the rest off behind an ellipsis. A task analysis step is an
+ * instruction rather than a label, often a whole sentence, and the therapist
+ * is reading it to decide what prompt level the learner needed. A step they
+ * cannot read is a step they cannot score honestly.
+ */
+describe('reading the step while running the program', () => {
+    const longStep = {
+        id: 1,
+        name: 'Turn on the water and adjust the temperature until it is comfortable',
+        description: 'Wait for the water to run warm before putting hands under it',
+    }
+
+    beforeEach(() => {
+        getTaskSteps.mockResolvedValue([longStep])
+    })
+
+    it('shows the whole step name, not a cut-off line', async () => {
+        render(<TaskAnalysisCollector programId={7} onRecord={vi.fn()} />)
+
+        const name = await screen.findByText(longStep.name)
+        expect(name.className).not.toMatch(/\btruncate\b/)
+    })
+
+    it('shows the whole description too', async () => {
+        render(<TaskAnalysisCollector programId={7} onRecord={vi.fn()} />)
+
+        const description = await screen.findByText(longStep.description)
+        expect(description.className).not.toMatch(/\btruncate\b/)
+    })
+})
